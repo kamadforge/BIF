@@ -72,7 +72,11 @@ if  __name__ =='__main__':
 
     iter_sigmas = np.array([0., 1., 10., 50., 100.])
     auc_private_stoch_ours = np.empty([iter_sigmas.shape[0], num_repeat])
-    LR_models = np.empty([iter_sigmas.shape[0], d])
+    LR_model0 = np.empty([num_repeat, d])
+    LR_model1 = np.empty([num_repeat, d])
+    LR_model10 = np.empty([num_repeat, d])
+    LR_model50 = np.empty([num_repeat, d])
+    LR_model100 = np.empty([num_repeat, d])
 
     for k in range(iter_sigmas.shape[0]):
         sigma = iter_sigmas[k]
@@ -125,8 +129,21 @@ if  __name__ =='__main__':
 
             auc_private_stoch_ours[k, repeat_idx] = auc_tst
 
-        # last model is saved in every sigma value
-        LR_models[k,:] = Mu_theta
+            # last model is saved in every sigma value
+            if k==0:
+                LR_model0[repeat_idx,:] = Mu_theta
+            elif k==1:
+                LR_model1[repeat_idx,:] = Mu_theta
+            elif k==2:
+                LR_model10[repeat_idx,:] = Mu_theta
+            elif k==3:
+                LR_model50[repeat_idx, :] = Mu_theta
+            else: #k==4
+                LR_model100[repeat_idx,:] = Mu_theta
 
     np.save('accuracy_ours', auc_private_stoch_ours)
-    np.save('LR_models', LR_models)
+    np.save('LR_model0', LR_model0)
+    np.save('LR_model1', LR_model1)
+    np.save('LR_model10', LR_model10)
+    np.save('LR_model50', LR_model50)
+    np.save('LR_model100', LR_model100)
