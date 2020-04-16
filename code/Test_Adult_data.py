@@ -86,6 +86,7 @@ if  __name__ =='__main__':
             # at every repeat, we reshuffle data
             rand_perm_nums = np.random.permutation(N_tot)
 
+            #train and test data
             X = x_tot[rand_perm_nums[0:N], :]
             y = y_tot[rand_perm_nums[0:N]]
             Xtst = x_tot[rand_perm_nums[N:], :]
@@ -120,6 +121,9 @@ if  __name__ =='__main__':
                 ypred = VIPS_BLR_MA.computeOdds(Xtst, Mu_theta)
                 fal_pos_rate_tst, true_pos_rate_tst, thrsld_tst = roc_curve(ytst, ypred.flatten())
                 auc_tst = auc(fal_pos_rate_tst,true_pos_rate_tst)
+
+                accuracy=(np.sum(np.round(ypred.flatten())==ytst)/len(ytst))
+                print("Accuracy: ", accuracy)
 
                 # update iteration number
                 iter = iter + 1
