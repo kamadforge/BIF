@@ -125,7 +125,9 @@ def main():
     for k in range(iter_sigmas.shape[0]):
         LR_model = np.load('LR_model'+str(int(iter_sigmas[k]))+'.npy')
         filename = 'switch_posterior_mean'+str(int(iter_sigmas[k]))
+        filename_phi = 'switch_parameter' + str(int(iter_sigmas[k]))
         posterior_mean_switch_mat = np.empty([num_repeat, input_dim])
+        switch_parameter_mat = np.empty([num_repeat, input_dim])
 
         for repeat_idx in range(num_repeat):
             print(repeat_idx)
@@ -189,6 +191,9 @@ def main():
             """ posterior mean over the switches """
             # num_samps_for_switch
             phi_est = F.softplus(torch.Tensor(estimated_params[0]))
+
+            switch_parameter_mat[repeat_idx,:] = phi_est.detach().numpy()
+
             concentration_param = phi_est.view(-1, 1).repeat(1, 5000)
             # beta_param = torch.ones(self.hidden_dim,1).repeat(1,num_samps)
             beta_param = torch.ones(concentration_param.size())
@@ -202,8 +207,10 @@ def main():
 
             posterior_mean_switch_mat[repeat_idx,:] = posterior_mean_switch
             print('estimated posterior mean of Switch is', posterior_mean_switch)
+            print('estimated parameters are ', phi_est.detach().numpy())
 
         np.save(filename,posterior_mean_switch_mat)
+        np.save(filename_phi, switch_parameter_mat)
 
     # print('estimated posterior mean of Switch is', estimated_Switch)
 
