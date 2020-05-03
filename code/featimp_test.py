@@ -14,6 +14,13 @@ from torch.nn.parameter import Parameter
 from torch.distributions import Gamma
 import pickle
 
+import sys
+sys.path.append("/home/kamil/Desktop/Dropbox/Current_research/privacy/DPDR/data")
+from tab_dataloader import load_cervical, load_adult, load_credit
+
+
+dataset="credit"
+
 class Model(nn.Module):
     #I'm going to define my own Model here following how I generated this dataset
 
@@ -22,7 +29,7 @@ class Model(nn.Module):
         super(Model, self).__init__()
 
         self.W = LR_model
-        self.parameter = Parameter(-1e-10*torch.ones(input_dim),requires_grad=True) # this parameter lies
+        self.parameter = Parameter(-1e-10*torch.ones(input_dim),requires_grad=True)
         self.num_samps_for_switch = num_samps_for_switch
 
     def forward(self, x): # x is mini_batch_size by input_dim
@@ -89,17 +96,22 @@ def main():
     # LR_sigma50 = np.load('LR_model50.npy')
     # LR_sigma100 = np.load('LR_model100.npy')
 
+    if dataset == "cervical":
+        X_train, y_train, X_test, y_test = load_cervical()
+    elif dataset == "credit":
+        X_train, y_train, X_test, y_test = load_credit()
+    elif dataset == "adult":
+        filename = 'adult.p'
+        with open(filename, 'rb') as f:
+            u = pickle._Unpickler(f)
+            u.encoding = 'latin1'
+            data = u.load()
 
-    """ load data """
-    filename = 'adult.p'
-
-    with open(filename, 'rb') as f:
-        u = pickle._Unpickler(f)
-        u.encoding = 'latin1'
-        data = u.load()
+    x_tot = np.concatenate([X_train, X_test])
+    y_tot = np.concatenate([y_train, y_test])
 
     # unpack data
-    y_tot, x_tot = data
+    # y_tot, x_tot = data
     N_tot, d = x_tot.shape
 
     training_data_por = 0.8
@@ -111,7 +123,7 @@ def main():
     # Xtst = x_tot[N:, :]
     # ytst = y_tot[N:]
 
-    input_dim = 14
+    input_dim = d
     hidden_dim = input_dim
     how_many_samps = N
 
@@ -123,9 +135,9 @@ def main():
     iter_sigmas = np.array([0., 1., 10., 50., 100.])
 
     for k in range(iter_sigmas.shape[0]):
-        LR_model = np.load('LR_model'+str(int(iter_sigmas[k]))+'.npy')
-        filename = 'switch_posterior_mean'+str(int(iter_sigmas[k]))
-        filename_phi = 'switch_parameter' + str(int(iter_sigmas[k]))
+        LR_model = np.load('models/%s_LR_model' % dataset+str(int(iter_sigmas[k]))+'.npy')
+        filename = 'weights/%s_switch_posterior_mean' % dataset+str(int(iter_sigmas[k]))
+        filename_phi = 'weights/%s_switch_parameter' % dataset + str(int(iter_sigmas[k]))
         posterior_mean_switch_mat = np.empty([num_repeat, input_dim])
         switch_parameter_mat = np.empty([num_repeat, input_dim])
 
@@ -137,7 +149,7 @@ def main():
             # optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9)
             optimizer = optim.Adam(model.parameters(), lr=1e-1)
             mini_batch_size = 100
-            how_many_epochs = 150
+            how_many_epochs = 50 #150
             how_many_iter = np.int(how_many_samps/mini_batch_size)
 
             training_loss_per_epoch = np.zeros(how_many_epochs)

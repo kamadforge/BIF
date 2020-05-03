@@ -8,12 +8,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Polygon
 
+dataset = "credit"
+
 # load our results
 iter_sigmas = np.array([0., 1., 10., 50., 100.])
 
 for k in range(iter_sigmas.shape[0]):
 
-    switch_posterior_mean = np.load('switch_posterior_mean' + str(int(iter_sigmas[k]))+'.npy')
+    switch_posterior_mean = np.load('weights/%s_switch_posterior_mean' % dataset + str(int(iter_sigmas[k]))+'.npy')
 
 
     ##############################
@@ -34,16 +36,27 @@ for k in range(iter_sigmas.shape[0]):
     hours_per_week = switch_posterior_mean[:,12]
     native_country = switch_posterior_mean[:,13]
 
-    random_dists = ['age', 'workclass', 'fnlwgt', 'education', 'education_num',
-                    'marital_status', 'occupation', 'relationship', 'race', 'sex',
-                    'capital_gain', 'capical_loss', 'hours_per_week', 'native_country']
+    # random_dists = ['age', 'workclass', 'fnlwgt', 'education', 'education_num',
+    #                 'marital_status', 'occupation', 'relationship', 'race', 'sex',
+    #                 'capital_gain', 'capical_loss', 'hours_per_week', 'native_country']
 
-    N = 20
 
-    data = [
-        age, workclass, fnlwgt, education, education_num,
-        marital_status, occupation, relationship, race, sex,
-        capital_gain, capital_loss, hours_per_week, native_country]
+
+    samp, featnum= switch_posterior_mean.shape
+
+    random_dists = ["f_%i" % i for i in range(featnum)]
+
+
+    N = samp
+
+    switch_posterior_mean_t=switch_posterior_mean.transpose()
+    data=switch_posterior_mean_t.tolist()
+
+    #
+    # data = [
+    #     age, workclass, fnlwgt, education, education_num,
+    #     marital_status, occupation, relationship, race, sex,
+    #     capital_gain, capital_loss, hours_per_week, native_country]
 
     ###############################33333
 
