@@ -13,9 +13,13 @@ iter_sigmas = np.array([0., 1., 10., 50., 100.])
 N = 20
 entropy = np.zeros((N,len(iter_sigmas)))
 
+dataset = 'adult'
+
 for k in range(iter_sigmas.shape[0]):
 
-    switch_parameter_mat = np.load('switch_parameter' + str(int(iter_sigmas[k]))+'.npy')
+    filename_phi = 'weights/%s_switch_parameter' % dataset + str(int(iter_sigmas[k]))
+    switch_parameter_mat = np.load(filename_phi + '.npy')
+
 
     print('sigma is', str(int(iter_sigmas[k])))
 

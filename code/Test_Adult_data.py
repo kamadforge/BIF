@@ -139,8 +139,6 @@ if  __name__ =='__main__':
                     fal_pos_rate_tst, true_pos_rate_tst, thrsld_tst = roc_curve(ytst, ypred.flatten())
                     auc_tst = auc(fal_pos_rate_tst,true_pos_rate_tst)
 
-                    # print("auc", auc_tst)
-
                 print('AUC is', auc_tst)
                 print('sigma is', sigma)
 
