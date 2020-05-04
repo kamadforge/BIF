@@ -21,12 +21,12 @@ from autodp import privacy_calibrator
 mvnrnd = rn.multivariate_normal
 
 import sys
-sys.path.append("/home/kamil/Desktop/Dropbox/Current_research/privacy/DPDR/data")
-from tab_dataloader import load_cervical, load_adult, load_credit
+# sys.path.append("/home/kamil/Desktop/Dropbox/Current_research/privacy/DPDR/data")
+# from tab_dataloader import load_cervical, load_adult, load_credit
 
 if  __name__ =='__main__':
 
-    dataset = 'credit'
+    dataset = 'adult'
 
     """ inputs """
     rnd_num = 123
@@ -34,20 +34,21 @@ if  __name__ =='__main__':
 
     if dataset == "cervical":
         X_train, y_train, X_test, y_test = load_cervical()
+        x_tot = np.concatenate([X_train, X_test])
+        y_tot = np.concatenate([y_train, y_test])
     elif dataset == "credit":
         X_train, y_train, X_test, y_test = load_credit()
+        x_tot = np.concatenate([X_train, X_test])
+        y_tot = np.concatenate([y_train, y_test])
     elif dataset == "adult":
         filename = 'adult.p'
         with open(filename, 'rb') as f:
             u = pickle._Unpickler(f)
             u.encoding = 'latin1'
             data = u.load()
-
-    x_tot = np.concatenate([X_train, X_test])
-    y_tot = np.concatenate([y_train, y_test])
+            y_tot, x_tot = data
 
     # unpack data
-    #y_tot, x_tot = data
     N_tot, d = x_tot.shape
 
     training_data_por = 0.8
@@ -104,16 +105,10 @@ if  __name__ =='__main__':
                 rand_perm_nums = np.random.permutation(N_tot)
 
                 #train and test data
-                # X = x_tot[rand_perm_nums[0:N], :]
-                # y = y_tot[rand_perm_nums[0:N]]
-                # Xtst = x_tot[rand_perm_nums[N:], :]
-                # ytst = y_tot[rand_perm_nums[N:]]
-
-                X= X_train
-                y=y_train
-                Xtst = X_test
-                ytst = y_test
-
+                X = x_tot[rand_perm_nums[0:N], :]
+                y = y_tot[rand_perm_nums[0:N]]
+                Xtst = x_tot[rand_perm_nums[N:], :]
+                ytst = y_tot[rand_perm_nums[N:]]
 
                 for iter in range(MaxIter):
 
@@ -138,39 +133,13 @@ if  __name__ =='__main__':
                     nu_old = nu_new
                     ab_old = ab_new
 
-                    # Mu_theta=[7.19253774,
-                    # 16.59639552 ,- 1.56681484, - 3.04541022, - 4.80905384, - 8.10952018,
-                    # 10.40246059, - 2.60223157, - 8.53590502,
-                    # 6.96936155,
-                    # 2.43518547,
-                    # 6.89259258,
-                    # 22.69197287, - 6.51335088]
-
-     #                ypred [2.42630590e-22 7.89200116e-22 1.00000000e+00 ... 8.02175969e-04
-     # 1.00000000e+00 1.00000000e+00]
-
-                    #0.7002349098247271
-
                     """ compute roc_curve and auc """
                     ypred = VIPS_BLR_MA.computeOdds(Xtst, Mu_theta)
-                    #print(Xtst[1:3])
-                    # [[-0.55583011  0.09005041  0.08217687 - 0.33543693  1.13473876  0.92163395
-                    #   - 1.3178091   0.96694656  0.39366753 - 1.42233076 - 0.14592048 - 0.21665953
-                    #   - 0.03542945  0.29156857]
-                    #  [-0.18926719  0.09005041  0.11360322 - 2.40251115 - 1.19745882  0.92163395
-                    #  1.04693249 - 0.27780504 - 1.96262077  0.70307135  1.6888354 - 0.21665953
-                    #  - 0.03542945  0.29156857]]
-                    #print("ypred", ypred)
-
 
                     fal_pos_rate_tst, true_pos_rate_tst, thrsld_tst = roc_curve(ytst, ypred.flatten())
                     auc_tst = auc(fal_pos_rate_tst,true_pos_rate_tst)
 
-
-                    print("Mu", Mu_theta)
-                    print("auc", auc_tst)
-                    # update iteration number
-                    iter = iter + 1
+                    # print("auc", auc_tst)
 
                 print('AUC is', auc_tst)
                 print('sigma is', sigma)

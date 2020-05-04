@@ -15,14 +15,11 @@ from torch.distributions import Gamma
 import pickle
 
 import sys
-sys.path.append("/home/kamil/Desktop/Dropbox/Current_research/privacy/DPDR/data")
-from tab_dataloader import load_cervical, load_adult, load_credit
+# sys.path.append("/home/kamil/Desktop/Dropbox/Current_research/privacy/DPDR/data")
+# from tab_dataloader import load_cervical, load_adult, load_credit
 
-
-dataset="credit"
 
 class Model(nn.Module):
-    #I'm going to define my own Model here following how I generated this dataset
 
     def __init__(self, input_dim, LR_model, num_samps_for_switch):
     # def __init__(self, input_dim, hidden_dim):
@@ -89,6 +86,8 @@ def shuffle_data(y,x,how_many_samps):
 
 def main():
 
+    dataset = 'adult'
+
     """ load pre-trained models """
     # LR_sigma0 = np.load('LR_model0.npy')
     # LR_sigma1 = np.load('LR_model1.npy')
@@ -98,20 +97,23 @@ def main():
 
     if dataset == "cervical":
         X_train, y_train, X_test, y_test = load_cervical()
+        x_tot = np.concatenate([X_train, X_test])
+        y_tot = np.concatenate([y_train, y_test])
+
     elif dataset == "credit":
         X_train, y_train, X_test, y_test = load_credit()
+        x_tot = np.concatenate([X_train, X_test])
+        y_tot = np.concatenate([y_train, y_test])
     elif dataset == "adult":
         filename = 'adult.p'
         with open(filename, 'rb') as f:
             u = pickle._Unpickler(f)
             u.encoding = 'latin1'
             data = u.load()
+            y_tot, x_tot = data
 
-    x_tot = np.concatenate([X_train, X_test])
-    y_tot = np.concatenate([y_train, y_test])
 
     # unpack data
-    # y_tot, x_tot = data
     N_tot, d = x_tot.shape
 
     training_data_por = 0.8
@@ -120,8 +122,6 @@ def main():
 
     X = x_tot[:N, :]
     y = y_tot[:N]
-    # Xtst = x_tot[N:, :]
-    # ytst = y_tot[N:]
 
     input_dim = d
     hidden_dim = input_dim
