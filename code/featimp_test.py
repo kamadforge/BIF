@@ -85,7 +85,7 @@ def shuffle_data(y,x,how_many_samps):
 
 def main():
 
-    dataset = 'adult'
+    dataset = 'xor'
 
     """ load pre-trained models """
     # LR_sigma0 = np.load('LR_model0.npy')
@@ -110,7 +110,14 @@ def main():
             u.encoding = 'latin1'
             data = u.load()
             y_tot, x_tot = data
-
+    elif dataset == "xor":
+        xor_dataset = np.load('../data/synthetic/XOR/dataset_XOR.npy')
+        x_tot = xor_dataset[()]['x']
+        y_tot = xor_dataset[()]['y']
+    elif dataset == "orange_skin":
+        xor_dataset = np.load('../data/synthetic/orange_skin/dataset_orange_skin.npy')
+        x_tot = xor_dataset[()]['x']
+        y_tot = xor_dataset[()]['y']
 
     # unpack data
     N_tot, d = x_tot.shape
@@ -130,7 +137,7 @@ def main():
     alpha_0 = 0.01 # below 1 so that we encourage sparsity.
     num_samps_for_switch = 150
 
-    num_repeat = 20
+    num_repeat = 5
     iter_sigmas = np.array([0., 1., 10., 50., 100.])
 
     for k in range(iter_sigmas.shape[0]):
@@ -148,7 +155,7 @@ def main():
             # optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9)
             optimizer = optim.Adam(model.parameters(), lr=1e-1)
             mini_batch_size = 100
-            how_many_epochs = 50 #150
+            how_many_epochs = 20 #150
             how_many_iter = np.int(how_many_samps/mini_batch_size)
 
             training_loss_per_epoch = np.zeros(how_many_epochs)
