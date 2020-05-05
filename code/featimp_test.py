@@ -15,8 +15,7 @@ from torch.distributions import Gamma
 import pickle
 
 import sys
-# sys.path.append("/home/kamil/Desktop/Dropbox/Current_research/privacy/DPDR/data")
-# from tab_dataloader import load_cervical, load_adult, load_credit
+from data.tab_dataloader import load_cervical, load_adult, load_credit
 
 
 class Model(nn.Module):
@@ -235,9 +234,9 @@ def main():
     # plt.show()
 
     # fig_title =
-    # f.savefig("posterior_mean_switch_without_sampling_hidden_dim_500_epoch_400.pdf")
-    # f.savefig("posterior_mean_switch_with_sampling_hidden_dim_500_epoch_400.pdf")
-    # f.savefig("posterior_mean_switch_with_sampling_hidden_dim_20_epoch_400.pdf")
+    # f.savefig("plots/posterior_mean_switch_without_sampling_hidden_dim_500_epoch_400.pdf")
+    # f.savefig("plots/posterior_mean_switch_with_sampling_hidden_dim_500_epoch_400.pdf")
+    # f.savefig("plots/posterior_mean_switch_with_sampling_hidden_dim_20_epoch_400.pdf")
 
 
 if __name__ == '__main__':
