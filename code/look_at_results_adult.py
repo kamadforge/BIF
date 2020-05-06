@@ -8,10 +8,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Polygon
 
-dataset = "adult"
+dataset = "xor"
 
 # load our results
-iter_sigmas = np.array([0., 1., 10., 50., 100.])
+# iter_sigmas = np.array([0., 1., 10., 50., 100.])
+iter_sigmas = np.array([0.])
 
 for k in range(iter_sigmas.shape[0]):
 
@@ -19,22 +20,22 @@ for k in range(iter_sigmas.shape[0]):
 
 
     ##############################
-    age = switch_posterior_mean[:,0]
-    workclass = switch_posterior_mean[:,1]
-    fnlwgt = switch_posterior_mean[:,2]
-    education = switch_posterior_mean[:,3]
-    education_num = switch_posterior_mean[:,4]
-
-    marital_status = switch_posterior_mean[:,5]
-    occupation = switch_posterior_mean[:,6]
-    relationship = switch_posterior_mean[:,7]
-    race = switch_posterior_mean[:,8]
-    sex = switch_posterior_mean[:,9]
-
-    capital_gain = switch_posterior_mean[:,10]
-    capital_loss = switch_posterior_mean[:,11]
-    hours_per_week = switch_posterior_mean[:,12]
-    native_country = switch_posterior_mean[:,13]
+    # age = switch_posterior_mean[:,0]
+    # workclass = switch_posterior_mean[:,1]
+    # fnlwgt = switch_posterior_mean[:,2]
+    # education = switch_posterior_mean[:,3]
+    # education_num = switch_posterior_mean[:,4]
+    #
+    # marital_status = switch_posterior_mean[:,5]
+    # occupation = switch_posterior_mean[:,6]
+    # relationship = switch_posterior_mean[:,7]
+    # race = switch_posterior_mean[:,8]
+    # sex = switch_posterior_mean[:,9]
+    #
+    # capital_gain = switch_posterior_mean[:,10]
+    # capital_loss = switch_posterior_mean[:,11]
+    # hours_per_week = switch_posterior_mean[:,12]
+    # native_country = switch_posterior_mean[:,13]
 
     # random_dists = ['age', 'workclass', 'fnlwgt', 'education', 'education_num',
     #                 'marital_status', 'occupation', 'relationship', 'race', 'sex',
