@@ -17,16 +17,25 @@ import matplotlib.pyplot as plt
 import pickle
 import autodp
 from autodp import privacy_calibrator
+from models.nn_3hidden import FC
+
+import torch.nn as nn
+import torch.optim as optim
+import torch
 
 mvnrnd = rn.multivariate_normal
 
 import sys
 # sys.path.append("/home/kamil/Desktop/Dropbox/Current_research/privacy/DPDR/data")
-# from tab_dataloader import load_cervical, load_adult, load_credit
+from data.tab_dataloader import load_cervical, load_adult, load_credit
+from data.make_synthetic_datasets import generate_data
 
 if  __name__ =='__main__':
 
-    dataset = 'adult'
+    dataset = "orange_skin"
+    method = "nn"
+
+
 
     """ inputs """
     rnd_num = 123
@@ -47,6 +56,30 @@ if  __name__ =='__main__':
             u.encoding = 'latin1'
             data = u.load()
             y_tot, x_tot = data
+    elif dataset=="xor":
+        x_tot, y_tot, datatypes = generate_data(10000, 'XOR')
+        y_tot = np.argmax(y_tot, axis=1)
+        dataset_XOR={'x': x_tot, 'y':y_tot}
+        np.save('../data/synthetic/XOR/dataset_XOR.npy', dataset_XOR)
+    elif dataset == "orange_skin":
+        x_tot, y_tot, datatypes = generate_data(10000, 'orange_skin')
+        y_tot = np.argmax(y_tot, axis=1)
+        dataset_tosave = {'x': x_tot, 'y': y_tot}
+        np.save('../data/synthetic/orange_skin/dataset_orange_skin.npy', dataset_tosave)
+
+    output_num = 2
+    sample_num, input_num = x_tot.shape
+
+###################################
+
+    model=FC(input_num, output_num)
+    criterion = nn.CrossEntropyLoss()
+    # optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
+
+#############################
+
+
 
     # unpack data
     N_tot, d = x_tot.shape
@@ -88,16 +121,22 @@ if  __name__ =='__main__':
 
         num_repeat = 20
 
-        iter_sigmas = np.array([0., 1., 10., 50., 100.])
-        auc_private_stoch_ours = np.empty([iter_sigmas.shape[0], num_repeat])
-        LR_model0 = np.empty([num_repeat, d])
-        LR_model1 = np.empty([num_repeat, d])
-        LR_model10 = np.empty([num_repeat, d])
-        LR_model50 = np.empty([num_repeat, d])
-        LR_model100 = np.empty([num_repeat, d])
+        # iter_sigmas = np.array([0., 1., 10., 50., 100.])
+        iter_sigmas = np.array([0.])
+
+        if method == "vips":
+            auc_private_stoch_ours = np.empty([iter_sigmas.shape[0], num_repeat])
+            LR_model0 = np.empty([num_repeat, d])
+            LR_model1 = np.empty([num_repeat, d])
+            LR_model10 = np.empty([num_repeat, d])
+            LR_model50 = np.empty([num_repeat, d])
+            LR_model100 = np.empty([num_repeat, d])
+        elif method == "nn":
+            LR_model0 = {}
 
         for k in range(iter_sigmas.shape[0]):
             sigma = iter_sigmas[k]
+
 
             for repeat_idx in range(num_repeat):
 
@@ -110,61 +149,99 @@ if  __name__ =='__main__':
                 Xtst = x_tot[rand_perm_nums[N:], :]
                 ytst = y_tot[rand_perm_nums[N:]]
 
-                for iter in range(MaxIter):
+                num_epochs=20
+                for epoch in range(num_epochs):
 
-                    # VI iterations start here
-                    rhot = (tau0+iter)**(-kappa)
+                    for iter in range(MaxIter):
 
-                    """ select a new mini-batch """
-                    rand_perm_nums =  np.random.permutation(N)
-                    idx_minibatch = rand_perm_nums[0:S]
-                    xtrain_m = X[idx_minibatch,:]
-                    ytrain_m = y[idx_minibatch]
+                        # VI iterations start here
+                        rhot = (tau0+iter)**(-kappa)
 
-                    exp_suff_stats1, exp_suff_stats2 = VIPS_BLR_MA.VBEstep_private(sigma, xtrain_m, ytrain_m, exp_nat_params_prv)
+                        """ select a new mini-batch """
+                        rand_perm_nums =  np.random.permutation(N)
+                        idx_minibatch = rand_perm_nums[0:S]
+                        xtrain_m = X[idx_minibatch,:]
+                        ytrain_m = y[idx_minibatch]
 
-                    if iter==0:
-                        nu_old = []
-                        ab_old = []
-                    nu_new, ab_new, exp_nat_params, mean_alpha, Mu_theta = VIPS_BLR_MA.VBMstep_stochastic(rhot, nu_old, ab_old, N, a0, b0, exp_suff_stats1, exp_suff_stats2, mean_alpha_prv, iter)
+                        xtrain_m = torch.Tensor(xtrain_m)
+                        y_train_m = torch.tensor(ytrain_m)
+                        Xtst = torch.Tensor(Xtst)
+                        #ytst = torch.tensor(ytst)
 
-                    mean_alpha_prv = mean_alpha
-                    exp_nat_params_prv = exp_nat_params
-                    nu_old = nu_new
-                    ab_old = ab_new
 
-                    """ compute roc_curve and auc """
-                    ypred = VIPS_BLR_MA.computeOdds(Xtst, Mu_theta)
+                        if method=="vips":
+                        ####################################
+                            exp_suff_stats1, exp_suff_stats2 = VIPS_BLR_MA.VBEstep_private(sigma, xtrain_m, ytrain_m, exp_nat_params_prv)
 
-                    fal_pos_rate_tst, true_pos_rate_tst, thrsld_tst = roc_curve(ytst, ypred.flatten())
-                    auc_tst = auc(fal_pos_rate_tst,true_pos_rate_tst)
+                            if iter==0:
+                                nu_old = []
+                                ab_old = []
+                            nu_new, ab_new, exp_nat_params, mean_alpha, Mu_theta = VIPS_BLR_MA.VBMstep_stochastic(rhot, nu_old, ab_old, N, a0, b0, exp_suff_stats1, exp_suff_stats2, mean_alpha_prv, iter)
 
-                print('AUC is', auc_tst)
-                print('sigma is', sigma)
+                            mean_alpha_prv = mean_alpha
+                            exp_nat_params_prv = exp_nat_params
+                            nu_old = nu_new
+                            ab_old = ab_new
 
-                accuracy = (np.sum(np.round(ypred.flatten()) == ytst) / len(ytst))
-                print("Accuracy: ", accuracy)
+                            """ compute roc_curve and auc """
+                            ypred = VIPS_BLR_MA.computeOdds(Xtst, Mu_theta)
+                            ##########################
+                        elif method=="nn":
 
-                auc_private_stoch_ours[k, repeat_idx] = auc_tst
 
-                # last model is saved in every sigma value
-                if k==0:
-                    LR_model0[repeat_idx,:] = Mu_theta
-                elif k==1:
-                    LR_model1[repeat_idx,:] = Mu_theta
-                elif k==2:
-                    LR_model10[repeat_idx,:] = Mu_theta
-                elif k==3:
-                    LR_model50[repeat_idx, :] = Mu_theta
-                else: #k==4
-                    LR_model100[repeat_idx,:] = Mu_theta
+                            optimizer.zero_grad()
+                            ypred_tr = model(xtrain_m)
+                            loss = criterion(ypred_tr, y_train_m)
+                            loss.backward()
+                            optimizer.step()
 
-        np.save('models/%s_accuracy_ours' % dataset, auc_private_stoch_ours)
-        np.save('models/%s_LR_model0' % dataset, LR_model0)
-        np.save('models/%s_LR_model1' % dataset, LR_model1)
-        np.save('models/%s_LR_model10' % dataset, LR_model10)
-        np.save('models/%s_LR_model50' % dataset, LR_model50)
-        np.save('models/%s_LR_model100' % dataset, LR_model100)
+                    #epoch
+                    print(loss)
+
+
+                    #fal_pos_rate_tst, true_pos_rate_tst, thrsld_tst = roc_curve(ytst, ypred.flatten())
+                    #auc_tst = auc(fal_pos_rate_tst,true_pos_rate_tst)
+
+                #print('AUC is', auc_tst)
+                #print('sigma is', sigma)
+
+                ###########
+                # TEST
+
+                y_pred = model(Xtst)
+                y_pred = torch.argmax(y_pred, dim=1)
+
+                accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == ytst) / len(ytst))
+                print("Accuracy test: ", accuracy)
+
+                #auc_private_stoch_ours[k, repeat_idx] = auc_tst
+
+                if method=="vips":
+                    # last model is saved in every sigma value
+                    if k==0:
+                        LR_model0[repeat_idx,:] = Mu_theta
+                    elif k==1:
+                        LR_model1[repeat_idx,:] = Mu_theta
+                    elif k==2:
+                        LR_model10[repeat_idx,:] = Mu_theta
+                    elif k==3:
+                        LR_model50[repeat_idx, :] = Mu_theta
+                    else: #k==4
+                        LR_model100[repeat_idx,:] = Mu_theta
+
+                elif method=="nn":
+                    LR_model0[repeat_idx] = model.state_dict()
+
+        if method == "vips":
+    #        np.save('models/%s_accuracy_ours' % (dataset, method), auc_private_stoch_ours)
+            np.save('models/%s_%s_LR_model0' % (dataset, method), LR_model0)
+            np.save('models/%s_%s_LR_model1' % (dataset, method), LR_model1)
+            np.save('models/%s_%s_LR_model10' % (dataset, method), LR_model10)
+            np.save('models/%s_%s_LR_model50' % (dataset, method), LR_model50)
+            np.save('models/%s_%s_LR_model100' % (dataset, method), LR_model100)
+        elif method == "nn":
+            np.save('models/%s_%s_LR_model0' % (dataset, method), LR_model0)
+
 
     elif mode=='test':
 

@@ -16,7 +16,10 @@ import pickle
 
 import sys
 from data.tab_dataloader import load_cervical, load_adult, load_credit
+from models.nn_3hidden import FC
 
+mini_batch_size = 100
+method = "nn"
 
 class Model(nn.Module):
 
@@ -51,8 +54,87 @@ class Model(nn.Module):
         else:
             Sstack = gamma_samps / torch.sum(gamma_samps, 0) # input dim by  # samples
 
-        x_samps = torch.einsum("ij,jk -> ijk",(x, Sstack))
-        x_out = torch.einsum("bjk, j -> bk", (x_samps, torch.squeeze(self.W)))
+        x_samps = torch.einsum("ij,jk -> ijk",(x, Sstack)) #([100, 29, 150]) 100- batch size, 150 - samples
+        x_out = torch.einsum("bjk, j -> bk", (x_samps, torch.squeeze(self.W))) #[100,150]
+        labelstack = torch.sigmoid(x_out)
+
+        return labelstack, phi
+
+
+
+class Modelnn(nn.Module):
+
+    def __init__(self, input_num, output_num, num_samps_for_switch):
+    # def __init__(self, input_dim, hidden_dim):
+        super(Modelnn, self).__init__()
+
+        #self.W = LR_model
+        self.parameter = Parameter(-1e-10*torch.ones(input_num),requires_grad=True)
+        self.num_samps_for_switch = num_samps_for_switch
+
+        self.fc1 = nn.Linear(input_num, 200)
+        self.fc2 = nn.Linear(200, 200)
+        self.fc3 = nn.Linear(200, 200)
+        self.fc4 = nn.Linear(200, output_num)
+
+    def switch_func_fc(self, output, SstackT):
+
+        #rep = SstackT.unsqueeze(2).unsqueeze(2).repeat(1, 1,)  # (150,10,24,24)
+        # output is (100,10,24,24), we want to have 100,150,10,24,24, I guess
+        output=torch.einsum('ij, mj -> imj', (SstackT, output))
+        #output = torch.einsum('ijkl, mjkl -> imjkl', (rep, output))
+        output = output.reshape(output.shape[0] * output.shape[1], output.shape[2])
+
+        return output, SstackT
+
+    def forward(self, x): # x is mini_batch_size by input_dim
+
+        phi = F.softplus(self.parameter)
+
+        if any(torch.isnan(phi)):
+            print("some Phis are NaN")
+        # it looks like too large values are making softplus-transformed values very large and returns NaN.
+        # this occurs when optimizing with a large step size (or/and with a high momentum value)
+
+
+        """ draw Gamma RVs using phi and 1 """
+        num_samps = self.num_samps_for_switch
+        concentration_param = phi.view(-1,1).repeat(1,num_samps)
+        beta_param = torch.ones(concentration_param.size())
+        #Gamma has two parameters, concentration and beta, all of them are copied to 200,150 matrix
+        Gamma_obj = Gamma(concentration_param, beta_param)
+        gamma_samps = Gamma_obj.rsample() #200, 150, input_dim x samples_num
+
+        if any(torch.sum(gamma_samps,0)==0):
+            print("sum of gamma samps are zero!")
+        else:
+            Sstack = gamma_samps / torch.sum(gamma_samps, 0) # input dim by  # samples
+
+        #x_samps = torch.einsum("ij,jk -> ijk",(x, Sstack)) #([100, 29, 150]) 100- batch size, 150 - samples
+
+        SstackT = Sstack.t()
+
+        output, Sprime = self.switch_func_fc(x, SstackT)
+
+        output = self.fc1(output)
+        output = self.fc2(output)
+        output = self.fc3(output)
+        output = self.fc4(output)
+
+        output = output.reshape(mini_batch_size, self.num_samps_for_switch, -1)
+        output = torch.mean(output, 1)
+
+        return output, phi
+
+
+
+
+
+
+
+
+
+        x_out = torch.einsum("bjk, j -> bk", (x_samps, torch.squeeze(self.W))) #[100,150]
         labelstack = torch.sigmoid(x_out)
 
         return labelstack, phi
@@ -60,7 +142,11 @@ class Model(nn.Module):
 # def loss_function(prediction, true_y, S, alpha_0, hidden_dim, how_many_samps, annealing_rate):
 def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate):
 
-    BCE = F.binary_cross_entropy(prediction, true_y, reduction='mean')
+    if method=="vips":
+        BCE = F.binary_cross_entropy(prediction, true_y, reduction='mean')
+    elif method=="nn":
+        loss=nn.CrossEntropyLoss()
+        BCE = loss(prediction, true_y) #binary
 
     # KLD term
     alpha_0 = torch.Tensor([alpha_0])
@@ -85,7 +171,8 @@ def shuffle_data(y,x,how_many_samps):
 
 def main():
 
-    dataset = 'xor'
+    dataset = 'orange_skin'
+    method = 'nn'
 
     """ load pre-trained models """
     # LR_sigma0 = np.load('LR_model0.npy')
@@ -137,11 +224,12 @@ def main():
     alpha_0 = 0.01 # below 1 so that we encourage sparsity.
     num_samps_for_switch = 150
 
-    num_repeat = 5
-    iter_sigmas = np.array([0., 1., 10., 50., 100.])
+    num_repeat = 20
+    # iter_sigmas = np.array([0., 1., 10., 50., 100.])
+    iter_sigmas = np.array([0.])
 
     for k in range(iter_sigmas.shape[0]):
-        LR_model = np.load('models/%s_LR_model' % dataset+str(int(iter_sigmas[k]))+'.npy')
+        LR_model = np.load('models/%s_%s_LR_model' % (dataset, method)+str(int(iter_sigmas[k]))+'.npy')
         filename = 'weights/%s_switch_posterior_mean' % dataset+str(int(iter_sigmas[k]))
         filename_phi = 'weights/%s_switch_parameter' % dataset + str(int(iter_sigmas[k]))
         posterior_mean_switch_mat = np.empty([num_repeat, input_dim])
@@ -149,13 +237,15 @@ def main():
 
         for repeat_idx in range(num_repeat):
             print(repeat_idx)
-            model = Model(input_dim=input_dim, LR_model=torch.Tensor(LR_model[repeat_idx,:]), num_samps_for_switch=num_samps_for_switch)
-
+            if method=="vips":
+                model = Model(input_dim=input_dim, LR_model=torch.Tensor(LR_model[repeat_idx,:]), num_samps_for_switch=num_samps_for_switch)
+            elif method=="nn":
+                model = Modelnn(d,2, num_samps_for_switch)
+                model.load_state_dict(LR_model[()][repeat_idx], strict=False)
 
             # optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9)
             optimizer = optim.Adam(model.parameters(), lr=1e-1)
-            mini_batch_size = 100
-            how_many_epochs = 20 #150
+            how_many_epochs = 4 #150
             how_many_iter = np.int(how_many_samps/mini_batch_size)
 
             training_loss_per_epoch = np.zeros(how_many_epochs)
@@ -189,10 +279,17 @@ def main():
 
                     # forward + backward + optimize
                     outputs, phi_cand = model(torch.Tensor(inputs)) #100,10,150
-                    labels = torch.squeeze(torch.Tensor(labels))
-                    loss = loss_function(outputs, labels.view(-1, 1).repeat(1, num_samps_for_switch), phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate)
+                    labels = torch.squeeze(torch.tensor(labels))
+
+                    if method=="vips":
+                        loss = loss_function(outputs, labels.view(-1, 1).repeat(1, num_samps_for_switch), phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate)
+                    elif method == "nn":
+                        loss = loss_function(outputs, labels, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate)
+
                     loss.backward()
                     optimizer.step()
+
+
 
                     # print statistics
                     running_loss += loss.item()
@@ -227,6 +324,7 @@ def main():
             print('estimated posterior mean of Switch is', posterior_mean_switch)
             print('estimated parameters are ', phi_est.detach().numpy())
 
+        print(filename, filename_phi)
         np.save(filename,posterior_mean_switch_mat)
         np.save(filename_phi, switch_parameter_mat)
 
