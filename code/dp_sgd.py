@@ -7,7 +7,7 @@ def dp_sgd_backward(params, loss, device, clip_norm, noise_factor):
   """
   the models containing params must have been "extended" after initialization by calling
   model = backpack.extend(model)
-  other than that, this function can simply replace the normal torch.backward call without further changes
+  other than that, this function can simply replace the normal model.backward call without further changes
   :param params: parameters to train
   :param loss: computed loss. Must allow sample-wise gradients
   :param device: cpu/gpu key on which the model is run

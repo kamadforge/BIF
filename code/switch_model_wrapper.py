@@ -84,7 +84,6 @@ class LogReg(nn.Module):
     self.fc = nn.Linear(d_in, d_out, bias=False)
 
   def forward(self, x_in):
-    # print(x_in.shape)
     return torch.sigmoid(self.fc(x_in))
 
   def load(self, weight_mat):
