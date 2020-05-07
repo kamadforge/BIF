@@ -20,7 +20,7 @@ from models.nn_3hidden import FC
 
 mini_batch_size = 100
 method = "nn"
-dataset = 'xor'
+dataset = 'orange_skin'
 
 class Model(nn.Module):
 
@@ -145,22 +145,26 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
 
     if method=="vips":
         BCE = F.binary_cross_entropy(prediction, true_y, reduction='mean')
+
+        return BCE
     elif method=="nn":
         loss=nn.CrossEntropyLoss()
         BCE = loss(prediction, true_y) #binary
 
-    # KLD term
-    alpha_0 = torch.Tensor([alpha_0])
-    hidden_dim = torch.Tensor([hidden_dim])
+        # KLD term
+        alpha_0 = torch.Tensor([alpha_0])
+        hidden_dim = torch.Tensor([hidden_dim])
 
-    trm1 = torch.lgamma(torch.sum(phi_cand)) - torch.lgamma(hidden_dim*alpha_0)
-    trm2 = - torch.sum(torch.lgamma(phi_cand)) + hidden_dim*torch.lgamma(alpha_0)
-    trm3 = torch.sum((phi_cand-alpha_0)*(torch.digamma(phi_cand)-torch.digamma(torch.sum(phi_cand))))
+        trm1 = torch.lgamma(torch.sum(phi_cand)) - torch.lgamma(hidden_dim*alpha_0)
+        trm2 = - torch.sum(torch.lgamma(phi_cand)) + hidden_dim*torch.lgamma(alpha_0)
+        trm3 = torch.sum((phi_cand-alpha_0)*(torch.digamma(phi_cand)-torch.digamma(torch.sum(phi_cand))))
 
-    KLD = trm1 + trm2 + trm3
-    # annealing kl-divergence term is better
+        KLD = trm1 + trm2 + trm3
+        # annealing kl-divergence term is better
 
-    return BCE + annealing_rate*KLD/how_many_samps
+        KLD=0 #just to check
+
+        return BCE + annealing_rate*KLD/how_many_samps
 
 
 def shuffle_data(y,x,how_many_samps):
@@ -224,7 +228,7 @@ def main():
     alpha_0 = 0.01 # below 1 so that we encourage sparsity.
     num_samps_for_switch = 150
 
-    num_repeat = 20
+    num_repeat = 5
     # iter_sigmas = np.array([0., 1., 10., 50., 100.])
     iter_sigmas = np.array([0.])
 
@@ -250,15 +254,17 @@ def main():
             h = model.fc2.weight.register_hook(lambda grad: grad * 0)
             h = model.fc3.weight.register_hook(lambda grad: grad * 0)
             h = model.fc4.weight.register_hook(lambda grad: grad * 0)
-            h = model.fc1.bias.register_hook(lambda grad: grad * 0)  # double the gradient
-            h = model.fc2.bias.register_hook(lambda grad: grad * 0)  # double the gradient
-            h = model.fc3.bias.register_hook(lambda grad: grad * 0)  # double the gradient
-            h = model.fc4.bias.register_hook(lambda grad: grad * 0)  # double the gradient
+            h = model.fc1.bias.register_hook(lambda grad: grad * 0)
+            h = model.fc2.bias.register_hook(lambda grad: grad * 0)
+            h = model.fc3.bias.register_hook(lambda grad: grad * 0)
+            h = model.fc4.bias.register_hook(lambda grad: grad * 0)
 
             # optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9)
             optimizer = optim.Adam(model.parameters(), lr=1e-1)
-            how_many_epochs = 7 #150
+            how_many_epochs = 10 #150
             how_many_iter = np.int(how_many_samps/mini_batch_size)
+
+
 
             training_loss_per_epoch = np.zeros(how_many_epochs)
 
@@ -308,6 +314,7 @@ def main():
 
                     #print(model.fc1.weight[1:5])
                     #print(model.fc3.bias[1:5])
+                    #print(model.parameter)
 
                 # training_loss_per_epoch[epoch] = running_loss/how_many_samps
                 training_loss_per_epoch[epoch] = running_loss

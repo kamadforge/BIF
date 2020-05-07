@@ -119,7 +119,7 @@ if  __name__ =='__main__':
 
     if mode=='training':
 
-        num_repeat = 20
+        num_repeat = 1
 
         # iter_sigmas = np.array([0., 1., 10., 50., 100.])
         iter_sigmas = np.array([0.])
