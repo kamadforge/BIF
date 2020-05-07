@@ -32,7 +32,7 @@ from data.make_synthetic_datasets import generate_data
 
 if  __name__ =='__main__':
 
-    dataset = "orange_skin"
+    dataset = "xor"
     method = "nn"
 
 

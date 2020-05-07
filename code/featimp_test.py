@@ -20,6 +20,7 @@ from models.nn_3hidden import FC
 
 mini_batch_size = 100
 method = "nn"
+dataset = 'xor'
 
 class Model(nn.Module):
 
@@ -171,8 +172,7 @@ def shuffle_data(y,x,how_many_samps):
 
 def main():
 
-    dataset = 'orange_skin'
-    method = 'nn'
+
 
     """ load pre-trained models """
     # LR_sigma0 = np.load('LR_model0.npy')
@@ -228,6 +228,9 @@ def main():
     # iter_sigmas = np.array([0., 1., 10., 50., 100.])
     iter_sigmas = np.array([0.])
 
+
+
+
     for k in range(iter_sigmas.shape[0]):
         LR_model = np.load('models/%s_%s_LR_model' % (dataset, method)+str(int(iter_sigmas[k]))+'.npy')
         filename = 'weights/%s_switch_posterior_mean' % dataset+str(int(iter_sigmas[k]))
@@ -243,9 +246,18 @@ def main():
                 model = Modelnn(d,2, num_samps_for_switch)
                 model.load_state_dict(LR_model[()][repeat_idx], strict=False)
 
+            h = model.fc1.weight.register_hook(lambda grad: grad * 0)
+            h = model.fc2.weight.register_hook(lambda grad: grad * 0)
+            h = model.fc3.weight.register_hook(lambda grad: grad * 0)
+            h = model.fc4.weight.register_hook(lambda grad: grad * 0)
+            h = model.fc1.bias.register_hook(lambda grad: grad * 0)  # double the gradient
+            h = model.fc2.bias.register_hook(lambda grad: grad * 0)  # double the gradient
+            h = model.fc3.bias.register_hook(lambda grad: grad * 0)  # double the gradient
+            h = model.fc4.bias.register_hook(lambda grad: grad * 0)  # double the gradient
+
             # optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9)
             optimizer = optim.Adam(model.parameters(), lr=1e-1)
-            how_many_epochs = 4 #150
+            how_many_epochs = 7 #150
             how_many_iter = np.int(how_many_samps/mini_batch_size)
 
             training_loss_per_epoch = np.zeros(how_many_epochs)
@@ -257,8 +269,8 @@ def main():
 
             print('Starting Training')
 
-            for name,par in model.named_parameters():
-                print (name)
+            # for name,par in model.named_parameters():
+            #     print (name)
 
 
             for epoch in range(how_many_epochs):  # loop over the dataset multiple times
@@ -293,6 +305,9 @@ def main():
 
                     # print statistics
                     running_loss += loss.item()
+
+                    #print(model.fc1.weight[1:5])
+                    #print(model.fc3.bias[1:5])
 
                 # training_loss_per_epoch[epoch] = running_loss/how_many_samps
                 training_loss_per_epoch[epoch] = running_loss
