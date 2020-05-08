@@ -75,15 +75,16 @@ class Modelnn(nn.Module):
 
         self.fc1 = nn.Linear(input_num, 200)
         self.fc2 = nn.Linear(200, 200)
-        self.fc3 = nn.Linear(200, 200)
+        # self.fc3 = nn.Linear(200, 200)
         self.fc4 = nn.Linear(200, output_num)
+
+        self.bn1 = nn.BatchNorm1d(200)
+        self.bn2 = nn.BatchNorm1d(200)
 
     def switch_func_fc(self, output, SstackT):
 
-        #rep = SstackT.unsqueeze(2).unsqueeze(2).repeat(1, 1,)  # (150,10,24,24)
         # output is (100,10,24,24), we want to have 100,150,10,24,24, I guess
         output=torch.einsum('ij, mj -> imj', (SstackT, output))
-        #output = torch.einsum('ijkl, mjkl -> imjkl', (rep, output))
         output = output.reshape(output.shape[0] * output.shape[1], output.shape[2])
 
         return output, SstackT
@@ -118,8 +119,10 @@ class Modelnn(nn.Module):
         output, Sprime = self.switch_func_fc(x, SstackT)
 
         output = self.fc1(output)
-        output = self.fc2(output)
-        output = self.fc3(output)
+        output = self.bn1(output)
+        output = nn.functional.relu(self.fc2(output))
+        output = self.bn2(output)
+        # output = self.fc3(output)
         output = self.fc4(output)
 
         output = output.reshape(mini_batch_size, self.num_samps_for_switch, -1)
@@ -128,17 +131,10 @@ class Modelnn(nn.Module):
         return output, phi
 
 
-
-
-
-
-
-
-
-        x_out = torch.einsum("bjk, j -> bk", (x_samps, torch.squeeze(self.W))) #[100,150]
-        labelstack = torch.sigmoid(x_out)
-
-        return labelstack, phi
+        # x_out = torch.einsum("bjk, j -> bk", (x_samps, torch.squeeze(self.W))) #[100,150]
+        # labelstack = torch.sigmoid(x_out)
+        #
+        # return labelstack, phi
 
 # def loss_function(prediction, true_y, S, alpha_0, hidden_dim, how_many_samps, annealing_rate):
 def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate):
@@ -225,7 +221,7 @@ def main():
     how_many_samps = N
 
     # preparing variational inference
-    alpha_0 = 0.01 # below 1 so that we encourage sparsity.
+    alpha_0 = 0.1 #0.01 # below 1 so that we encourage sparsity.
     num_samps_for_switch = 150
 
     num_repeat = 5
@@ -252,14 +248,14 @@ def main():
 
             h = model.fc1.weight.register_hook(lambda grad: grad * 0)
             h = model.fc2.weight.register_hook(lambda grad: grad * 0)
-            h = model.fc3.weight.register_hook(lambda grad: grad * 0)
+            #h = model.fc3.weight.register_hook(lambda grad: grad * 0)
             h = model.fc4.weight.register_hook(lambda grad: grad * 0)
             h = model.fc1.bias.register_hook(lambda grad: grad * 0)
             h = model.fc2.bias.register_hook(lambda grad: grad * 0)
-            h = model.fc3.bias.register_hook(lambda grad: grad * 0)
+            #h = model.fc3.bias.register_hook(lambda grad: grad * 0)
             h = model.fc4.bias.register_hook(lambda grad: grad * 0)
 
-            # optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9)
+            #optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
             optimizer = optim.Adam(model.parameters(), lr=1e-1)
             how_many_epochs = 10 #150
             how_many_iter = np.int(how_many_samps/mini_batch_size)
@@ -297,7 +293,7 @@ def main():
 
                     # forward + backward + optimize
                     outputs, phi_cand = model(torch.Tensor(inputs)) #100,10,150
-                    labels = torch.squeeze(torch.tensor(labels))
+                    labels = torch.squeeze(torch.LongTensor(labels))
 
                     if method=="vips":
                         loss = loss_function(outputs, labels.view(-1, 1).repeat(1, num_samps_for_switch), phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate)

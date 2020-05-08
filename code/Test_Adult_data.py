@@ -32,7 +32,7 @@ from data.make_synthetic_datasets import generate_data
 
 if  __name__ =='__main__':
 
-    dataset = "xor"
+    dataset = "orange_skin"
     method = "nn"
 
 
@@ -62,6 +62,11 @@ if  __name__ =='__main__':
         dataset_XOR={'x': x_tot, 'y':y_tot}
         np.save('../data/synthetic/XOR/dataset_XOR.npy', dataset_XOR)
     elif dataset == "orange_skin":
+        x_tot, y_tot, datatypes = generate_data(10000, 'orange_skin')
+        y_tot = np.argmax(y_tot, axis=1)
+        dataset_tosave = {'x': x_tot, 'y': y_tot}
+        np.save('../data/synthetic/orange_skin/dataset_orange_skin.npy', dataset_tosave)
+    elif dataset == "nonlinear_additive":
         x_tot, y_tot, datatypes = generate_data(10000, 'orange_skin')
         y_tot = np.argmax(y_tot, axis=1)
         dataset_tosave = {'x': x_tot, 'y': y_tot}
@@ -119,7 +124,7 @@ if  __name__ =='__main__':
 
     if mode=='training':
 
-        num_repeat = 1
+        num_repeat = 5
 
         # iter_sigmas = np.array([0., 1., 10., 50., 100.])
         iter_sigmas = np.array([0.])
@@ -164,7 +169,7 @@ if  __name__ =='__main__':
                         ytrain_m = y[idx_minibatch]
 
                         xtrain_m = torch.Tensor(xtrain_m)
-                        y_train_m = torch.tensor(ytrain_m)
+                        y_train_m = torch.LongTensor(ytrain_m)
                         Xtst = torch.Tensor(Xtst)
                         #ytst = torch.tensor(ytst)
 
@@ -185,7 +190,7 @@ if  __name__ =='__main__':
 
                             """ compute roc_curve and auc """
                             ypred = VIPS_BLR_MA.computeOdds(Xtst, Mu_theta)
-                            ##########################
+                            ###_#######################
                         elif method=="nn":
 
 
