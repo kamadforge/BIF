@@ -257,7 +257,7 @@ def main():
 
 
     for k in range(iter_sigmas.shape[0]):
-        LR_model = np.load('models/%s_%s_LR_model' % (dataset, method)+str(int(iter_sigmas[k]))+'.npy', allow_pickle=True)
+        LR_model = np.load(os.path.join(cwd, 'models/%s_%s_LR_model' % (dataset, method)+str(int(iter_sigmas[k]))+'.npy', allow_pickle=True))
         filename = os.path.join(cwd, 'weights/%s_%d_%.1f_%d_switch_posterior_mean' % (dataset, args.samples, args.alpha, args.epochs)+str(int(iter_sigmas[k])))
         filename_phi = os.path.join(cwd, 'weights/%s_%d_%.1f_%d_switch_parameter' % (dataset, args.samples, args.alpha, args.epochs)+ str(int(iter_sigmas[k])))
         posterior_mean_switch_mat = np.empty([num_repeat, input_dim])
