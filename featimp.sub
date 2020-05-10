@@ -13,7 +13,7 @@ request_memory = 8040
 request_cpus = 1
 request_gpus = 1
 
-dataset = "orange_skin"
+dataset = orange_skin
 samples=50
 alpha=0.5
 epochs=2

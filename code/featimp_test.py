@@ -13,6 +13,7 @@ import torch.optim as optim
 from torch.nn.parameter import Parameter
 from torch.distributions import Gamma
 import pickle
+import argparse
 
 import sys
 from data.tab_dataloader import load_cervical, load_adult, load_credit
@@ -20,7 +21,16 @@ from models.nn_3hidden import FC
 
 mini_batch_size = 100
 method = "nn"
-dataset = 'nonlinear_additive'
+
+
+arg=argparse.ArgumentParser()
+arg.add_argument("--dataset", default="nonlinear_additive")
+arg.add_argument("--samples", default=150, type=int)
+arg.add_argument("--alpha", default=0.5, type=float)
+arg.add_argument("--epochs", default=10, type=int)
+args=arg.parse_args()
+
+dataset = args.dataset
 
 class Model(nn.Module):
 
@@ -225,8 +235,8 @@ def main():
     how_many_samps = N
 
     # preparing variational inference
-    alpha_0 = 0.5 #0.01 # below 1 so that we encourage sparsity.
-    num_samps_for_switch = 150
+    alpha_0 = args.alpha #0.01 # below 1 so that we encourage sparsity.
+    num_samps_for_switch = args.samples
 
     num_repeat = 5
     # iter_sigmas = np.array([0., 1., 10., 50., 100.])
@@ -237,8 +247,8 @@ def main():
 
     for k in range(iter_sigmas.shape[0]):
         LR_model = np.load('models/%s_%s_LR_model' % (dataset, method)+str(int(iter_sigmas[k]))+'.npy')
-        filename = 'weights/%s_switch_posterior_mean' % dataset+str(int(iter_sigmas[k]))
-        filename_phi = 'weights/%s_switch_parameter' % dataset + str(int(iter_sigmas[k]))
+        filename = 'weights/%s_%d_%.1f_%d_switch_posterior_mean' % (dataset, args.samples, args.alpha, args.epochs)+str(int(iter_sigmas[k]))
+        filename_phi = 'weights/%s_%d_%.1f_%d_switch_parameter' % (dataset, args.samples, args.alpha, args.epochs)+ str(int(iter_sigmas[k]))
         posterior_mean_switch_mat = np.empty([num_repeat, input_dim])
         switch_parameter_mat = np.empty([num_repeat, input_dim])
 
@@ -261,7 +271,7 @@ def main():
 
             #optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
             optimizer = optim.Adam(model.parameters(), lr=1e-1)
-            how_many_epochs = 10 #150
+            how_many_epochs = args.epochs
             how_many_iter = np.int(how_many_samps/mini_batch_size)
 
 
