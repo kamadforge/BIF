@@ -24,11 +24,13 @@ cwd_parent = Path(__file__).parent.parent
 if 'g0' in socket.gethostname() or 'p0' in socket.gethostname():
     sys.path.append(os.path.join(cwd_parent, "data"))
     from tab_dataloader import load_cervical, load_adult, load_credit
-    pathmain=cwd_parent
+    pathmain=cwd
+    path_code = os.path.join(pathmain, "code")
 else:
     from data.tab_dataloader import load_cervical, load_adult, load_credit
     from models.nn_3hidden import FC
     pathmain=cwd_parent
+    path_code=cwd
 
 mini_batch_size = 100
 method = "nn"
@@ -36,9 +38,9 @@ method = "nn"
 
 arg=argparse.ArgumentParser()
 arg.add_argument("--dataset", default="nonlinear_additive")
-arg.add_argument("--samples", default=150, type=int)
+arg.add_argument("--samples", default=10, type=int)
 arg.add_argument("--alpha", default=0.5, type=float)
-arg.add_argument("--epochs", default=10, type=int)
+arg.add_argument("--epochs", default=1, type=int)
 args=arg.parse_args()
 
 dataset = args.dataset
@@ -257,9 +259,10 @@ def main():
 
 
     for k in range(iter_sigmas.shape[0]):
-        LR_model = np.load(os.path.join(cwd, 'models/%s_%s_LR_model' % (dataset, method)+str(int(iter_sigmas[k]))+'.npy'), allow_pickle=True)
-        filename = os.path.join(cwd, 'weights/%s_%d_%.1f_%d_switch_posterior_mean' % (dataset, args.samples, args.alpha, args.epochs)+str(int(iter_sigmas[k])))
-        filename_phi = os.path.join(cwd, 'weights/%s_%d_%.1f_%d_switch_parameter' % (dataset, args.samples, args.alpha, args.epochs)+ str(int(iter_sigmas[k])))
+        LR_model = np.load(os.path.join(path_code, 'models/%s_%s_LR_model' % (dataset, method)+str(int(iter_sigmas[k]))+'.npy'), allow_pickle=True)
+        filename = os.path.join(path_code, 'weights/%s_%d_%.1f_%d_switch_posterior_mean' % (dataset, args.samples, args.alpha, args.epochs)+str(int(iter_sigmas[k])))
+        filename_last = os.path.join(path_code, 'weights/%s_switch_posterior_mean' % (dataset)+str(int(iter_sigmas[k])))
+        filename_phi = os.path.join(path_code, 'weights/%s_%d_%.1f_%d_switch_parameter' % (dataset, args.samples, args.alpha, args.epochs)+ str(int(iter_sigmas[k])))
         posterior_mean_switch_mat = np.empty([num_repeat, input_dim])
         switch_parameter_mat = np.empty([num_repeat, input_dim])
 
@@ -369,6 +372,7 @@ def main():
 
         print(filename, filename_phi)
         np.save(filename,posterior_mean_switch_mat)
+        np.save(filename_last,posterior_mean_switch_mat)
         np.save(filename_phi, switch_parameter_mat)
 
     # print('estimated posterior mean of Switch is', estimated_Switch)
