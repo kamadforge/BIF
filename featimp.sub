@@ -13,10 +13,90 @@ request_memory = 8040
 request_cpus = 1
 request_gpus = 1
 
+
 dataset = orange_skin
 samples=50
 alpha=0.5
-epochs=2
+epochs=10
+queue 1
+
+dataset = orange_skin
+samples=150
+alpha=0.5
+epochs=10
+queue 1
+
+dataset = orange_skin
+samples=300
+alpha=0.5
+epochs=10
+queue 1
+
+dataset = orange_skin
+samples=500
+alpha=0.5
+epochs=10
+queue 1
+
+dataset = orange_skin
+samples=1000
+alpha=0.5
+epochs=10
+queue 1
+
+dataset = orange_skin
+samples=2000
+alpha=0.5
+epochs=10
+queue 1
+
+
+dataset = orange_skin
+samples=50
+alpha=0.5
+epochs=100
+queue 1
+
+dataset = orange_skin
+samples=50
+alpha=0.5
+epochs=100
+queue 1
+
+dataset = orange_skin
+samples=150
+alpha=0.5
+epochs=100
+queue 1
+
+dataset = orange_skin
+samples=300
+alpha=0.5
+epochs=100
+queue 1
+
+dataset = orange_skin
+samples=500
+alpha=0.5
+epochs=100
+queue 1
+
+dataset = orange_skin
+samples=500
+alpha=0.5
+epochs=100
+queue 1
+
+dataset = orange_skin
+samples=1000
+alpha=0.5
+epochs=100
+queue 1
+
+dataset = orange_skin
+samples=2000
+alpha=0.5
+epochs=100
 queue 1
 
 #
