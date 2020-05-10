@@ -15,16 +15,20 @@ from torch.distributions import Gamma
 import pickle
 import argparse
 
+from pathlib import Path
 import sys
 import os
 import socket
 cwd = os.getcwd()
+cwd_parent = Path(__file__).parent.parent
 if 'g0' in socket.gethostname() or 'p0' in socket.gethostname():
-    sys.path.append(os.path.join(cwd, "data"))
+    sys.path.append(os.path.join(cwd_parent, "data"))
     from tab_dataloader import load_cervical, load_adult, load_credit
+    pathmain=cwd_parent
 else:
     from data.tab_dataloader import load_cervical, load_adult, load_credit
     from models.nn_3hidden import FC
+    pathmain=cwd_parent
 
 mini_batch_size = 100
 method = "nn"
@@ -215,15 +219,15 @@ def main():
             data = u.load()
             y_tot, x_tot = data
     elif dataset == "xor":
-        xor_dataset = np.load('../data/synthetic/XOR/dataset_XOR.npy')
+        xor_dataset = np.load(os.path.join(pathmain,'data/synthetic/XOR/dataset_XOR.npy'))
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
     elif dataset == "orange_skin":
-        xor_dataset = np.load('../data/synthetic/orange_skin/dataset_orange_skin.npy')
+        xor_dataset = np.load(os.path.join(pathmain,'data/synthetic/orange_skin/dataset_orange_skin.npy'))
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
     elif dataset == "nonlinear_additive":
-        xor_dataset = np.load('../data/synthetic/nonlinear_additive/dataset_nonlinear_additive.npy')
+        xor_dataset = np.load(os.path.join(pathmain,'data/synthetic/nonlinear_additive/dataset_nonlinear_additive.npy'))
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
 
@@ -254,8 +258,8 @@ def main():
 
     for k in range(iter_sigmas.shape[0]):
         LR_model = np.load('models/%s_%s_LR_model' % (dataset, method)+str(int(iter_sigmas[k]))+'.npy')
-        filename = 'weights/%s_%d_%.1f_%d_switch_posterior_mean' % (dataset, args.samples, args.alpha, args.epochs)+str(int(iter_sigmas[k]))
-        filename_phi = 'weights/%s_%d_%.1f_%d_switch_parameter' % (dataset, args.samples, args.alpha, args.epochs)+ str(int(iter_sigmas[k]))
+        filename = os.path.join(cwd, 'weights/%s_%d_%.1f_%d_switch_posterior_mean' % (dataset, args.samples, args.alpha, args.epochs)+str(int(iter_sigmas[k])))
+        filename_phi = os.path.join(cwd, 'weights/%s_%d_%.1f_%d_switch_parameter' % (dataset, args.samples, args.alpha, args.epochs)+ str(int(iter_sigmas[k])))
         posterior_mean_switch_mat = np.empty([num_repeat, input_dim])
         switch_parameter_mat = np.empty([num_repeat, input_dim])
 
