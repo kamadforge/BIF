@@ -266,6 +266,7 @@ def main():
         posterior_mean_switch_mat = np.empty([num_repeat, input_dim])
         switch_parameter_mat = np.empty([num_repeat, input_dim])
 
+        mean_of_means=np.zeros(input_dim)
         for repeat_idx in range(num_repeat):
             print(repeat_idx)
             if method=="vips":
@@ -369,11 +370,15 @@ def main():
             posterior_mean_switch_mat[repeat_idx,:] = posterior_mean_switch
             print('estimated posterior mean of Switch is', posterior_mean_switch)
             print('estimated parameters are ', phi_est.detach().numpy())
+            mean_of_means+=posterior_mean_switch
 
         print(filename, filename_phi)
+        print('*'*30)
+        print(mean_of_means/num_repeat)
         np.save(filename,posterior_mean_switch_mat)
         np.save(filename_last,posterior_mean_switch_mat)
         np.save(filename_phi, switch_parameter_mat)
+
 
     # print('estimated posterior mean of Switch is', estimated_Switch)
 
