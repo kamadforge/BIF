@@ -219,15 +219,15 @@ def main():
             data = u.load()
             y_tot, x_tot = data
     elif dataset == "xor":
-        xor_dataset = np.load(os.path.join(pathmain,'data/synthetic/XOR/dataset_XOR.npy'))
+        xor_dataset = np.load(os.path.join(pathmain,'data/synthetic/XOR/dataset_XOR.npy'), allow_pickle=True)
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
     elif dataset == "orange_skin":
-        xor_dataset = np.load(os.path.join(pathmain,'data/synthetic/orange_skin/dataset_orange_skin.npy'))
+        xor_dataset = np.load(os.path.join(pathmain,'data/synthetic/orange_skin/dataset_orange_skin.npy'), allow_pickle=True)
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
     elif dataset == "nonlinear_additive":
-        xor_dataset = np.load(os.path.join(pathmain,'data/synthetic/nonlinear_additive/dataset_nonlinear_additive.npy'))
+        xor_dataset = np.load(os.path.join(pathmain,'data/synthetic/nonlinear_additive/dataset_nonlinear_additive.npy'), allow_pickle=True)
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
 
