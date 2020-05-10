@@ -20,7 +20,7 @@ from models.nn_3hidden import FC
 
 mini_batch_size = 100
 method = "nn"
-dataset = 'orange_skin'
+dataset = 'nonlinear_additive'
 
 class Model(nn.Module):
 
@@ -158,7 +158,7 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
         KLD = trm1 + trm2 + trm3
         # annealing kl-divergence term is better
 
-        KLD=0 #just to check
+        #KLD=0 #just to check
 
         return BCE + annealing_rate*KLD/how_many_samps
 
@@ -205,6 +205,10 @@ def main():
         xor_dataset = np.load('../data/synthetic/orange_skin/dataset_orange_skin.npy')
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
+    elif dataset == "nonlinear_additive":
+        xor_dataset = np.load('../data/synthetic/nonlinear_additive/dataset_nonlinear_additive.npy')
+        x_tot = xor_dataset[()]['x']
+        y_tot = xor_dataset[()]['y']
 
     # unpack data
     N_tot, d = x_tot.shape
@@ -221,7 +225,7 @@ def main():
     how_many_samps = N
 
     # preparing variational inference
-    alpha_0 = 0.1 #0.01 # below 1 so that we encourage sparsity.
+    alpha_0 = 0.5 #0.01 # below 1 so that we encourage sparsity.
     num_samps_for_switch = 150
 
     num_repeat = 5

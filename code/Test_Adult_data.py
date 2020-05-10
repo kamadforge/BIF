@@ -70,7 +70,7 @@ if  __name__ =='__main__':
         x_tot, y_tot, datatypes = generate_data(10000, 'orange_skin')
         y_tot = np.argmax(y_tot, axis=1)
         dataset_tosave = {'x': x_tot, 'y': y_tot}
-        np.save('../data/synthetic/orange_skin/dataset_orange_skin.npy', dataset_tosave)
+        np.save('../data/synthetic/nonlinear_additive/dataset_nonlinear_additive.npy', dataset_tosave)
 
     output_num = 2
     sample_num, input_num = x_tot.shape
