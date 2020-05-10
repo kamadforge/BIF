@@ -16,8 +16,15 @@ import pickle
 import argparse
 
 import sys
-from data.tab_dataloader import load_cervical, load_adult, load_credit
-from models.nn_3hidden import FC
+import os
+import socket
+cwd = os.getcwd()
+if 'g0' in socket.gethostname() or 'p0' in socket.gethostname():
+    sys.path.append(os.path.join(cwd, "data"))
+    from tab_dataloader import load_cervical, load_adult, load_credit
+else:
+    from data.tab_dataloader import load_cervical, load_adult, load_credit
+    from models.nn_3hidden import FC
 
 mini_batch_size = 100
 method = "nn"
