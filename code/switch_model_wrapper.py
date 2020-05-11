@@ -43,20 +43,30 @@ class SwitchWrapper(nn.Module):
     else:
       Sstack = gamma_samps / torch.sum(gamma_samps, 0)  # input dim by  # samples
 
+    SstackT = Sstack.t()
     # x_samps = torch.einsum("ij,jk -> ijk", (x, Sstack))
+
+    output = torch.einsum('ij, mj -> imj', (SstackT, x))  # samples, batchsize, dimension
+    output = output.reshape(output.shape[0] * output.shape[1], output.shape[2]) # samples*batchsize, dimension
+
     # x_out = torch.einsum("bjk, j -> bk", (x_samps, torch.squeeze(self.W)))
     # labelstack = torch.sigmoid(x_out)
-    x_samps = torch.einsum("ij,jk -> ikj", (x, Sstack))
-    bs, n_samp, n_feat = x_samps.shape
-    # print(bs, n_samp, n_feat)
-    x_samps = x_samps.reshape(bs * n_samp, n_feat)
+    # x_samps = torch.einsum("ij,jk -> ikj", (x, Sstack))
+    # bs, n_samp, n_feat = x_samps.shape
+    # # print(bs, n_samp, n_feat)
+    # x_samps = x_samps.reshape(bs * n_samp, n_feat)
 
     # print(x_samps.shape)
-    model_out = self.trained_model(x_samps)
+    # model_out = self.trained_model(x_samps)
 
-    model_out = model_out.view(bs, n_samp)
+    output = self.trained_model(output)
+
+    output = output.reshape(self.num_samps_for_switch, x.shape[0])
+    output = output.transpose(0, 1)
+
+    # model_out = model_out.view(bs, n_samp)
     # model_out = torch.transpose(model_out, 1, 2)
-    return model_out, phi
+    return output, phi
 
 
 # def loss_function(prediction, true_y, S, alpha_0, hidden_dim, how_many_samps, annealing_rate):
@@ -64,18 +74,37 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, n_features, n_data, ann
 
   BCE = F.binary_cross_entropy(prediction, true_y, reduction='mean')
 
-  # KLD term
-  alpha_0 = torch.tensor(alpha_0, dtype=torch.float32)
-  hidden_dim = torch.tensor(n_features, dtype=torch.float32)
+  # this was for sanity check
+  # BCE_mat = torch.zeros(prediction.shape[1])
+  # for ind in torch.arange(0, prediction.shape[1]):
+  #   BCE_mat[ind] = F.binary_cross_entropy(prediction[:,ind], true_y[:,ind])
+  #
+  # BCE = torch.mean(BCE_mat)
 
-  trm1 = torch.lgamma(torch.sum(phi_cand)) - torch.lgamma(hidden_dim*alpha_0)
-  trm2 = - torch.sum(torch.lgamma(phi_cand)) + hidden_dim*torch.lgamma(alpha_0)
-  trm3 = torch.sum((phi_cand-alpha_0)*(torch.digamma(phi_cand)-torch.digamma(torch.sum(phi_cand))))
 
-  KLD = trm1 + trm2 + trm3
-  # annealing kl-divergence term is better
+  # loss = nn.CrossEntropyLoss()
+  #
+  # BCE_mat = torch.zeros(prediction.shape[1])
+  # for ind in torch.arange(0, prediction.shape[1]):
+  #   y_pred = prediction[:, ind, :]
+  #   BCE_mat[ind] = loss(y_pred, true_y)
+  #
+  # BCE = torch.mean(BCE_mat)
 
-  return BCE + annealing_rate * KLD / n_data
+  # # KLD term
+  # alpha_0 = torch.tensor(alpha_0, dtype=torch.float32)
+  # hidden_dim = torch.tensor(n_features, dtype=torch.float32)
+  #
+  # trm1 = torch.lgamma(torch.sum(phi_cand)) - torch.lgamma(hidden_dim*alpha_0)
+  # trm2 = - torch.sum(torch.lgamma(phi_cand)) + hidden_dim*torch.lgamma(alpha_0)
+  # trm3 = torch.sum((phi_cand-alpha_0)*(torch.digamma(phi_cand)-torch.digamma(torch.sum(phi_cand))))
+  #
+  # KLD = trm1 + trm2 + trm3
+  # # annealing kl-divergence term is better
+
+  # return BCE + annealing_rate * KLD / n_data
+  return BCE
+
 
 
 class LogReg(nn.Module):

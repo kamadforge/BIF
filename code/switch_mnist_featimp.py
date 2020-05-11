@@ -67,12 +67,12 @@ def parse_args():
   parser = argparse.ArgumentParser()
   parser.add_argument('--batch-size', type=int, default=200)
   parser.add_argument('--test-batch-size', type=int, default=1000)
-  parser.add_argument('--epochs', type=int, default=2)
+  parser.add_argument('--epochs', type=int, default=20)
   parser.add_argument('--lr', type=float, default=0.1)
   parser.add_argument('--no-cuda', action='store_true', default=False)
   parser.add_argument('--seed', type=int, default=42)
   parser.add_argument('--dataset', type=str, default='mnist')
-  parser.add_argument('--selected-label', type=int, default=0)  # label for 1-v-rest training
+  parser.add_argument('--selected-label', type=int, default=3)  # label for 1-v-rest training
   # parser.add_argument('--log-interval', type=int, default=500)
   parser.add_argument('--n-switch-samples', type=int, default=10)
 
@@ -107,6 +107,7 @@ def main():
 
       model = SwitchWrapper(classifier, n_features, ar.n_switch_samples)
       optimizer = optim.Adam(model.parameters(recurse=False), lr=ar.lr)
+      # optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 
       training_loss_per_epoch = np.zeros(ar.epochs)
 
