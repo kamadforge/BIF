@@ -37,8 +37,8 @@ method = "nn"
 
 
 arg=argparse.ArgumentParser()
-arg.add_argument("--dataset", default="nonlinear_additive")
-arg.add_argument("--samples", default=10, type=int)
+arg.add_argument("--dataset", default="xor")
+arg.add_argument("--samples", default=150, type=int)
 arg.add_argument("--alpha", default=0.5, type=float)
 arg.add_argument("--epochs", default=1, type=int)
 args=arg.parse_args()
@@ -106,9 +106,11 @@ class Modelnn(nn.Module):
 
     def switch_func_fc(self, output, SstackT):
 
-        # output is (100,10,24,24), we want to have 100,150,10,24,24, I guess
-        output=torch.einsum('ij, mj -> imj', (SstackT, output))
-        output = output.reshape(output.shape[0] * output.shape[1], output.shape[2])
+        # for conv output is (100,10,24,24), we want to have 100,150,10,24,24, I guess
+
+        # StackT is (150,10) or (samples, feature) and output is (100,10) or (batch_size, feature_num)
+        output=torch.einsum('ij, mj -> imj', (SstackT, output)) #(150,100,10) #samples, batch, feature_num
+        output = output.reshape(output.shape[0] * output.shape[1], output.shape[2]) #15000,10
 
         return output, SstackT
 
