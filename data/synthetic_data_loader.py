@@ -7,8 +7,10 @@ from pathlib import Path
 import pickle
 import sys
 
+
 def synthetic_data_loader(dataset):
 
+    pathmain = Path(__file__).parent.parent
 
     if dataset == "cervical":
 
@@ -36,16 +38,14 @@ def synthetic_data_loader(dataset):
 
     elif dataset == "xor":
 
-        cwd = os.getcwd()
-        pathmain = cwd
+
         xor_dataset = np.load(os.path.join(pathmain, 'data/synthetic/XOR/dataset_XOR.npy'), allow_pickle=True)
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
 
     elif dataset == "orange_skin":
 
-        cwd = os.getcwd()
-        pathmain = cwd
+
         xor_dataset = np.load(os.path.join(pathmain, 'data/synthetic/orange_skin/dataset_orange_skin.npy'),
                               allow_pickle=True)
         x_tot = xor_dataset[()]['x']
@@ -53,8 +53,7 @@ def synthetic_data_loader(dataset):
 
     elif dataset == "nonlinear_additive":
 
-        cwd = os.getcwd()
-        pathmain = cwd
+
         xor_dataset = np.load(os.path.join(pathmain, 'data/synthetic/nonlinear_additive/dataset_nonlinear_additive.npy'),
                               allow_pickle=True)
         x_tot = xor_dataset[()]['x']
