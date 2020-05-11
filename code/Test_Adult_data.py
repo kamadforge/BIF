@@ -30,15 +30,14 @@ import sys
 from data.tab_dataloader import load_cervical, load_adult, load_credit
 from data.make_synthetic_datasets import generate_data
 
+
 if  __name__ =='__main__':
 
-    dataset = "orange_skin"
-    method = "nn"
-
-
-
     """ inputs """
+    dataset = "xor" # "xor, orange_skin, or nonlinear_additive"
+    method = "nn"
     rnd_num = 123
+
     rn.seed(rnd_num)
 
     if dataset == "cervical":
@@ -72,21 +71,12 @@ if  __name__ =='__main__':
         dataset_tosave = {'x': x_tot, 'y': y_tot}
         np.save('../data/synthetic/nonlinear_additive/dataset_nonlinear_additive.npy', dataset_tosave)
 
+
+    ####################################
+    # define essential quantities
     output_num = 2
     sample_num, input_num = x_tot.shape
 
-###################################
-
-    model=FC(input_num, output_num)
-    criterion = nn.CrossEntropyLoss()
-    # optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
-
-#############################
-
-
-
-    # unpack data
     N_tot, d = x_tot.shape
 
     training_data_por = 0.8
@@ -94,21 +84,29 @@ if  __name__ =='__main__':
     N = int(training_data_por * N_tot)
     N_test = N_tot - N
 
-    """ hyper-params for the prior over the parameters """
-    alpha = 0.02
-    a0 = 1.
-    b0 = 1.
+    if method == "vips":
+        """ hyper-params for the prior over the parameters """
+        alpha = 0.02
+        a0 = 1.
+        b0 = 1.
 
-    """ stochastic version """
-    tau0 = 1024
-    kappa = 0.7
-    MaxIter = 20 # EM iteration
-    nu = 0.005
-    S =  np.int(nu*N)
-    print('mini batch size is ', S)
+        """ stochastic version """
+        tau0 = 1024
+        kappa = 0.7
+        MaxIter = 20 # EM iteration
+        nu = 0.005
+        S = np.int(nu*N)
+        print('mini batch size is ', S)
 
-    exp_nat_params_prv = np.ones([d,d])
-    mean_alpha_prv = a0/b0
+        exp_nat_params_prv = np.ones([d,d])
+        mean_alpha_prv = a0/b0
+
+    elif method == "nn":
+        model = FC(input_num, output_num)
+        criterion = nn.CrossEntropyLoss()
+        # optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+        optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
+        num_epochs = 200
 
     """ set the privacy parameter """
     # dp_epsilon = 1
@@ -124,9 +122,9 @@ if  __name__ =='__main__':
 
     if mode=='training':
 
-        num_repeat = 5
+        num_repeat = 1
 
-        # iter_sigmas = np.array([0., 1., 10., 50., 100.])
+        # iter_sigmas = np.array([0., 1., 10., 50., 100.]) # use this one when we have different levels of noise.
         iter_sigmas = np.array([0.])
 
         if method == "vips":
@@ -142,7 +140,6 @@ if  __name__ =='__main__':
         for k in range(iter_sigmas.shape[0]):
             sigma = iter_sigmas[k]
 
-
             for repeat_idx in range(num_repeat):
 
                 # at every repeat, we reshuffle data
@@ -154,72 +151,50 @@ if  __name__ =='__main__':
                 Xtst = x_tot[rand_perm_nums[N:], :]
                 ytst = y_tot[rand_perm_nums[N:]]
 
-                num_epochs=20
-                for epoch in range(num_epochs):
-
+                if method=="vips":
                     for iter in range(MaxIter):
 
                         # VI iterations start here
                         rhot = (tau0+iter)**(-kappa)
 
-                        """ select a new mini-batch """
-                        rand_perm_nums =  np.random.permutation(N)
-                        idx_minibatch = rand_perm_nums[0:S]
-                        xtrain_m = X[idx_minibatch,:]
-                        ytrain_m = y[idx_minibatch]
+                        exp_suff_stats1, exp_suff_stats2 = VIPS_BLR_MA.VBEstep_private(sigma, X, y, exp_nat_params_prv)
 
-                        xtrain_m = torch.Tensor(xtrain_m)
-                        y_train_m = torch.LongTensor(ytrain_m)
-                        Xtst = torch.Tensor(Xtst)
-                        #ytst = torch.tensor(ytst)
+                        if iter==0:
+                            nu_old = []
+                            ab_old = []
+                        nu_new, ab_new, exp_nat_params, mean_alpha, Mu_theta = VIPS_BLR_MA.VBMstep_stochastic(rhot, nu_old, ab_old, N, a0, b0, exp_suff_stats1, exp_suff_stats2, mean_alpha_prv, iter)
 
+                        mean_alpha_prv = mean_alpha
+                        exp_nat_params_prv = exp_nat_params
+                        nu_old = nu_new
+                        ab_old = ab_new
 
-                        if method=="vips":
-                        ####################################
-                            exp_suff_stats1, exp_suff_stats2 = VIPS_BLR_MA.VBEstep_private(sigma, xtrain_m, ytrain_m, exp_nat_params_prv)
+                        """ compute roc_curve and auc """
+                        ypred = VIPS_BLR_MA.computeOdds(Xtst, Mu_theta)
 
-                            if iter==0:
-                                nu_old = []
-                                ab_old = []
-                            nu_new, ab_new, exp_nat_params, mean_alpha, Mu_theta = VIPS_BLR_MA.VBMstep_stochastic(rhot, nu_old, ab_old, N, a0, b0, exp_suff_stats1, exp_suff_stats2, mean_alpha_prv, iter)
+                elif method=="nn":
 
-                            mean_alpha_prv = mean_alpha
-                            exp_nat_params_prv = exp_nat_params
-                            nu_old = nu_new
-                            ab_old = ab_new
+                    for epoch in range(num_epochs):
 
-                            """ compute roc_curve and auc """
-                            ypred = VIPS_BLR_MA.computeOdds(Xtst, Mu_theta)
-                            ###_#######################
-                        elif method=="nn":
+                        print("epoch number: ", epoch)
 
+                        optimizer.zero_grad()
+                        ypred_tr = model(torch.Tensor(X))
+                        loss = criterion(ypred_tr, torch.LongTensor(y))
+                        loss.backward()
+                        optimizer.step()
 
-                            optimizer.zero_grad()
-                            ypred_tr = model(xtrain_m)
-                            loss = criterion(ypred_tr, y_train_m)
-                            loss.backward()
-                            optimizer.step()
+                        # print(loss)
 
-                    #epoch
-                    print(loss)
+                        ###########
+                        # TEST per epoch
 
+                        y_pred = model(torch.Tensor(Xtst))
+                        y_pred = torch.argmax(y_pred, dim=1)
 
-                    #fal_pos_rate_tst, true_pos_rate_tst, thrsld_tst = roc_curve(ytst, ypred.flatten())
-                    #auc_tst = auc(fal_pos_rate_tst,true_pos_rate_tst)
+                        accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == ytst) / len(ytst))
+                        print("test accuracy: ", accuracy)
 
-                #print('AUC is', auc_tst)
-                #print('sigma is', sigma)
-
-                ###########
-                # TEST
-
-                y_pred = model(Xtst)
-                y_pred = torch.argmax(y_pred, dim=1)
-
-                accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == ytst) / len(ytst))
-                print("Accuracy test: ", accuracy)
-
-                #auc_private_stoch_ours[k, repeat_idx] = auc_tst
 
                 if method=="vips":
                     # last model is saved in every sigma value
@@ -238,7 +213,7 @@ if  __name__ =='__main__':
                     LR_model0[repeat_idx] = model.state_dict()
 
         if method == "vips":
-    #        np.save('models/%s_accuracy_ours' % (dataset, method), auc_private_stoch_ours)
+            # np.save('models/%s_accuracy_ours' % (dataset, method), auc_private_stoch_ours)
             np.save('models/%s_%s_LR_model0' % (dataset, method), LR_model0)
             np.save('models/%s_%s_LR_model1' % (dataset, method), LR_model1)
             np.save('models/%s_%s_LR_model10' % (dataset, method), LR_model10)
@@ -248,43 +223,43 @@ if  __name__ =='__main__':
             np.save('models/%s_%s_LR_model0' % (dataset, method), LR_model0)
 
 
-    elif mode=='test':
-
-        model=np.load('LR_model0.npy') #number of runs x number of features, e.g. [20,14]
-
-        print(model.shape)
-
-        rand_perm_nums = np.random.permutation(N_tot)
-
-        # test data
-        Xtst = x_tot[rand_perm_nums[N:], :]
-        ytst = y_tot[rand_perm_nums[N:]]
-
-
-        from itertools import combinations
-
-        s = np.arange(0, model.shape[1])  # list from 0 to 19 as these are the indices of the data tensor
-        for r in range(1, model.shape[1]):  # produces the combinations of the elements in s
-            results = []
-            for combination in list(combinations(s, r)):
-                #combination = torch.LongTensor(combination)
-
-                print("\n")
-                print(combination)
-
-                model_to_test= model[0]
-                print(model_to_test)
-
-                model_to_test_pruned = model_to_test.copy()
-                model_to_test_pruned[np.array(combination)]=0
-                print(model_to_test_pruned)
-                Xtst[:, np.array(combination)] = 0
-
-                ypred = VIPS_BLR_MA.computeOdds(Xtst, model_to_test_pruned)  # model[0] is one run
-
-                accuracy = (np.sum(np.round(ypred.flatten()) == ytst) / len(ytst))
-                print("Accuracy: ", accuracy)
-
-                if file_write:
-                    with open("combinations/model[0].txt", "a+") as textfile:
-                        textfile.write("%s: %.4f\n" % (",".join(str(x) for x in combination), accuracy))
+    # elif mode=='test':
+    #
+    #     model=np.load('LR_model0.npy') #number of runs x number of features, e.g. [20,14]
+    #
+    #     print(model.shape)
+    #
+    #     rand_perm_nums = np.random.permutation(N_tot)
+    #
+    #     # test data
+    #     Xtst = x_tot[rand_perm_nums[N:], :]
+    #     ytst = y_tot[rand_perm_nums[N:]]
+    #
+    #
+    #     from itertools import combinations
+    #
+    #     s = np.arange(0, model.shape[1])  # list from 0 to 19 as these are the indices of the data tensor
+    #     for r in range(1, model.shape[1]):  # produces the combinations of the elements in s
+    #         results = []
+    #         for combination in list(combinations(s, r)):
+    #             #combination = torch.LongTensor(combination)
+    #
+    #             print("\n")
+    #             print(combination)
+    #
+    #             model_to_test= model[0]
+    #             print(model_to_test)
+    #
+    #             model_to_test_pruned = model_to_test.copy()
+    #             model_to_test_pruned[np.array(combination)]=0
+    #             print(model_to_test_pruned)
+    #             Xtst[:, np.array(combination)] = 0
+    #
+    #             ypred = VIPS_BLR_MA.computeOdds(Xtst, model_to_test_pruned)  # model[0] is one run
+    #
+    #             accuracy = (np.sum(np.round(ypred.flatten()) == ytst) / len(ytst))
+    #             print("Accuracy: ", accuracy)
+    #
+    #             if file_write:
+    #                 with open("combinations/model[0].txt", "a+") as textfile:
+    #                     textfile.write("%s: %.4f\n" % (",".join(str(x) for x in combination), accuracy))
