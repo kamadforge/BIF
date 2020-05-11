@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Polygon
 
-dataset = "xor"
+dataset = "orange_skin"
 
 # load our results
 # iter_sigmas = np.array([0., 1., 10., 50., 100.])

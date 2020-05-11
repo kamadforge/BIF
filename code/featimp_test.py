@@ -13,13 +13,37 @@ import torch.optim as optim
 from torch.nn.parameter import Parameter
 from torch.distributions import Gamma
 import pickle
+import argparse
 
+from pathlib import Path
 import sys
-from data.tab_dataloader import load_cervical, load_adult, load_credit
-from models.nn_3hidden import FC
+import os
+import socket
+cwd = os.getcwd()
+cwd_parent = Path(__file__).parent.parent
+if 'g0' in socket.gethostname() or 'p0' in socket.gethostname():
+    sys.path.append(os.path.join(cwd_parent, "data"))
+    from tab_dataloader import load_cervical, load_adult, load_credit
+    pathmain=cwd
+    path_code = os.path.join(pathmain, "code")
+else:
+    from data.tab_dataloader import load_cervical, load_adult, load_credit
+    from models.nn_3hidden import FC
+    pathmain=cwd_parent
+    path_code=cwd
 
 mini_batch_size = 100
 method = "nn"
+
+
+arg=argparse.ArgumentParser()
+arg.add_argument("--dataset", default="nonlinear_additive")
+arg.add_argument("--samples", default=10, type=int)
+arg.add_argument("--alpha", default=0.5, type=float)
+arg.add_argument("--epochs", default=1, type=int)
+args=arg.parse_args()
+
+dataset = args.dataset
 
 class Model(nn.Module):
 
@@ -74,15 +98,16 @@ class Modelnn(nn.Module):
 
         self.fc1 = nn.Linear(input_num, 200)
         self.fc2 = nn.Linear(200, 200)
-        self.fc3 = nn.Linear(200, 200)
+        # self.fc3 = nn.Linear(200, 200)
         self.fc4 = nn.Linear(200, output_num)
+
+        self.bn1 = nn.BatchNorm1d(200)
+        self.bn2 = nn.BatchNorm1d(200)
 
     def switch_func_fc(self, output, SstackT):
 
-        #rep = SstackT.unsqueeze(2).unsqueeze(2).repeat(1, 1,)  # (150,10,24,24)
         # output is (100,10,24,24), we want to have 100,150,10,24,24, I guess
         output=torch.einsum('ij, mj -> imj', (SstackT, output))
-        #output = torch.einsum('ijkl, mjkl -> imjkl', (rep, output))
         output = output.reshape(output.shape[0] * output.shape[1], output.shape[2])
 
         return output, SstackT
@@ -117,8 +142,10 @@ class Modelnn(nn.Module):
         output, Sprime = self.switch_func_fc(x, SstackT)
 
         output = self.fc1(output)
-        output = self.fc2(output)
-        output = self.fc3(output)
+        output = self.bn1(output)
+        output = nn.functional.relu(self.fc2(output))
+        output = self.bn2(output)
+        # output = self.fc3(output)
         output = self.fc4(output)
 
         output = output.reshape(mini_batch_size, self.num_samps_for_switch, -1)
@@ -127,39 +154,36 @@ class Modelnn(nn.Module):
         return output, phi
 
 
-
-
-
-
-
-
-
-        x_out = torch.einsum("bjk, j -> bk", (x_samps, torch.squeeze(self.W))) #[100,150]
-        labelstack = torch.sigmoid(x_out)
-
-        return labelstack, phi
+        # x_out = torch.einsum("bjk, j -> bk", (x_samps, torch.squeeze(self.W))) #[100,150]
+        # labelstack = torch.sigmoid(x_out)
+        #
+        # return labelstack, phi
 
 # def loss_function(prediction, true_y, S, alpha_0, hidden_dim, how_many_samps, annealing_rate):
 def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate):
 
     if method=="vips":
         BCE = F.binary_cross_entropy(prediction, true_y, reduction='mean')
+
+        return BCE
     elif method=="nn":
         loss=nn.CrossEntropyLoss()
         BCE = loss(prediction, true_y) #binary
 
-    # KLD term
-    alpha_0 = torch.Tensor([alpha_0])
-    hidden_dim = torch.Tensor([hidden_dim])
+        # KLD term
+        alpha_0 = torch.Tensor([alpha_0])
+        hidden_dim = torch.Tensor([hidden_dim])
 
-    trm1 = torch.lgamma(torch.sum(phi_cand)) - torch.lgamma(hidden_dim*alpha_0)
-    trm2 = - torch.sum(torch.lgamma(phi_cand)) + hidden_dim*torch.lgamma(alpha_0)
-    trm3 = torch.sum((phi_cand-alpha_0)*(torch.digamma(phi_cand)-torch.digamma(torch.sum(phi_cand))))
+        trm1 = torch.lgamma(torch.sum(phi_cand)) - torch.lgamma(hidden_dim*alpha_0)
+        trm2 = - torch.sum(torch.lgamma(phi_cand)) + hidden_dim*torch.lgamma(alpha_0)
+        trm3 = torch.sum((phi_cand-alpha_0)*(torch.digamma(phi_cand)-torch.digamma(torch.sum(phi_cand))))
 
-    KLD = trm1 + trm2 + trm3
-    # annealing kl-divergence term is better
+        KLD = trm1 + trm2 + trm3
+        # annealing kl-divergence term is better
 
-    return BCE + annealing_rate*KLD/how_many_samps
+        #KLD=0 #just to check
+
+        return BCE + annealing_rate*KLD/how_many_samps
 
 
 def shuffle_data(y,x,how_many_samps):
@@ -171,8 +195,7 @@ def shuffle_data(y,x,how_many_samps):
 
 def main():
 
-    dataset = 'orange_skin'
-    method = 'nn'
+
 
     """ load pre-trained models """
     # LR_sigma0 = np.load('LR_model0.npy')
@@ -198,11 +221,15 @@ def main():
             data = u.load()
             y_tot, x_tot = data
     elif dataset == "xor":
-        xor_dataset = np.load('../data/synthetic/XOR/dataset_XOR.npy')
+        xor_dataset = np.load(os.path.join(pathmain,'data/synthetic/XOR/dataset_XOR.npy'), allow_pickle=True)
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
     elif dataset == "orange_skin":
-        xor_dataset = np.load('../data/synthetic/orange_skin/dataset_orange_skin.npy')
+        xor_dataset = np.load(os.path.join(pathmain,'data/synthetic/orange_skin/dataset_orange_skin.npy'), allow_pickle=True)
+        x_tot = xor_dataset[()]['x']
+        y_tot = xor_dataset[()]['y']
+    elif dataset == "nonlinear_additive":
+        xor_dataset = np.load(os.path.join(pathmain,'data/synthetic/nonlinear_additive/dataset_nonlinear_additive.npy'), allow_pickle=True)
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
 
@@ -221,20 +248,25 @@ def main():
     how_many_samps = N
 
     # preparing variational inference
-    alpha_0 = 0.01 # below 1 so that we encourage sparsity.
-    num_samps_for_switch = 150
+    alpha_0 = args.alpha #0.01 # below 1 so that we encourage sparsity.
+    num_samps_for_switch = args.samples
 
-    num_repeat = 20
+    num_repeat = 5
     # iter_sigmas = np.array([0., 1., 10., 50., 100.])
     iter_sigmas = np.array([0.])
 
+
+
+
     for k in range(iter_sigmas.shape[0]):
-        LR_model = np.load('models/%s_%s_LR_model' % (dataset, method)+str(int(iter_sigmas[k]))+'.npy')
-        filename = 'weights/%s_switch_posterior_mean' % dataset+str(int(iter_sigmas[k]))
-        filename_phi = 'weights/%s_switch_parameter' % dataset + str(int(iter_sigmas[k]))
+        LR_model = np.load(os.path.join(path_code, 'models/%s_%s_LR_model' % (dataset, method)+str(int(iter_sigmas[k]))+'.npy'), allow_pickle=True)
+        filename = os.path.join(path_code, 'weights/%s_%d_%.1f_%d_switch_posterior_mean' % (dataset, args.samples, args.alpha, args.epochs)+str(int(iter_sigmas[k])))
+        filename_last = os.path.join(path_code, 'weights/%s_switch_posterior_mean' % (dataset)+str(int(iter_sigmas[k])))
+        filename_phi = os.path.join(path_code, 'weights/%s_%d_%.1f_%d_switch_parameter' % (dataset, args.samples, args.alpha, args.epochs)+ str(int(iter_sigmas[k])))
         posterior_mean_switch_mat = np.empty([num_repeat, input_dim])
         switch_parameter_mat = np.empty([num_repeat, input_dim])
 
+        mean_of_means=np.zeros(input_dim)
         for repeat_idx in range(num_repeat):
             print(repeat_idx)
             if method=="vips":
@@ -243,10 +275,21 @@ def main():
                 model = Modelnn(d,2, num_samps_for_switch)
                 model.load_state_dict(LR_model[()][repeat_idx], strict=False)
 
-            # optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9)
+            h = model.fc1.weight.register_hook(lambda grad: grad * 0)
+            h = model.fc2.weight.register_hook(lambda grad: grad * 0)
+            #h = model.fc3.weight.register_hook(lambda grad: grad * 0)
+            h = model.fc4.weight.register_hook(lambda grad: grad * 0)
+            h = model.fc1.bias.register_hook(lambda grad: grad * 0)
+            h = model.fc2.bias.register_hook(lambda grad: grad * 0)
+            #h = model.fc3.bias.register_hook(lambda grad: grad * 0)
+            h = model.fc4.bias.register_hook(lambda grad: grad * 0)
+
+            #optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
             optimizer = optim.Adam(model.parameters(), lr=1e-1)
-            how_many_epochs = 4 #150
+            how_many_epochs = args.epochs
             how_many_iter = np.int(how_many_samps/mini_batch_size)
+
+
 
             training_loss_per_epoch = np.zeros(how_many_epochs)
 
@@ -257,8 +300,8 @@ def main():
 
             print('Starting Training')
 
-            for name,par in model.named_parameters():
-                print (name)
+            # for name,par in model.named_parameters():
+            #     print (name)
 
 
             for epoch in range(how_many_epochs):  # loop over the dataset multiple times
@@ -279,7 +322,7 @@ def main():
 
                     # forward + backward + optimize
                     outputs, phi_cand = model(torch.Tensor(inputs)) #100,10,150
-                    labels = torch.squeeze(torch.tensor(labels))
+                    labels = torch.squeeze(torch.LongTensor(labels))
 
                     if method=="vips":
                         loss = loss_function(outputs, labels.view(-1, 1).repeat(1, num_samps_for_switch), phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate)
@@ -293,6 +336,10 @@ def main():
 
                     # print statistics
                     running_loss += loss.item()
+
+                    #print(model.fc1.weight[1:5])
+                    #print(model.fc3.bias[1:5])
+                    #print(model.parameter)
 
                 # training_loss_per_epoch[epoch] = running_loss/how_many_samps
                 training_loss_per_epoch[epoch] = running_loss
@@ -323,10 +370,15 @@ def main():
             posterior_mean_switch_mat[repeat_idx,:] = posterior_mean_switch
             print('estimated posterior mean of Switch is', posterior_mean_switch)
             print('estimated parameters are ', phi_est.detach().numpy())
+            mean_of_means+=posterior_mean_switch
 
         print(filename, filename_phi)
+        print('*'*30)
+        print(mean_of_means/num_repeat)
         np.save(filename,posterior_mean_switch_mat)
+        np.save(filename_last,posterior_mean_switch_mat)
         np.save(filename_phi, switch_parameter_mat)
+
 
     # print('estimated posterior mean of Switch is', estimated_Switch)
 
