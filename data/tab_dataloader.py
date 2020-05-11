@@ -7,7 +7,7 @@ import math
 
 if sys.version_info[0] > 2:
     import sdgym
-import xgboost
+# import xgboost
 
 
 
@@ -552,60 +552,60 @@ def load_covtype():
 
 #################33
 
-n_classes=2
-
-def test_models(X_tr, y_tr, X_te, y_te, datasettype, n_classes=2):
-
-    roc_arr=[]
-    prc_arr=[]
-    f1_arr=[]
-
-    for model in [xgboost.XGBClassifier(), LogisticRegression(solver='lbfgs', max_iter=1000), GaussianNB(), BernoulliNB(alpha=0.02), LinearSVC(), DecisionTreeClassifier(), LinearDiscriminantAnalysis(), AdaBoostClassifier(), BaggingClassifier(), RandomForestClassifier(), GradientBoostingClassifier(), MLPClassifier()]:
-    #for model in [LogisticRegression(solver='lbfgs', max_iter=1000), GaussianNB(), BernoulliNB(alpha=0.02), LinearSVC(), DecisionTreeClassifier(), LinearDiscriminantAnalysis(), AdaBoostClassifier(), BaggingClassifier(), RandomForestClassifier(), GradientBoostingClassifier(), MLPClassifier()]:
-
-    #for model in [LogisticRegression(solver='lbfgs', max_iter=1000), BernoulliNB(alpha=0.02)]:
-
-        print('\n', type(model))
-        model.fit(X_tr, y_tr)
-        pred = model.predict(X_te)  # test on real data
-
-    #LR_model = LogisticRegression(solver='lbfgs', max_iter=1000)
-    # LR_model.fit(X_train, y_train)  # training on synthetic data
-    # pred = LR_model.predict(X_test)  # test on real data
-
-        if n_classes>2:
-
-            f1score = f1_score(y_te, pred, average='weighted')
-
-            print("F1-score on test %s data is %.3f" % (datasettype, f1score))
-            # 0.6742486709433465 for covtype data, 0.9677751506935462 for intrusion data
-            f1_arr.append(f1score)
-
-        else:
-
-            roc = roc_auc_score(y_te, pred)
-            prc = average_precision_score(y_te, pred)
-
-            print("ROC on test %s data is %.3f" % (datasettype, roc))
-            print("PRC on test %s data is %.3f" % (datasettype, prc))
-
-            roc_arr.append(roc)
-            prc_arr.append(prc)
-
-    if n_classes > 2:
-
-        res1 = np.mean(f1_arr)
-        print("f1 mean across methods is %.3f\n" % res1)
-        res2 = 0  # dummy
-    else:
-
-        res1=np.mean(roc_arr)
-        res2=np.mean(prc_arr)
-        print("-----\nroc mean across methods is %.3f" % res1)
-        print("prc mean across methods is %.3f\n" % res2)
-
-
-    return res1, res2
+# n_classes=2
+#
+# def test_models(X_tr, y_tr, X_te, y_te, datasettype, n_classes=2):
+#
+#     roc_arr=[]
+#     prc_arr=[]
+#     f1_arr=[]
+#
+#     for model in [xgboost.XGBClassifier(), LogisticRegression(solver='lbfgs', max_iter=1000), GaussianNB(), BernoulliNB(alpha=0.02), LinearSVC(), DecisionTreeClassifier(), LinearDiscriminantAnalysis(), AdaBoostClassifier(), BaggingClassifier(), RandomForestClassifier(), GradientBoostingClassifier(), MLPClassifier()]:
+#     #for model in [LogisticRegression(solver='lbfgs', max_iter=1000), GaussianNB(), BernoulliNB(alpha=0.02), LinearSVC(), DecisionTreeClassifier(), LinearDiscriminantAnalysis(), AdaBoostClassifier(), BaggingClassifier(), RandomForestClassifier(), GradientBoostingClassifier(), MLPClassifier()]:
+#
+#     #for model in [LogisticRegression(solver='lbfgs', max_iter=1000), BernoulliNB(alpha=0.02)]:
+#
+#         print('\n', type(model))
+#         model.fit(X_tr, y_tr)
+#         pred = model.predict(X_te)  # test on real data
+#
+#     #LR_model = LogisticRegression(solver='lbfgs', max_iter=1000)
+#     # LR_model.fit(X_train, y_train)  # training on synthetic data
+#     # pred = LR_model.predict(X_test)  # test on real data
+#
+#         if n_classes>2:
+#
+#             f1score = f1_score(y_te, pred, average='weighted')
+#
+#             print("F1-score on test %s data is %.3f" % (datasettype, f1score))
+#             # 0.6742486709433465 for covtype data, 0.9677751506935462 for intrusion data
+#             f1_arr.append(f1score)
+#
+#         else:
+#
+#             roc = roc_auc_score(y_te, pred)
+#             prc = average_precision_score(y_te, pred)
+#
+#             print("ROC on test %s data is %.3f" % (datasettype, roc))
+#             print("PRC on test %s data is %.3f" % (datasettype, prc))
+#
+#             roc_arr.append(roc)
+#             prc_arr.append(prc)
+#
+#     if n_classes > 2:
+#
+#         res1 = np.mean(f1_arr)
+#         print("f1 mean across methods is %.3f\n" % res1)
+#         res2 = 0  # dummy
+#     else:
+#
+#         res1=np.mean(roc_arr)
+#         res2=np.mean(prc_arr)
+#         print("-----\nroc mean across methods is %.3f" % res1)
+#         print("prc mean across methods is %.3f\n" % res2)
+#
+#
+#     return res1, res2
 
 
 #load_epileptic()
