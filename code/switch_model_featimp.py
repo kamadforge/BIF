@@ -16,7 +16,7 @@ from torch.distributions import Gamma
 import pickle
 
 from data.tab_dataloader import load_cervical, load_adult, load_credit
-from switch_model_wrapper import SwitchWrapper, loss_function, LogReg
+from switch_model_wrapper import SwitchWrapper, loss_function, LogReg, NNModel
 
 
 def shuffle_data(y,x,how_many_samps):
@@ -73,6 +73,17 @@ def load_models_logreg(dataset, iter_sigmas):
 
   return [(sig, model_gen_logreg(sig)) for sig in iter_sigmas]
 
+
+def load_models_mnist(dataset):
+  """
+
+  :return: list of (sigma, model generator) pairs
+  """
+  assert dataset == 'mnist'
+  nn_model = NNModel(d_in=784, d_out=10)
+  nn_model.load_state_dict(torch.load(torch.load(f'models/{dataset}_model_ep4.pt')))
+
+  return [(0, [nn_model])]
 
 def main():
 

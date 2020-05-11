@@ -60,13 +60,13 @@ class SwitchWrapper(nn.Module):
 
 
 # def loss_function(prediction, true_y, S, alpha_0, hidden_dim, how_many_samps, annealing_rate):
-def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate):
+def loss_function(prediction, true_y, phi_cand, alpha_0, n_features, n_data, annealing_rate):
 
   BCE = F.binary_cross_entropy(prediction, true_y, reduction='mean')
 
   # KLD term
-  alpha_0 = torch.Tensor([alpha_0])
-  hidden_dim = torch.Tensor([hidden_dim])
+  alpha_0 = torch.tensor(alpha_0, dtype=torch.float32)
+  hidden_dim = torch.tensor(n_features, dtype=torch.float32)
 
   trm1 = torch.lgamma(torch.sum(phi_cand)) - torch.lgamma(hidden_dim*alpha_0)
   trm2 = - torch.sum(torch.lgamma(phi_cand)) + hidden_dim*torch.lgamma(alpha_0)
@@ -75,7 +75,7 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
   KLD = trm1 + trm2 + trm3
   # annealing kl-divergence term is better
 
-  return BCE + annealing_rate*KLD/how_many_samps
+  return BCE + annealing_rate * KLD / n_data
 
 
 class LogReg(nn.Module):
@@ -88,3 +88,23 @@ class LogReg(nn.Module):
 
   def load(self, weight_mat):
     self.fc.weight.data = weight_mat
+
+
+class MnistNet(nn.Module):
+  def __init__(self, selected_label=None):
+    super(MnistNet, self).__init__()
+    self.selected_label = selected_label
+    self.fc1 = nn.Linear(784, 128)
+    self.fc2 = nn.Linear(128, 10)
+
+  def forward(self, x):
+    x = torch.flatten(x, 1)
+    x = self.fc1(x)
+    x = F.relu(x)
+    x = self.fc2(x)
+    output = F.log_softmax(x, dim=1)
+    if self.selected_label is not None:
+      output = F.softmax(output, dim=1)[:, self.selected_label]
+
+    return output
+
