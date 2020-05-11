@@ -2,13 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="28ec1262-bdf4-4c1b-a007-be1bf3cb59cd" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/compute_entropy_adult.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/code.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/code.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test_Adult_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/Test_Adult_data.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/featimp_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/featimp_test.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/look_at_results_adult.py" beforeDir="false" afterPath="$PROJECT_DIR$/look_at_results_adult.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -21,8 +15,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/Bayesian_Logistic_Regression.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="405">
-              <caret line="30" column="36" selection-start-line="30" selection-start-column="36" selection-end-line="30" selection-end-column="36" />
+            <state relative-caret-position="450">
+              <caret line="33" column="42" selection-start-line="33" selection-start-column="42" selection-end-line="33" selection-end-column="42" />
             </state>
           </provider>
         </entry>
@@ -30,8 +24,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/Test_Adult_data.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="255">
-              <caret line="28" column="21" lean-forward="true" selection-start-line="28" selection-start-column="4" selection-end-line="28" selection-end-column="21" />
+            <state relative-caret-position="2985">
+              <caret line="211" selection-start-line="211" selection-end-line="211" />
               <folding>
                 <element signature="e#129#209#0" expanded="true" />
               </folding>
@@ -42,8 +36,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/featimp_test.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="209">
-              <caret line="19" lean-forward="true" selection-start-line="19" selection-end-line="19" />
+            <state relative-caret-position="406">
+              <caret line="29" column="18" lean-forward="true" selection-start-line="29" selection-start-column="18" selection-end-line="29" selection-end-column="18" />
               <folding>
                 <element signature="e#92#110#0" expanded="true" />
               </folding>
@@ -54,8 +48,11 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/visualize_adult_data.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1755">
-              <caret line="119" column="40" selection-start-line="119" selection-start-column="40" selection-end-line="119" selection-end-column="40" />
+            <state relative-caret-position="135">
+              <caret line="11" column="28" selection-start-line="11" selection-start-column="28" selection-end-line="11" selection-end-column="28" />
+              <folding>
+                <element signature="e#140#171#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -64,7 +61,7 @@
         <entry file="file://$PROJECT_DIR$/look_at_results_adult.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="240">
-              <caret line="16" lean-forward="true" selection-start-line="16" selection-end-line="16" />
+              <caret line="18" column="64" selection-start-line="18" selection-start-column="64" selection-end-line="18" selection-end-column="64" />
               <folding>
                 <element signature="e#97#128#0" expanded="true" />
               </folding>
@@ -75,8 +72,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/compute_entropy_adult.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="30">
-              <caret line="2" column="3" lean-forward="true" selection-start-line="2" selection-start-column="3" selection-end-line="2" selection-end-column="3" />
+            <state relative-caret-position="255">
+              <caret line="20" column="57" selection-start-line="20" selection-start-column="57" selection-end-line="20" selection-end-column="57" />
               <folding>
                 <element signature="e#126#157#0" expanded="true" />
               </folding>
@@ -107,18 +104,18 @@
         <option value="$PROJECT_DIR$/Bayesian_Logistic_Regression.py" />
         <option value="$PROJECT_DIR$/visualize_adult_data.py" />
         <option value="$PROJECT_DIR$/test_featimp.py" />
-        <option value="$PROJECT_DIR$/compute_entropy_adult.py" />
         <option value="$PROJECT_DIR$/look_at_results_adult.py" />
-        <option value="$PROJECT_DIR$/Test_Adult_data.py" />
         <option value="$PROJECT_DIR$/featimp_test.py" />
+        <option value="$PROJECT_DIR$/Test_Adult_data.py" />
+        <option value="$PROJECT_DIR$/compute_entropy_adult.py" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="128" />
-    <option name="y" value="230" />
+    <option name="x" value="638" />
+    <option name="y" value="23" />
     <option name="width" value="1488" />
-    <option name="height" value="1168" />
+    <option name="height" value="1392" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectView">
@@ -126,7 +123,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -148,6 +144,7 @@
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -166,7 +163,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.featimp_test">
+  <component name="RunManager" selected="Python.compute_entropy_adult">
     <configuration name="Test_Adult_data" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="code" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -303,9 +300,9 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.compute_entropy_adult" />
         <item itemvalue="Python.featimp_test" />
         <item itemvalue="Python.look_at_results_adult" />
-        <item itemvalue="Python.compute_entropy_adult" />
         <item itemvalue="Python.visualize_adult_data" />
       </list>
     </recent_temporary>
@@ -333,41 +330,40 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="128" y="230" width="1488" height="1168" extended-state="0" />
-    <editor active="true" />
+    <frame x="638" y="23" width="1488" height="1392" extended-state="0" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.28084525" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.28084525" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.68370825" visible="true" weight="0.419145" />
+      <window_info anchor="bottom" id="Run" order="2" sideWeight="0.6830266" weight="0.3576923" />
       <window_info anchor="bottom" id="Debug" order="3" sideWeight="0.49743995" weight="0.39846155" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" sideWeight="0.49953008" />
       <window_info anchor="bottom" id="Version Control" order="7" />
       <window_info anchor="bottom" id="Terminal" order="8" />
-      <window_info anchor="bottom" id="Event Log" order="9" sideWeight="0.31629175" side_tool="true" visible="true" weight="0.419145" />
+      <window_info anchor="bottom" id="Event Log" order="9" sideWeight="0.31697342" side_tool="true" weight="0.419145" />
       <window_info anchor="bottom" id="Python Console" order="10" />
       <window_info anchor="right" id="Commander" order="0" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
     </layout>
     <layout-to-restore>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.2023943" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.28084525" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.32980973" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.39957717" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.6830266" visible="true" weight="0.419145" />
+      <window_info anchor="bottom" id="Debug" order="3" sideWeight="0.49743995" weight="0.39846155" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
-      <window_info anchor="bottom" id="TODO" order="6" />
+      <window_info anchor="bottom" id="TODO" order="6" sideWeight="0.49953008" />
       <window_info anchor="bottom" id="Version Control" order="7" />
       <window_info anchor="bottom" id="Terminal" order="8" />
-      <window_info anchor="bottom" id="Event Log" order="9" side_tool="true" />
+      <window_info anchor="bottom" id="Event Log" order="9" sideWeight="0.31697342" side_tool="true" visible="true" weight="0.419145" />
       <window_info anchor="bottom" id="Python Console" order="10" />
       <window_info anchor="right" id="Commander" order="0" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
@@ -375,32 +371,31 @@
     </layout-to-restore>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/posterior mean of switches with sigma=100.png">
-      <provider selected="true" editor-type-id="images" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/visualize_adult_data.py">
+    <entry file="file://$PROJECT_DIR$/posterior mean of switches with sigma=100.png" />
+    <entry file="file://$PROJECT_DIR$/test_featimp.py" />
+    <entry file="file://$PROJECT_DIR$/Bayesian_Logistic_Regression.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1755">
-          <caret line="119" column="40" selection-start-line="119" selection-start-column="40" selection-end-line="119" selection-end-column="40" />
+        <state relative-caret-position="450">
+          <caret line="33" column="42" selection-start-line="33" selection-start-column="42" selection-end-line="33" selection-end-column="42" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/test_featimp.py">
+    <entry file="file://$PROJECT_DIR$/Test_Adult_data.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1785">
-          <caret line="127" column="68" lean-forward="true" selection-start-line="127" selection-start-column="23" selection-end-line="127" selection-end-column="68" />
+        <state relative-caret-position="2985">
+          <caret line="211" selection-start-line="211" selection-end-line="211" />
           <folding>
-            <element signature="e#92#110#0" expanded="true" />
+            <element signature="e#129#209#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/compute_entropy_adult.py">
+    <entry file="file://$PROJECT_DIR$/visualize_adult_data.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="30">
-          <caret line="2" column="3" lean-forward="true" selection-start-line="2" selection-start-column="3" selection-end-line="2" selection-end-column="3" />
+        <state relative-caret-position="135">
+          <caret line="11" column="28" selection-start-line="11" selection-start-column="28" selection-end-line="11" selection-end-column="28" />
           <folding>
-            <element signature="e#126#157#0" expanded="true" />
+            <element signature="e#140#171#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -408,34 +403,27 @@
     <entry file="file://$PROJECT_DIR$/look_at_results_adult.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="240">
-          <caret line="16" lean-forward="true" selection-start-line="16" selection-end-line="16" />
+          <caret line="18" column="64" selection-start-line="18" selection-start-column="64" selection-end-line="18" selection-end-column="64" />
           <folding>
             <element signature="e#97#128#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/Bayesian_Logistic_Regression.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="405">
-          <caret line="30" column="36" selection-start-line="30" selection-start-column="36" selection-end-line="30" selection-end-column="36" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/Test_Adult_data.py">
+    <entry file="file://$PROJECT_DIR$/compute_entropy_adult.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="255">
-          <caret line="28" column="21" lean-forward="true" selection-start-line="28" selection-start-column="4" selection-end-line="28" selection-end-column="21" />
+          <caret line="20" column="57" selection-start-line="20" selection-start-column="57" selection-end-line="20" selection-end-column="57" />
           <folding>
-            <element signature="e#129#209#0" expanded="true" />
+            <element signature="e#126#157#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/featimp_test.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="209">
-          <caret line="19" lean-forward="true" selection-start-line="19" selection-end-line="19" />
+        <state relative-caret-position="406">
+          <caret line="29" column="18" lean-forward="true" selection-start-line="29" selection-start-column="18" selection-end-line="29" selection-end-column="18" />
           <folding>
             <element signature="e#92#110#0" expanded="true" />
           </folding>

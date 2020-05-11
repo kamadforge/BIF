@@ -34,9 +34,11 @@ from data.make_synthetic_datasets import generate_data
 if  __name__ =='__main__':
 
     """ inputs """
+    # dataset = "adult" # "xor, orange_skin, or nonlinear_additive"
+    # method = "vips"
     dataset = "xor" # "xor, orange_skin, or nonlinear_additive"
     method = "nn"
-    rnd_num = 123
+    rnd_num = 0
 
     rn.seed(rnd_num)
 
@@ -93,8 +95,8 @@ if  __name__ =='__main__':
         """ stochastic version """
         tau0 = 1024
         kappa = 0.7
-        MaxIter = 20 # EM iteration
-        nu = 0.005
+        MaxIter = 200 # EM iteration
+        nu = 0.04
         S = np.int(nu*N)
         print('mini batch size is ', S)
 
@@ -171,6 +173,9 @@ if  __name__ =='__main__':
 
                         """ compute roc_curve and auc """
                         ypred = VIPS_BLR_MA.computeOdds(Xtst, Mu_theta)
+                        accuracy = (np.sum(np.round(ypred) == ytst) / len(ytst))
+                        print("iter number: ", iter)
+                        print("test accuracy: ", accuracy)
 
                 elif method=="nn":
 
