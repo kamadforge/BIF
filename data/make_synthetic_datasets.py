@@ -10,22 +10,29 @@ from scipy.stats import chi2
 
 def generate_XOR_labels(X):
 
-    sign = lambda a : (a>0)*1 - (a<0)*1
+    # sign = lambda a : (a>0)*1 - (a<0)*1
+    #
+    #
+    # mult = X[:,0]*X[:,1]
+    # signs= sign(mult)
+    #
+    # y = np.exp(signs*np.power(np.abs(X[:,0]*X[:,1]),1))
+    #
+    # #y = np.exp(X[:, 0] * X[:, 1])
+    #
+    # prob_1 = np.expand_dims(1 / (1+y) ,1)
+    # prob_0 = np.expand_dims(y / (1+y) ,1)
+    #
+    # y = np.concatenate((prob_0,prob_1), axis = 1)
+    # print(y[1:10])
 
-
-    mult = X[:,0]*X[:,1]
-    signs= sign(mult)
-
-    y = np.exp(signs*np.power(np.abs(X[:,0]*X[:,1]),1))
-
-    #y = np.exp(X[:, 0] * X[:, 1])
+    y = np.exp(X[:,0]*X[:,1])
 
     prob_1 = np.expand_dims(1 / (1+y) ,1)
     prob_0 = np.expand_dims(y / (1+y) ,1)
 
     y = np.concatenate((prob_0,prob_1), axis = 1)
 
-    print(y[1:10])
     return y
 
 def generate_orange_labels(X):
