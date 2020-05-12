@@ -17,65 +17,33 @@ from torch.distributions import Gamma
 # from data.tab_dataloader import load_cervical, load_adult, load_credit
 from torchvision import datasets, transforms
 
-from switch_model_wrapper import SwitchWrapper, loss_function, MnistNet
-import matplotlib
-matplotlib.use('Agg')  # to plot without Xserver
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
+from switch_model_wrapper import SwitchWrapper, loss_function
+from train_covtype_model import CovtypeNet, get_covtype_dataloaders
 
 
-def load_mnist_data(use_cuda, batch_size, test_batch_size):
-  kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
-  transform = transforms.Compose([transforms.ToTensor()])
-  train_data = datasets.MNIST('../data', train=True, download=True, transform=transform)
-  train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True, **kwargs)
-  test_data = datasets.MNIST('../data', train=False, transform=transforms.Compose([transform]))
-  test_loader = torch.utils.data.DataLoader(test_data, batch_size=test_batch_size, shuffle=True, **kwargs)
-  return train_loader, test_loader
 
-
-def load_models_mnist(dataset, selected_label):
+def load_models_covtype(dataset, selected_label):
   """
 
   :return: list of (sigma, model generator) pairs
   """
-  assert dataset == 'mnist'
-  nn_model = MnistNet(selected_label)
-  nn_model.load_state_dict(torch.load(f'models/{dataset}_nn_ep4.pt'))
+  nn_model = CovtypeNet(selected_label)
+  nn_model.load_state_dict(torch.load(f'models/{dataset}_nn_ep7.pt'))
 
   return [(0, [nn_model])]
-
-
-def plot_switches(switch_mat, n_rows, n_cols, save_path):
-  # normalize to fit the plot
-  switch_mat = switch_mat - np.min(switch_mat, axis=1)[:, None]
-  switch_mat = switch_mat / np.max(switch_mat, axis=1)[:, None]
-  print(np.min(switch_mat), np.max(switch_mat))
-
-  bs = switch_mat.shape[0]
-  n_to_fill = n_rows * n_cols - bs
-  mnist_mat = np.reshape(switch_mat, (bs, 28, 28))
-  fill_mat = np.zeros((n_to_fill, 28, 28))
-  mnist_mat = np.concatenate([mnist_mat, fill_mat])
-  mnist_mat_as_list = [np.split(mnist_mat[n_rows * i:n_rows * (i + 1)], n_rows) for i in range(n_cols)]
-  mnist_mat_flat = np.concatenate([np.concatenate(k, axis=1).squeeze() for k in mnist_mat_as_list], axis=1)
-
-  plt.imsave(save_path + '.png', mnist_mat_flat, cmap=cm.gray, vmin=0., vmax=1.)
 
 
 def parse_args():
   parser = argparse.ArgumentParser()
   parser.add_argument('--batch-size', type=int, default=200)
-  parser.add_argument('--test-batch-size', type=int, default=1000)
+  parser.add_argument('--test-batch-size', type=int, default=100)
   parser.add_argument('--epochs', type=int, default=2)
   parser.add_argument('--lr', type=float, default=0.1)
   parser.add_argument('--no-cuda', action='store_true', default=False)
   parser.add_argument('--seed', type=int, default=42)
-  parser.add_argument('--dataset', type=str, default='mnist')
-  parser.add_argument('--selected-label', type=int, default=0)  # label for 1-v-rest training
-  # parser.add_argument('--log-interval', type=int, default=500)
-  parser.add_argument('--n-switch-samples', type=int, default=10)
-
+  parser.add_argument('--selected-label', type=int, default=4)  # label for 1-v-rest training
+  parser.add_argument('--n-switch-samples', type=int, default=40)
+  parser.add_argument('--dataset', type=str, default='covtype')
   parser.add_argument('--save-model', action='store_true', default=False)
   return parser.parse_args()
 
@@ -83,27 +51,28 @@ def parse_args():
 def main():
 
   ar = parse_args()
+  assert ar.dataset == 'covtype'
   use_cuda = not ar.no_cuda and torch.cuda.is_available()
 
   torch.manual_seed(ar.seed)
   np.random.seed(ar.seed)
 
-  train_loader, test_loader = load_mnist_data(use_cuda, ar.batch_size, ar.test_batch_size)
+  train_loader, _ = get_covtype_dataloaders(use_cuda, ar.batch_size, ar.test_batch_size)
   # unpack data
-  n_data, n_features = 60000, 784
+  print(len(train_loader.dataset))
+  n_data, n_features = len(train_loader.dataset), 54
 
   # preparing variational inference
   alpha_0 = 0.01  # below 1 so that we encourage sparsity.
   num_repeat = 1
 
-  classifiers_list = load_models_mnist(ar.dataset, ar.selected_label)
+  classifiers_list = load_models_covtype(ar.dataset, ar.selected_label)
 
   for sigma, classifiers_gen in classifiers_list:
     posterior_mean_switch_mat = np.empty([num_repeat, n_features])
     switch_parameter_mat = np.empty([num_repeat, n_features])
 
     for repeat_idx, classifier in enumerate(classifiers_gen):
-      print(repeat_idx)
 
       model = SwitchWrapper(classifier, n_features, ar.n_switch_samples)
       optimizer = optim.Adam(model.parameters(recurse=False), lr=ar.lr)
@@ -151,7 +120,6 @@ def main():
       """ posterior mean over the switches """
       # num_samps_for_switch
       phi_est = F.softplus(torch.Tensor(estimated_params[0]))
-
       switch_parameter_mat[repeat_idx, :] = phi_est.detach().numpy()
 
       concentration_param = phi_est.view(-1, 1).repeat(1, 5000)
@@ -171,13 +139,13 @@ def main():
 
     # save a visualization of the posterior mean switches
     print(posterior_mean_switch_mat.shape)
-    vis_save_file = f'weights/{ar.dataset}_switch_vis_sig{int(sigma)}'
-    plot_switches(posterior_mean_switch_mat, posterior_mean_switch_mat.shape[0], 1, vis_save_file)
+    # vis_save_file = f'weights/{ar.dataset}_switch_vis_sig{int(sigma)}_label{ar.selected_label}'
+    # plot_switches(posterior_mean_switch_mat, vis_save_file)
 
     # save_file = 'weights/%s_switch_posterior_mean' % dataset + str(int(iter_sigmas[k]))
     # save_file_phi = 'weights/%s_switch_parameter' % dataset + str(int(iter_sigmas[k]))
-    save_file = f'weights/{ar.dataset}_switch_posterior_mean_sig{int(sigma)}'
-    save_file_phi = f'weights/{ar.dataset}_switch_parameter_sig{int(sigma)}'
+    save_file = f'weights/{ar.dataset}_switch_posterior_mean_sig{int(sigma)}_label{ar.selected_label}'
+    save_file_phi = f'weights/{ar.dataset}_switch_parameter_sig{int(sigma)}_label{ar.selected_label}'
     np.save(save_file, posterior_mean_switch_mat)
     np.save(save_file_phi, switch_parameter_mat)
 

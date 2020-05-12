@@ -102,9 +102,9 @@ class MnistNet(nn.Module):
     x = self.fc1(x)
     x = F.relu(x)
     x = self.fc2(x)
-    output = F.log_softmax(x, dim=1)
-    if self.selected_label is not None:
-      output = F.softmax(output, dim=1)[:, self.selected_label]
+    if self.selected_label is None:
+      output = F.log_softmax(x, dim=1)
+    else:
+      output = F.softmax(x, dim=1)[:, self.selected_label]
 
     return output
-
