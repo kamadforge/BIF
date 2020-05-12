@@ -85,7 +85,7 @@ def generate_data(n=100, datatype='', seed = 0, val = False):
     elif datatype == 'nonlinear_additive':
         y = generate_additive_labels(X)
 
-    elif datatype == 'switch':
+    elif datatype == 'alternating':
 
         # Construct X as a mixture of two Gaussians.
         X[:n//2,-1] += 3

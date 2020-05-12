@@ -72,25 +72,31 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
         return BCE
 
 
-def shuffle_data(y,x,how_many_samps):
+def shuffle_data(y,x,how_many_samps, datatypes=None):
+
     idx = np.random.permutation(how_many_samps)
     shuffled_y = y[idx]
     shuffled_x = x[idx,:]
-    return shuffled_y, shuffled_x
+    if datatypes is not None:
+        shuffled_datatypes = datatypes[idx]
+    else:
+        shuffle_datatypes = None
+
+    return shuffled_y, shuffled_x, shuffled_datatypes
 
 
 def get_args():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--dataset", default="nonlinear_additive") #xor, orange_skin, nonlinear_additive
+    parser.add_argument("--dataset", default="alternating") #xor, orange_skin, nonlinear_additive
     parser.add_argument("--method", default="nn")
     parser.add_argument("--num_Dir_samples", default=50, type=int)
     parser.add_argument("--alpha", default=0.01, type=float)
-    parser.add_argument("--epochs", default=20, type=int)
+    parser.add_argument("--epochs", default=2, type=int)
     parser.add_argument("--mini_batch_size", default=100, type=int)
     parser.add_argument("--point_estimate", default=False)
-    # parser.add_argument("--point_estimate", default=True)
+    parser.add_argument("--training_local", default=True)
 
     args = parser.parse_args()
 
@@ -113,7 +119,7 @@ def main():
 
 
     # load data
-    x_tot, y_tot = synthetic_data_loader(dataset)
+    x_tot, y_tot, datatypes = synthetic_data_loader(dataset)
 
     # unpack data
     N_tot, d = x_tot.shape
@@ -186,12 +192,13 @@ def main():
             # for name,par in model.named_parameters():
             #     print (name)
 
+            yTrain, xTrain, datatypesTrain = shuffle_data(y, X, how_many_samps, datatypes)
+
 
             for epoch in range(how_many_epochs):  # loop over the dataset multiple times
 
                 running_loss = 0.0
 
-                yTrain, xTrain= shuffle_data(y, X, how_many_samps)
                 annealing_rate = beta_func(epoch)
 
                 for i in range(how_many_iter):
@@ -204,7 +211,7 @@ def main():
                     optimizer.zero_grad()
 
                     # forward + backward + optimize
-                    outputs, phi_cand = model(torch.Tensor(inputs)) #100,10,150
+                    outputs, phi_cand = model(torch.Tensor(inputs), mini_batch_size) #100,10,150
 
                     if method=="vips":
                         labels = torch.squeeze(torch.Tensor(labels))
@@ -228,13 +235,79 @@ def main():
                 print('epoch number is ', epoch)
                 print('running loss is ', running_loss)
 
-            print('Finished Training')
+            print('Finished global Training')
+
+            estimated_params = list(model.parameters())
+            """ posterior mean over the switches """
+            phi_est = F.softplus(torch.Tensor(estimated_params[0]))
+            print('estimated parameters are ', phi_est.detach().numpy())
+
+            ###################################################
+
+            if args.training_local:
+
+                print("\nStarting local training")
+
+                #for epoch in range(how_many_epochs):  # loop over the dataset multiple times
+                if 1:
+
+                    running_loss = 0.0
+                    mini_batch_size =1
+
+                    annealing_rate = beta_func(epoch)
+
+                    # get the inputs
+                    inputs = xTrain[i * mini_batch_size:(i + 1) * mini_batch_size, :]
+                    labels = yTrain[i * mini_batch_size:(i + 1) * mini_batch_size]
+                    datatypes = datatypesTrain[i * mini_batch_size:(i + 1) * mini_batch_size]
+                    print("Training on:", datatypes)
+
+                    how_many_iter=5000
+
+                    for i in range(how_many_iter):
+
+                        if i % 1000 ==0:
+                            print(i)
+
+                        # zero the parameter gradients
+                        optimizer.zero_grad()
+
+                        # forward + backward + optimize
+                        outputs, phi_cand = model(torch.Tensor(inputs), mini_batch_size)  # 100,10,150
+
+                        if method == "vips":
+                            labels = torch.squeeze(torch.Tensor(labels))
+                            loss = loss_function(outputs, labels.view(-1, 1).repeat(1, num_samps_for_switch), phi_cand,
+                                                 alpha_0, hidden_dim, how_many_samps, annealing_rate, method)
+                        elif method == "nn":
+                            labels = torch.LongTensor(labels)
+                            loss = loss_function(outputs, labels, phi_cand, alpha_0, hidden_dim, how_many_samps,
+                                                 annealing_rate, method)
+                        loss.backward()
+                        optimizer.step()
+
+                        # print statistics
+                        running_loss += loss.item()
+
+                        # print(model.fc1.weight[1:5])
+                        # print(model.fc3.bias[1:5])
+                        # print(model.parameter)
+
+                    # training_loss_per_epoch[epoch] = running_loss/how_many_samps
+                    training_loss_per_epoch[epoch] = running_loss
+                    print('epoch number is ', epoch)
+                    print('running loss is ', running_loss)
+
+
 
             estimated_params = list(model.parameters())
 
             """ posterior mean over the switches """
             # num_samps_for_switch
             phi_est = F.softplus(torch.Tensor(estimated_params[0]))
+
+            print('estimated parameters are ', phi_est.detach().numpy())
+            print("-"*20)
 
             switch_parameter_mat[repeat_idx,:] = phi_est.detach().numpy()
 
@@ -251,7 +324,6 @@ def main():
 
             posterior_mean_switch_mat[repeat_idx,:] = posterior_mean_switch
             print('estimated posterior mean of Switch is', posterior_mean_switch)
-            print('estimated parameters are ', phi_est.detach().numpy())
             mean_of_means+=posterior_mean_switch
 
         print(filename, filename_phi)

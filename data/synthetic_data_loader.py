@@ -11,6 +11,7 @@ import sys
 def synthetic_data_loader(dataset):
 
     pathmain = Path(__file__).parent.parent
+    datatypes = None
 
     if dataset == "cervical":
 
@@ -59,5 +60,14 @@ def synthetic_data_loader(dataset):
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
 
+    elif dataset == "alternating":
 
-    return x_tot, y_tot
+
+        xor_dataset = np.load(os.path.join(pathmain, 'data/synthetic/alternating/dataset_alternating.npy'),
+                              allow_pickle=True)
+        x_tot = xor_dataset[()]['x']
+        y_tot = xor_dataset[()]['y']
+        datatypes = xor_dataset[()]['datatypes']
+
+
+    return x_tot, y_tot, datatypes

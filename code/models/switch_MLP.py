@@ -34,7 +34,10 @@ class Modelnn(nn.Module):
 
         return output, SstackT
 
-    def forward(self, x): # x is mini_batch_size by input_dim
+    def forward(self, x, mini_batch_size): # x is mini_batch_size by input_dim
+
+        if x.shape[0]==1:
+            dummy=0
 
         phi = F.softplus(self.parameter)
 
@@ -79,7 +82,7 @@ class Modelnn(nn.Module):
         output = self.fc4(output)
 
         # output = output.reshape(self.mini_batch_size, self.num_samps_for_switch, -1)
-        output = output.reshape(self.num_samps_for_switch, self.mini_batch_size, -1)
+        output = output.reshape(self.num_samps_for_switch, mini_batch_size, -1)
         output = output.transpose_(0,1)
         # output = torch.mean(output, 1)
 

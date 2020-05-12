@@ -34,9 +34,7 @@ from data.make_synthetic_datasets import generate_data
 if  __name__ =='__main__':
 
     """ inputs """
-    # dataset = "adult" # "xor, orange_skin, or nonlinear_additive"
-    # method = "vips"
-    dataset = "nonlinear_additive" # "xor, orange_skin, or nonlinear_additive"
+    dataset = "alternating" # "xor, orange_skin, or nonlinear_additive"
     method = "nn"
     rnd_num = 0
 
@@ -72,6 +70,11 @@ if  __name__ =='__main__':
         y_tot = np.argmax(y_tot, axis=1)
         dataset_tosave = {'x': x_tot, 'y': y_tot}
         np.save('../data/synthetic/nonlinear_additive/dataset_nonlinear_additive.npy', dataset_tosave)
+    elif dataset == "alternating":
+        x_tot, y_tot, datatypes = generate_data(10000, 'alternating')
+        y_tot = np.argmax(y_tot, axis=1)
+        dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
+        np.save('../data/synthetic/alternating/dataset_alternating.npy', dataset_tosave)
 
 
     ####################################
