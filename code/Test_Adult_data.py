@@ -36,7 +36,7 @@ if  __name__ =='__main__':
     """ inputs """
     # dataset = "adult" # "xor, orange_skin, or nonlinear_additive"
     # method = "vips"
-    dataset = "xor" # "xor, orange_skin, or nonlinear_additive"
+    dataset = "nonlinear_additive" # "xor, orange_skin, or nonlinear_additive"
     method = "nn"
     rnd_num = 0
 

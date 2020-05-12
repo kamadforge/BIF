@@ -83,7 +83,7 @@ def get_args():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--dataset", default="xor") #xor
+    parser.add_argument("--dataset", default="nonlinear_additive") #xor, orange_skin, nonlinear_additive
     parser.add_argument("--method", default="nn")
     parser.add_argument("--num_Dir_samples", default=50, type=int)
     parser.add_argument("--alpha", default=0.01, type=float)
