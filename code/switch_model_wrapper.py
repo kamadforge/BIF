@@ -34,7 +34,7 @@ class SwitchWrapper(nn.Module):
     if self.point_estimate:
       S = phi / torch.sum(phi)
       x = x * S
-      model_out = self.trained_model(x) # just batch size
+      model_out = self.trained_model(x)  # just batch size
 
     else:
 
