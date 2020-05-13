@@ -130,6 +130,9 @@ class Model_switchlearning(nn.Module):
         self.phi_fc2 = nn.Linear(100,100)
         self.phi_fc3 = nn.Linear(100, input_num) #outputs switch values
 
+        self.fc1_bn1 = nn.BatchNorm1d(100)
+        self.fc2_bn2 = nn.BatchNorm1d(100)
+
         #self.W = LR_model
         self.parameter = Parameter(-1e-10*torch.ones(input_num),requires_grad=True)
         self.num_samps_for_switch = num_samps_for_switch
@@ -171,7 +174,9 @@ class Model_switchlearning(nn.Module):
 
 
         output = self.phi_fc1(x)
+        output = self.fc1_bn1(output)
         output = nn.functional.relu(self.phi_fc2(output))
+        output = self.fc2_bn2(output)
         phi_parameter = self.phi_fc3(output)
 
         phi = F.softplus(phi_parameter.mean(dim=0))
