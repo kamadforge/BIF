@@ -157,19 +157,18 @@ class Model_switchlearning(nn.Module):
 
     def forward(self, x, mini_batch_size): # x is mini_batch_size by input_dim
 
-        if x.shape[0]==1:
-            dummy=0
-
         output = self.phi_fc1(x)
         output = self.fc1_bn1(output)
         output = nn.functional.relu(self.phi_fc2(output))
         output = self.fc2_bn2(output)
         phi_parameter = self.phi_fc3(output)
 
-        phi = F.softplus(phi_parameter.mean(dim=0))
+        # phi = F.softplus(phi_parameter.mean(dim=0))
+        phi = F.softplus(phi_parameter) # now the size of phi is mini_batch by input_dim
 
         if self.point_estimate:
-            S = phi / torch.sum(phi)
+            # S = phi / torch.sum(phi)
+            S = phi/torch.sum(phi,dim=1).unsqueeze(dim=1)
             output = x * S
 
         output = self.fc1(output) # samples*batchsize, dimension
@@ -182,5 +181,5 @@ class Model_switchlearning(nn.Module):
             output = output.reshape(self.num_samps_for_switch, mini_batch_size, -1)
             output = output.transpose_(0,1)
 
-        return output, phi
+        return output, phi, S
 
