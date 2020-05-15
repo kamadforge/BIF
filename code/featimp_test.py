@@ -73,10 +73,11 @@ def get_args():
     parser.add_argument("--point_estimate", default=True)
 
     # for instance wise training
-    parser.add_argument("--switch_nn", default=False)
+    parser.add_argument("--switch_nn", default=True)
     parser.add_argument("--training_local", default=True)
     parser.add_argument("--local_training_iter", default=200, type=int)
     parser.add_argument("--set_hooks", default=True)
+    parser.add_argument("--kl_term", default=True)
 
     args = parser.parse_args()
 
@@ -88,7 +89,7 @@ args = get_args()
 #######################
 # LOSS
 
-def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method):
+def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method, kl_term):
 
     if method=="vips":
         BCE = F.binary_cross_entropy(prediction, true_y, reduction='mean')
@@ -108,21 +109,23 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
         else:
             BCE = loss(prediction, true_y)
 
-        # # KLD term
-        # alpha_0 = torch.Tensor([alpha_0])
-        # hidden_dim = torch.Tensor([hidden_dim])
-        #
-        # trm1 = torch.lgamma(torch.sum(phi_cand)) - torch.lgamma(hidden_dim*alpha_0)
-        # trm2 = - torch.sum(torch.lgamma(phi_cand)) + hidden_dim*torch.lgamma(alpha_0)
-        # trm3 = torch.sum((phi_cand-alpha_0)*(torch.digamma(phi_cand)-torch.digamma(torch.sum(phi_cand))))
-        #
-        # KLD = trm1 + trm2 + trm3
-        # # annealing kl-divergence term is better
-        #
-        # #KLD=0 #just to check
-        #
-        # return BCE + annealing_rate*KLD/how_many_samps
-        return BCE
+        if kl_term:
+            # KLD term
+            alpha_0 = torch.Tensor([alpha_0])
+            hidden_dim = torch.Tensor([hidden_dim])
+
+            trm1 = torch.lgamma(torch.sum(phi_cand)) - torch.lgamma(hidden_dim*alpha_0)
+            trm2 = - torch.sum(torch.lgamma(phi_cand)) + hidden_dim*torch.lgamma(alpha_0)
+            trm3 = torch.sum((phi_cand-alpha_0)*(torch.digamma(phi_cand)-torch.digamma(torch.sum(phi_cand))))
+
+            KLD = trm1 + trm2 + trm3
+
+            return BCE + + annealing_rate*KLD/how_many_samps
+
+        else:
+
+            return BCE
+
 
 
 
@@ -151,8 +154,11 @@ def main():
     point_estimate = args.point_estimate
 
     if method == "nn":
-        from models.switch_MLP import Modelnn
-        from models.switch_MLP import Model_switchlearning
+        if args.switch_nn:
+            from models.switch_MLP import Model_switchlearning
+        else:
+            from models.switch_MLP import Modelnn
+
     elif method=="vips":
         from models.switch_LR import Model
 
@@ -211,7 +217,6 @@ def main():
         mean_of_means=np.zeros(input_dim)
 
 
-
         for repeat_idx in range(num_repeat):
             print(repeat_idx)
 
@@ -222,11 +227,13 @@ def main():
                     model = Modelnn(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
                 else:
                     model = Model_switchlearning(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
-                model.load_state_dict(LR_model[()][repeat_idx], strict=False)
+
 
                 # hooks to not update other parameters than switch-related
-                #
                 if args.set_hooks:
+                    # in case you use pre-trained classifier
+                    model.load_state_dict(LR_model[()][repeat_idx], strict=False)
+
                     h = model.fc1.weight.register_hook(lambda grad: grad * 0)
                     h = model.fc2.weight.register_hook(lambda grad: grad * 0)
                     h = model.fc4.weight.register_hook(lambda grad: grad * 0)
@@ -275,7 +282,7 @@ def main():
                         loss = loss_function(outputs, labels.view(-1, 1).repeat(1, num_samps_for_switch), phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method)
                     elif method == "nn":
                         labels = torch.squeeze(torch.LongTensor(labels))
-                        loss = loss_function(outputs, labels, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method)
+                        loss = loss_function(outputs, labels, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method, args.kl_term)
 
                     loss.backward()
                     optimizer.step()
