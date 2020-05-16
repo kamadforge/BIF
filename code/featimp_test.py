@@ -228,11 +228,12 @@ def main():
                 else:
                     model = Model_switchlearning(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
 
+                model.load_state_dict(LR_model[()][repeat_idx], strict=False)
 
                 # hooks to not update other parameters than switch-related
                 if args.set_hooks:
                     # in case you use pre-trained classifier
-                    model.load_state_dict(LR_model[()][repeat_idx], strict=False)
+
 
                     h = model.fc1.weight.register_hook(lambda grad: grad * 0)
                     h = model.fc2.weight.register_hook(lambda grad: grad * 0)
