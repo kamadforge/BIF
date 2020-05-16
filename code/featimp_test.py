@@ -62,21 +62,21 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="orange_skin") #xor, orange_skin, nonlinear_additive, alternating
+    parser.add_argument("--dataset", default="alternating") #xor, orange_skin, nonlinear_additive, alternating
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
-    parser.add_argument("--epochs", default=30, type=int)
+    parser.add_argument("--epochs", default=50, type=int)
 
     # for switch training
     parser.add_argument("--num_Dir_samples", default=50, type=int)
     parser.add_argument("--alpha", default=0.01, type=float)
     parser.add_argument("--point_estimate", default=True)
 
-    parser.add_argument("--mode", default="training")
+    parser.add_argument("--mode", default="test") #training, test
 
     # for instance wise training
     parser.add_argument("--switch_nn", default=True)
-    parser.add_argument("--training_local", default=True)
+    parser.add_argument("--training_local", default=False)
     parser.add_argument("--local_training_iter", default=200, type=int)
     parser.add_argument("--set_hooks", default=True)
     parser.add_argument("--kl_term", default=False)
@@ -208,6 +208,7 @@ def main():
 
         for k in range(iter_sigmas.shape[0]):
 
+            #load pretrained model
             LR_model = np.load(os.path.join(path_code, 'models/%s_%s_LR_model' % (dataset, method) + str(int(iter_sigmas[k])) + '.npy'), allow_pickle=True)
 
             filename = os.path.join(path_code, 'weights/%s_%d_%.1f_%d_switch_posterior_mean' % (dataset, args.num_Dir_samples, args.alpha, args.epochs)+str(int(iter_sigmas[k])))
@@ -220,7 +221,8 @@ def main():
             mean_of_means=np.zeros(input_dim)
 
 
-
+        ############################################3
+        # TRAINING
 
             for repeat_idx in range(num_repeat):
                 print(repeat_idx)
@@ -299,6 +301,7 @@ def main():
                         if i % how_many_iter ==0:
                             phis = phi_cand / torch.sum(phi_cand)
                             print("switch: ", phis.mean(dim=0))
+                            print("switch: ", phis[1:4])
 
                     # training_loss_per_epoch[epoch] = running_loss/how_many_samps
 
@@ -431,8 +434,8 @@ def main():
 
                 path = f"models/switches_{dataset}_switch_nn_{switch_nn}_local_{training_local}.pt"
 
-                i = 5  # choose a sample
-                mini_batch_size = 1
+                i = 49  # choose a sample
+                mini_batch_size = 5
 
                 if switch_nn==False:
                     model = Modelnn(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
@@ -452,10 +455,11 @@ def main():
                 model.eval()
                 print(datatypes_test_samp)
                 outputs, phi, S, phi_est = model(inputs_test_samp, mini_batch_size)
+                torch.set_printoptions(profile="full")
                 print("outputs", outputs)
                 print("phi", phi)
 
-            test_instance("xor", True, False)
+            test_instance("alternating", True, False)
 
 
 
