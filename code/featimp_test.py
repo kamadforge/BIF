@@ -62,7 +62,7 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="alternating") #xor, orange_skin, nonlinear_additive, alternating
+    parser.add_argument("--dataset", default="nonlinear_additive") #xor, orange_skin, nonlinear_additive, alternating
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
     parser.add_argument("--epochs", default=30, type=int)
@@ -77,7 +77,7 @@ def get_args():
     parser.add_argument("--training_local", default=True)
     parser.add_argument("--local_training_iter", default=200, type=int)
     parser.add_argument("--set_hooks", default=True)
-    parser.add_argument("--kl_term", default=True)
+    parser.add_argument("--kl_term", default=False)
 
     args = parser.parse_args()
 
@@ -275,7 +275,7 @@ def main():
                     optimizer.zero_grad()
 
                     # forward + backward + optimize
-                    outputs, phi_cand = model(torch.Tensor(inputs), mini_batch_size) #100,10,150
+                    outputs, phi_cand, S, prephi = model(torch.Tensor(inputs), mini_batch_size) #100,10,150
 
                     if method=="vips":
                         labels = torch.squeeze(torch.Tensor(labels))
@@ -291,7 +291,8 @@ def main():
                     running_loss += loss.item()
 
                     if i % how_many_iter ==0:
-                        print("switch: ", phi_cand / torch.sum(phi_cand))
+                        phis = phi_cand / torch.sum(phi_cand)
+                        print("switch: ", phis.mean(dim=0))
 
                 # training_loss_per_epoch[epoch] = running_loss/how_many_samps
 
