@@ -50,7 +50,7 @@ def get_args():
 
     parser.add_argument("--dataset", default="alternating") #xor, orange_skin, nonlinear_additive, alternating
     parser.add_argument("--mini_batch_size", default=200, type=int)
-    parser.add_argument("--epochs", default=200, type=int)
+    parser.add_argument("--epochs", default=500, type=int)
     parser.add_argument("--alpha", default=0.001, type=float)
     parser.add_argument("--kl_term", default=True)
     parser.add_argument("--num_Dir_samples", default=0, type=int)
@@ -60,7 +60,7 @@ def get_args():
 
     return args
 
-def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, kl_term):
+def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, kl_term, pre_phi):
 
     loss = nn.CrossEntropyLoss()
 
@@ -71,7 +71,7 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
         alpha_0 = torch.Tensor([alpha_0])
         hidden_dim = torch.Tensor([hidden_dim])
 
-        # mini_batch_size = phi_cand.shape[0]
+        mini_batch_size = phi_cand.shape[0]
         # KL_mat = torch.zeros(mini_batch_size)
         # for i in torch.arange(0,mini_batch_size):
         #     phi = phi_cand[i,:]
@@ -82,19 +82,24 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
         #     KL_mat[i] = trm1 + trm2 + trm3
         #
 
-        trm1_mul = torch.lgamma(torch.sum(phi_cand, dim=1)) - torch.lgamma(hidden_dim * alpha_0)
-        trm2_mul = - torch.sum(torch.lgamma(phi_cand), dim=1) + hidden_dim * torch.lgamma(alpha_0)
-        trm3_mul = torch.sum((phi_cand - alpha_0) * (torch.digamma(phi_cand) - torch.digamma(torch.sum(phi_cand,dim=1)).unsqueeze(dim=1)), dim=1)
+        # trm1_mul = torch.lgamma(torch.sum(phi_cand, dim=1)) - torch.lgamma(hidden_dim * alpha_0)
+        # trm2_mul = - torch.sum(torch.lgamma(phi_cand), dim=1) + hidden_dim * torch.lgamma(alpha_0)
+        # trm3_mul = torch.sum((phi_cand - alpha_0) * (torch.digamma(phi_cand) - torch.digamma(torch.sum(phi_cand,dim=1)).unsqueeze(dim=1)), dim=1)
+        #
+        # KL_mul = trm1_mul + trm2_mul + trm3_mul
+        # KLD = torch.mean(KL_mul)
 
-        KL_mul = trm1_mul + trm2_mul + trm3_mul
-        KLD = torch.mean(KL_mul)
-
-        # return BCE + annealing_rate*KLD/how_many_samps
         # print('KLD and BCE', [KLD, BCE])
-        # print('BCE', BCE)
 
         # return BCE + KLD
-        return BCE + annealing_rate * KLD
+        # return BCE + annealing_rate*KLD/how_many_samps
+        # return BCE + annealing_rate * KLD
+
+        # test L1 norm
+        L1norm_phi = torch.sum(torch.abs(phi_cand))/mini_batch_size/hidden_dim
+        # L1norm_phi = torch.sum(torch.abs(pre_phi)) / mini_batch_size / hidden_dim
+        # print('L1norm and BCE', [L1norm_phi, BCE])
+        return BCE + 10*L1norm_phi
 
     else:
 
@@ -205,10 +210,10 @@ def main():
                     optimizer.zero_grad()
 
                     # forward + backward + optimize
-                    outputs, phi_cand, S_cand = model(torch.Tensor(inputs), mini_batch_size) #100,10,150
+                    outputs, phi_cand, S_cand, pre_phi = model(torch.Tensor(inputs), mini_batch_size) #100,10,150
 
                     labels = torch.squeeze(torch.LongTensor(labels))
-                    loss = loss_function(outputs, labels, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, args.kl_term)
+                    loss = loss_function(outputs, labels, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, args.kl_term, pre_phi=pre_phi)
 
                     loss.backward()
                     optimizer.step()
@@ -216,8 +221,8 @@ def main():
                     # print statistics
                     running_loss += loss.item()
 
-                    if i % how_many_iter ==0:
-                        print("switch: ", S_cand[0,:])
+                    # if i % how_many_iter ==0:
+                    #     print("switch: ", S_cand[0,:])
 
                 # training_loss_per_epoch[epoch] = running_loss/how_many_samps
 
@@ -247,7 +252,7 @@ def main():
 
             inputs_test_samp = torch.Tensor(inputs_test_samp)
 
-            pred_label, phi_estimate, S_estimate = model.forward(inputs_test_samp, mini_batch_size)
+            pred_label, phi_estimate, S_estimate, pre_phi_est = model.forward(inputs_test_samp, mini_batch_size)
             print('true test labels:', labels_test_samp)
             print('pred labels: ', torch.argmax(pred_label, dim=1).detach().numpy())
             print('estimated switches are:', S_estimate)
