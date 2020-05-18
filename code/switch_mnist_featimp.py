@@ -24,12 +24,12 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
 
-def load_mnist_data(use_cuda, batch_size, test_batch_size):
+def load_mnist_data(use_cuda, batch_size, test_batch_size, data_path='../data'):
   kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
   transform = transforms.Compose([transforms.ToTensor()])
-  train_data = datasets.MNIST('../data', train=True, download=True, transform=transform)
+  train_data = datasets.MNIST(data_path, train=True, download=True, transform=transform)
   train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True, **kwargs)
-  test_data = datasets.MNIST('../data', train=False, transform=transforms.Compose([transform]))
+  test_data = datasets.MNIST(data_path, train=False, transform=transforms.Compose([transform]))
   test_loader = torch.utils.data.DataLoader(test_data, batch_size=test_batch_size, shuffle=True, **kwargs)
   return train_loader, test_loader
 
@@ -67,7 +67,7 @@ def parse_args():
   parser = argparse.ArgumentParser()
   parser.add_argument('--batch-size', type=int, default=200)
   parser.add_argument('--test-batch-size', type=int, default=1000)
-  parser.add_argument('--epochs', type=int, default=20)
+  parser.add_argument('--epochs', type=int, default=3)
   parser.add_argument('--lr', type=float, default=0.1)
   parser.add_argument('--no-cuda', action='store_true', default=False)
   parser.add_argument('--seed', type=int, default=42)
@@ -75,11 +75,11 @@ def parse_args():
   parser.add_argument('--selected-label', type=int, default=3)  # label for 1-v-rest training
   # parser.add_argument('--log-interval', type=int, default=500)
   parser.add_argument('--n-switch-samples', type=int, default=10)
-  parser.add_argument('--alpha_0', type=int, default=0.1)
 
   parser.add_argument('--save-model', action='store_true', default=False)
-  parser.add_argument("--point_estimate", default=False)
-  parser.add_argument("--KL_reg", default=False)
+  parser.add_argument("--point_estimate", default=True)
+  parser.add_argument("--KL_reg", default=True)
+  parser.add_argument('--alpha_0', type=float, default=50000.)
 
   return parser.parse_args()
 
@@ -98,7 +98,7 @@ def main():
 
   # preparing variational inference
   # alpha_0 = 0.01  # below 1 so that we encourage sparsity.
-  alpha_0 = ar.alpha_0
+  # alpha_0 = ar.alpha_0
   num_repeat = 1
 
   classifiers_list = load_models_mnist(ar.dataset, ar.selected_label)
@@ -113,9 +113,7 @@ def main():
       model = SwitchWrapper(classifier, n_features, ar.n_switch_samples, ar.point_estimate)
       optimizer = optim.Adam(model.parameters(recurse=False), lr=ar.lr)
       # optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-
       training_loss_per_epoch = np.zeros(ar.epochs)
-
       annealing_steps = float(8000. * ar.epochs)
 
       def beta_func(s):
@@ -129,11 +127,11 @@ def main():
 
         for x_batch, y_batch in train_loader:
           x_batch = x_batch.reshape(x_batch.shape[0], -1)
+          y_batch = (y_batch == ar.selected_label).to(torch.float32)
 
           # zero the parameter gradients
           optimizer.zero_grad()
           # print(y_batch)
-          y_batch = (y_batch == ar.selected_label).to(torch.float32)
           # print(y_batch)
 
           # forward + backward + optimize
@@ -142,7 +140,7 @@ def main():
             labels = y_batch[:, None].repeat(1, ar.n_switch_samples)
           else:
             labels = y_batch
-          loss = loss_function(outputs, labels, phi_cand, alpha_0, n_features, n_data, annealing_rate, ar.KL_reg)
+          loss = loss_function(outputs, labels, phi_cand, ar.alpha_0, n_features, n_data, annealing_rate, ar.KL_reg)
           loss.backward()
           optimizer.step()
 
@@ -169,7 +167,6 @@ def main():
         print('estimated switches for the top five important input pixels', np.flip(sorted_switch[-5:]))
 
       else:
-
         switch_parameter_mat[repeat_idx, :] = phi_est.detach().numpy()
 
         concentration_param = phi_est.view(-1, 1).repeat(1, 5000)
@@ -191,7 +188,8 @@ def main():
 
     # save a visualization of the posterior mean switches
     print(posterior_mean_switch_mat.shape)
-    vis_save_file = f'weights/{ar.dataset}_switch_vis_sig{int(sigma)}'
+    kl_str = '' if not ar.KL_reg else f'_alpha{ar.alpha_0}'
+    vis_save_file = f'weights/{ar.dataset}_switch_vis_sig{int(sigma)}_label{ar.selected_label}_lr{ar.lr}{kl_str}'
     plot_switches(posterior_mean_switch_mat, posterior_mean_switch_mat.shape[0], 1, vis_save_file)
 
     # save_file = 'weights/%s_switch_posterior_mean' % dataset + str(int(iter_sigmas[k]))
@@ -204,5 +202,3 @@ def main():
 
 if __name__ == '__main__':
   main()
-
-

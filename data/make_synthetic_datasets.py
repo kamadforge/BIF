@@ -56,7 +56,6 @@ def generate_additive_labels(X):
     return y
 
 
-
 def generate_data(n=100, datatype='', seed = 0, val = False):
     """
     Generate data (X,y)

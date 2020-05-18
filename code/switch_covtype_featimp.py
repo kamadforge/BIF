@@ -27,7 +27,7 @@ def load_models_covtype(dataset, selected_label):
 
   :return: list of (sigma, model generator) pairs
   """
-  nn_model = CovtypeNet(selected_label)
+  nn_model = CovtypeNet(d_in=54, selected_label=selected_label)
   nn_model.load_state_dict(torch.load(f'models/{dataset}_nn_ep7.pt'))
 
   return [(0, [nn_model])]
@@ -37,14 +37,19 @@ def parse_args():
   parser = argparse.ArgumentParser()
   parser.add_argument('--batch-size', type=int, default=200)
   parser.add_argument('--test-batch-size', type=int, default=100)
-  parser.add_argument('--epochs', type=int, default=2)
+  parser.add_argument('--epochs', type=int, default=4)
   parser.add_argument('--lr', type=float, default=0.1)
   parser.add_argument('--no-cuda', action='store_true', default=False)
   parser.add_argument('--seed', type=int, default=42)
-  parser.add_argument('--selected-label', type=int, default=4)  # label for 1-v-rest training
+  parser.add_argument('--selected-label', type=int, default=6)  # label for 1-v-rest training
   parser.add_argument('--n-switch-samples', type=int, default=40)
   parser.add_argument('--dataset', type=str, default='covtype')
   parser.add_argument('--save-model', action='store_true', default=False)
+
+  parser.add_argument("--point_estimate", default=True)
+  parser.add_argument("--KL_reg", default=True)
+  parser.add_argument('--alpha_0', type=float, default=0.01)
+
   return parser.parse_args()
 
 
@@ -63,7 +68,7 @@ def main():
   n_data, n_features = len(train_loader.dataset), 54
 
   # preparing variational inference
-  alpha_0 = 0.01  # below 1 so that we encourage sparsity.
+  # alpha_0 = 0.01  # below 1 so that we encourage sparsity.
   num_repeat = 1
 
   classifiers_list = load_models_covtype(ar.dataset, ar.selected_label)
@@ -74,7 +79,7 @@ def main():
 
     for repeat_idx, classifier in enumerate(classifiers_gen):
 
-      model = SwitchWrapper(classifier, n_features, ar.n_switch_samples)
+      model = SwitchWrapper(classifier, n_features, ar.n_switch_samples, ar.point_estimate)
       optimizer = optim.Adam(model.parameters(recurse=False), lr=ar.lr)
 
       training_loss_per_epoch = np.zeros(ar.epochs)
@@ -101,8 +106,9 @@ def main():
 
           # forward + backward + optimize
           outputs, phi_cand = model(x_batch)  # 100,10,150
-          labels = y_batch[:, None].repeat(1, ar.n_switch_samples)
-          loss = loss_function(outputs, labels, phi_cand, alpha_0, n_features, n_data, annealing_rate)
+          labels = y_batch[:, None].repeat(1, ar.n_switch_samples) if not ar.point_estimate else y_batch
+
+          loss = loss_function(outputs, labels, phi_cand, ar.alpha_0, n_features, n_data, annealing_rate, ar.KL_reg)
           loss.backward()
           optimizer.step()
 
