@@ -2,6 +2,18 @@
 Test learning feature importance under DP and non-DP models
 """
 
+# For instancewise training one can do two things:
+
+# 1. train the switch vector by backpropagation (the original way) and then finetune on one example (local training)
+#  set training_local to True
+#  set switch_nn to False
+
+# 2. Train the switch network which outputs the switch parameters (phi) and feeds them on the classifier
+# set switch_nn to True
+# possibly set_hooks to False
+# set training_local to False
+
+
 __author__ = 'mijung'
 
 import numpy as np
@@ -21,6 +33,10 @@ import os
 import socket
 from data.synthetic_data_loader import synthetic_data_loader
 
+
+########################################
+# PATH
+
 cwd = os.getcwd()
 cwd_parent = Path(__file__).parent.parent
 if 'g0' in socket.gethostname() or 'p0' in socket.gethostname():
@@ -37,20 +53,33 @@ else:
     pathmain=cwd_parent
     path_code=cwd
 
+##################################################3
+# ARGUMENTS
+
 
 def get_args():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--dataset", default="xor") #xor, orange_skin, nonlinear_additive
+    # general
+    parser.add_argument("--dataset", default="alternating") #xor, orange_skin, nonlinear_additive, alternating
     parser.add_argument("--method", default="nn")
-    parser.add_argument("--switch_nn", default=True)
+    parser.add_argument("--mini_batch_size", default=110, type=int)
+    parser.add_argument("--epochs", default=50, type=int)
+
+    # for switch training
     parser.add_argument("--num_Dir_samples", default=50, type=int)
     parser.add_argument("--alpha", default=0.01, type=float)
-    parser.add_argument("--epochs", default=50, type=int)
-    parser.add_argument("--mini_batch_size", default=110, type=int)
     parser.add_argument("--point_estimate", default=True)
+
+    parser.add_argument("--mode", default="test") #training, test
+
+    # for instance wise training
+    parser.add_argument("--switch_nn", default=True)
     parser.add_argument("--training_local", default=False)
+    parser.add_argument("--local_training_iter", default=200, type=int)
+    parser.add_argument("--set_hooks", default=True)
+    parser.add_argument("--kl_term", default=False)
 
     args = parser.parse_args()
 
@@ -59,7 +88,10 @@ def get_args():
 args = get_args()
 
 
-def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method):
+#######################
+# LOSS
+
+def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method, kl_term):
 
     if method=="vips":
         BCE = F.binary_cross_entropy(prediction, true_y, reduction='mean')
@@ -79,21 +111,25 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
         else:
             BCE = loss(prediction, true_y)
 
-        # # KLD term
-        # alpha_0 = torch.Tensor([alpha_0])
-        # hidden_dim = torch.Tensor([hidden_dim])
-        #
-        # trm1 = torch.lgamma(torch.sum(phi_cand)) - torch.lgamma(hidden_dim*alpha_0)
-        # trm2 = - torch.sum(torch.lgamma(phi_cand)) + hidden_dim*torch.lgamma(alpha_0)
-        # trm3 = torch.sum((phi_cand-alpha_0)*(torch.digamma(phi_cand)-torch.digamma(torch.sum(phi_cand))))
-        #
-        # KLD = trm1 + trm2 + trm3
-        # # annealing kl-divergence term is better
-        #
-        # #KLD=0 #just to check
-        #
-        # return BCE + annealing_rate*KLD/how_many_samps
-        return BCE
+        if kl_term:
+            # KLD term
+            alpha_0 = torch.Tensor([alpha_0])
+            hidden_dim = torch.Tensor([hidden_dim])
+
+            trm1 = torch.lgamma(torch.sum(phi_cand)) - torch.lgamma(hidden_dim*alpha_0)
+            trm2 = - torch.sum(torch.lgamma(phi_cand)) + hidden_dim*torch.lgamma(alpha_0)
+            trm3 = torch.sum((phi_cand-alpha_0)*(torch.digamma(phi_cand)-torch.digamma(torch.sum(phi_cand))))
+
+            KLD = trm1 + trm2 + trm3
+
+            return BCE + + annealing_rate*KLD/how_many_samps
+
+        else:
+
+            return BCE
+
+
+
 
 
 def shuffle_data(y,x,how_many_samps, datatypes=None):
@@ -102,13 +138,13 @@ def shuffle_data(y,x,how_many_samps, datatypes=None):
     shuffled_y = y[idx]
     shuffled_x = x[idx,:]
     if datatypes is None:
-        shuffle_datatypes = None
+        shuffled_datatypes = None
     else:
         shuffled_datatypes = datatypes[idx]
 
-    return shuffled_y, shuffled_x, shuffle_datatypes
+    return shuffled_y, shuffled_x, shuffled_datatypes
 
-
+#######################################################
 
 
 def main():
@@ -120,15 +156,19 @@ def main():
     point_estimate = args.point_estimate
 
     if method == "nn":
-        from models.switch_MLP import Modelnn
-        from models.switch_MLP import Model_switchlearning
+        if args.switch_nn:
+            from models.switch_MLP import Model_switchlearning
+        else:
+            from models.switch_MLP import Modelnn
+
     elif method=="vips":
         from models.switch_LR import Model
 
 
     ###########################################33
-    # load data
-    x_tot, y_tot, datatypes = synthetic_data_loader(dataset)
+    # LOAD DATA
+
+    x_tot, y_tot, datatypes_tot = synthetic_data_loader(dataset)
 
     # unpack data
     N_tot, d = x_tot.shape
@@ -139,238 +179,339 @@ def main():
 
     X = x_tot[:N, :]
     y = y_tot[:N]
+    if dataset == "alternating":
+        datatypes = datatypes_tot[:N] #only for alternating, if datatype comes from orange_skin or nonlinear
+    else:
+        datatypes = None
+
+    X_test = x_tot[N:, :]
+    y_test = y_tot[N:]
+    if dataset == "alternating":
+        datatypes_test = datatypes_tot[N:]
 
     input_dim = d
     hidden_dim = input_dim
     how_many_samps = N
 
     #######################################################
-    # preparing variational inference
-    alpha_0 = args.alpha #0.01 # below 1 so that we encourage sparsity.
-    num_samps_for_switch = args.num_Dir_samples
+    # preparing variational inference to learn switch vector
 
-    num_repeat = 1
+    alpha_0 = args.alpha #0.01 # below 1 so that we encourage sparsity. #dirichlet dist parameters
+    num_samps_for_switch = args.num_Dir_samples
+    num_repeat = 1 # repeating the entire experiment
+
+    # noise
     # iter_sigmas = np.array([0., 1., 10., 50., 100.])
     iter_sigmas = np.array([0.])
 
+    if args.mode == "training":
+
+        for k in range(iter_sigmas.shape[0]):
+
+            #load pretrained model
+            LR_model = np.load(os.path.join(path_code, 'models/%s_%s_LR_model' % (dataset, method) + str(int(iter_sigmas[k])) + '.npy'), allow_pickle=True)
+
+            filename = os.path.join(path_code, 'weights/%s_%d_%.1f_%d_switch_posterior_mean' % (dataset, args.num_Dir_samples, args.alpha, args.epochs)+str(int(iter_sigmas[k])))
+            filename_last = os.path.join(path_code, 'weights/%s_switch_posterior_mean' % (dataset)+str(int(iter_sigmas[k])))
+            filename_phi = os.path.join(path_code, 'weights/%s_%d_%.1f_%d_switch_parameter' % (dataset, args.num_Dir_samples, args.alpha, args.epochs)+ str(int(iter_sigmas[k])))
+
+            posterior_mean_switch_mat = np.empty([num_repeat, input_dim])
+            switch_parameter_mat = np.empty([num_repeat, input_dim])
+
+            mean_of_means=np.zeros(input_dim)
 
 
+        ############################################3
+        # TRAINING
 
-    for k in range(iter_sigmas.shape[0]):
+            for repeat_idx in range(num_repeat):
+                print(repeat_idx)
 
-        LR_model = np.load(os.path.join(path_code, 'models/%s_%s_LR_model' % (dataset, method) + str(int(iter_sigmas[k])) + '.npy'), allow_pickle=True)
+                if method=="vips":
+                    model = Model(input_dim=input_dim, LR_model=torch.Tensor(LR_model[repeat_idx,:]), num_samps_for_switch=num_samps_for_switch)
+                elif method=="nn":
+                    if args.switch_nn==False:
+                        model = Modelnn(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
+                    else:
+                        model = Model_switchlearning(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
 
-        filename = os.path.join(path_code, 'weights/%s_%d_%.1f_%d_switch_posterior_mean' % (dataset, args.num_Dir_samples, args.alpha, args.epochs)+str(int(iter_sigmas[k])))
-        filename_last = os.path.join(path_code, 'weights/%s_switch_posterior_mean' % (dataset)+str(int(iter_sigmas[k])))
-        filename_phi = os.path.join(path_code, 'weights/%s_%d_%.1f_%d_switch_parameter' % (dataset, args.num_Dir_samples, args.alpha, args.epochs)+ str(int(iter_sigmas[k])))
+                    model.load_state_dict(LR_model[()][repeat_idx], strict=False)
 
-        posterior_mean_switch_mat = np.empty([num_repeat, input_dim])
-        switch_parameter_mat = np.empty([num_repeat, input_dim])
-
-        mean_of_means=np.zeros(input_dim)
-        for repeat_idx in range(num_repeat):
-            print(repeat_idx)
-            if method=="vips":
-
-                model = Model(input_dim=input_dim, LR_model=torch.Tensor(LR_model[repeat_idx,:]), num_samps_for_switch=num_samps_for_switch)
-
-            elif method=="nn":
-
-                if args.switch_nn==False:
-                    model = Modelnn(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
-                else:
-                    model = Model_switchlearning(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
-                model.load_state_dict(LR_model[()][repeat_idx], strict=False)
-
-                h = model.fc1.weight.register_hook(lambda grad: grad * 0)
-                h = model.fc2.weight.register_hook(lambda grad: grad * 0)
-                #h = model.fc3.weight.register_hook(lambda grad: grad * 0)
-                h = model.fc4.weight.register_hook(lambda grad: grad * 0)
-                h = model.fc1.bias.register_hook(lambda grad: grad * 0)
-                h = model.fc2.bias.register_hook(lambda grad: grad * 0)
-                #h = model.fc3.bias.register_hook(lambda grad: grad * 0)
-                h = model.fc4.bias.register_hook(lambda grad: grad * 0)
-
-            ############################################################################################3
-
-            print('Starting Training')
-
-            #optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-            optimizer = optim.Adam(model.parameters(), lr=1e-1)
-            how_many_epochs = args.epochs
-            how_many_iter = np.int(how_many_samps/mini_batch_size)
+                    # hooks to not update other parameters than switch-related
+                    if args.set_hooks:
+                        # in case you use pre-trained classifier
 
 
-            training_loss_per_epoch = np.zeros(how_many_epochs)
+                        h = model.fc1.weight.register_hook(lambda grad: grad * 0)
+                        h = model.fc2.weight.register_hook(lambda grad: grad * 0)
+                        h = model.fc4.weight.register_hook(lambda grad: grad * 0)
+                        h = model.fc1.bias.register_hook(lambda grad: grad * 0)
+                        h = model.fc2.bias.register_hook(lambda grad: grad * 0)
+                        h = model.fc4.bias.register_hook(lambda grad: grad * 0)
 
-            annealing_steps = float(8000.*how_many_epochs)
-            beta_func = lambda s: min(s, annealing_steps) / annealing_steps
+                ############################################################################################3
+
+                print('Starting Training')
+
+                #optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+                optimizer = optim.Adam(model.parameters(), lr=1e-1)
+
+                how_many_epochs = args.epochs
+                how_many_iter = np.int(how_many_samps/mini_batch_size)
+                training_loss_per_epoch = np.zeros(how_many_epochs)
+                annealing_steps = float(8000.*how_many_epochs)
+                beta_func = lambda s: min(s, annealing_steps) / annealing_steps
+
+                # for name,par in model.named_parameters():
+                #     print (name)
+
+                yTrain, xTrain, datatypesTrain = shuffle_data(y, X, how_many_samps, datatypes)
 
 
-
-            # for name,par in model.named_parameters():
-            #     print (name)
-
-            yTrain, xTrain, datatypesTrain = shuffle_data(y, X, how_many_samps, datatypes)
-
-
-            for epoch in range(how_many_epochs):  # loop over the dataset multiple times
-
-                running_loss = 0.0
-
-                annealing_rate = beta_func(epoch)
-
-                for i in range(how_many_iter):
-
-                    # get the inputs
-                    inputs = xTrain[i*mini_batch_size:(i+1)*mini_batch_size,:]
-                    labels = yTrain[i*mini_batch_size:(i+1)*mini_batch_size]
-
-                    # zero the parameter gradients
-                    optimizer.zero_grad()
-
-                    # forward + backward + optimize
-                    outputs, phi_cand = model(torch.Tensor(inputs), mini_batch_size) #100,10,150
-
-                    if method=="vips":
-                        labels = torch.squeeze(torch.Tensor(labels))
-                        loss = loss_function(outputs, labels.view(-1, 1).repeat(1, num_samps_for_switch), phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method)
-                    elif method == "nn":
-                        labels = torch.squeeze(torch.LongTensor(labels))
-                        loss = loss_function(outputs, labels, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method)
-
-                    loss.backward()
-                    optimizer.step()
-
-                    # print statistics
-                    running_loss += loss.item()
-
-                    #print(model.fc1.weight[1:5])
-                    #print(model.fc3.bias[1:5])
-                    #print(model.parameter)
-
-                # training_loss_per_epoch[epoch] = running_loss/how_many_samps
-                training_loss_per_epoch[epoch] = running_loss
-                print('epoch number is ', epoch)
-                print('running loss is ', running_loss)
-
-            print('Finished global Training')
-
-            estimated_params = list(model.parameters())
-            """ posterior mean over the switches """
-            phi_est = F.softplus(torch.Tensor(estimated_params[0]))
-            print('estimated parameters are ', phi_est.detach().numpy())
-
-            ###################################################
-
-            if args.training_local:
-
-                print("\nStarting local training")
-
-                how_many_iter = 2000
-
-                annealing_steps_local = float(8000. * how_many_iter)
-                beta_func_local = lambda s: min(s, annealing_steps_local) / annealing_steps_local
-
-                #for epoch in range(how_many_epochs):  # loop over the dataset multiple times
-                if 1:
+                for epoch in range(how_many_epochs):  # loop over the dataset multiple times
 
                     running_loss = 0.0
-                    mini_batch_size =1
-
-
-                    i=5
-                    # get the inputs
-                    inputs = xTrain[i * mini_batch_size:(i + 1) * mini_batch_size, :]
-                    labels = yTrain[i * mini_batch_size:(i + 1) * mini_batch_size]
-                    datatypes = datatypesTrain[i * mini_batch_size:(i + 1) * mini_batch_size]
-                    print("Training on:", datatypes)
-
-
+                    annealing_rate = beta_func(epoch)
 
                     for i in range(how_many_iter):
 
-                        annealing_rate = beta_func_local(how_many_iter)
-
-                        if i % 100 ==0:
-                            print(i)
-
+                        # get the inputs
+                        inputs = xTrain[i*mini_batch_size:(i+1)*mini_batch_size,:]
+                        labels = yTrain[i*mini_batch_size:(i+1)*mini_batch_size]
 
                         # zero the parameter gradients
                         optimizer.zero_grad()
 
                         # forward + backward + optimize
-                        outputs, phi_cand = model(torch.Tensor(inputs), mini_batch_size)  # 100,10,150
+                        outputs, phi_cand, S, prephi = model(torch.Tensor(inputs), mini_batch_size) #100,10,150
 
-                        if method == "vips":
+                        if method=="vips":
                             labels = torch.squeeze(torch.Tensor(labels))
-                            loss = loss_function(outputs, labels.view(-1, 1).repeat(1, num_samps_for_switch), phi_cand,
-                                                 alpha_0, hidden_dim, how_many_samps, annealing_rate, method)
+                            loss = loss_function(outputs, labels.view(-1, 1).repeat(1, num_samps_for_switch), phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method)
                         elif method == "nn":
-                            labels = torch.LongTensor(labels)
-                            loss = loss_function(outputs, labels, phi_cand, alpha_0, hidden_dim, how_many_samps,
-                                                 annealing_rate, method)
+                            labels = torch.squeeze(torch.LongTensor(labels))
+                            loss = loss_function(outputs, labels, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method, args.kl_term)
+
                         loss.backward()
                         optimizer.step()
-
-                        #if i % 100 ==0:
-                        #    print(loss)
-
 
                         # print statistics
                         running_loss += loss.item()
 
-                        # print(model.fc1.weight[1:5])
-                        # print(model.fc3.bias[1:5])
-                        # print(model.parameter)
+                        if i % how_many_iter ==0:
+                            phis = phi_cand / torch.sum(phi_cand)
+                            print("switch: ", phis.mean(dim=0))
+                            print("switch: ", phis[1:4])
 
                     # training_loss_per_epoch[epoch] = running_loss/how_many_samps
-                    #training_loss_per_epoch[epoch] = running_loss
-                    #print('epoch number is ', epoch)
+
+                    training_loss_per_epoch[epoch] = running_loss
+                    print('epoch number is ', epoch)
                     print('running loss is ', running_loss)
 
-            #################################################
-
-            if not args.switch_nn:
-                estimated_params = list(model.parameters())
-
-                """ posterior mean over the switches """
-                # num_samps_for_switch
-                phi_est = F.softplus(torch.Tensor(estimated_params[0]))
-
-                print('estimated parameters are ', phi_est.detach().numpy())
-                print("-"*20)
-
-                switch_parameter_mat[repeat_idx,:] = phi_est.detach().numpy()
-
-                concentration_param = phi_est.view(-1, 1).repeat(1, 5000)
-                # beta_param = torch.ones(self.hidden_dim,1).repeat(1,num_samps)
-                beta_param = torch.ones(concentration_param.size())
-                Gamma_obj = Gamma(concentration_param, beta_param)
-                gamma_samps = Gamma_obj.rsample()
-                Sstack = gamma_samps / torch.sum(gamma_samps, 0)
-                avg_S = torch.mean(Sstack, 1)
-                std_S = torch.std(Sstack, 1)
-                posterior_mean_switch = avg_S.detach().numpy()
-                posterior_std_switch = std_S.detach().numpy()
-
-                posterior_mean_switch_mat[repeat_idx,:] = posterior_mean_switch
-                print('estimated posterior mean of Switch is', posterior_mean_switch)
-                mean_of_means+=posterior_mean_switch
-
-            else:
+                print('Finished global Training')
 
 
 
-                print('estimated parameters are ', phi_cand.detach().numpy())
-                print("-" * 20)
+                ###################################################
+
+                if args.training_local and dataset == "alternating":
+
+                    print("\nStarting local training")
+
+                    how_many_iter = args.local_training_iter
+
+                    annealing_steps_local = float(8000. * how_many_iter)
+                    beta_func_local = lambda s: min(s, annealing_steps_local) / annealing_steps_local
+
+                    #for epoch in range(how_many_epochs):  # loop over the dataset multiple times
+                    if 1:
+
+                        running_loss = 0.0
+                        mini_batch_size =1
+
+
+                        i=5
+                        # get the inputs
+                        inputs = xTrain[i * mini_batch_size:(i + 1) * mini_batch_size, :]
+                        labels = yTrain[i * mini_batch_size:(i + 1) * mini_batch_size]
+                        datatypes = datatypesTrain[i * mini_batch_size:(i + 1) * mini_batch_size]
+                        print("Training on:", datatypes)
+
+
+
+                        for i in range(how_many_iter):
+
+                            annealing_rate = beta_func_local(how_many_iter)
+
+                            if i % 100 ==0:
+                                print(i)
+
+
+                            # zero the parameter gradients
+                            optimizer.zero_grad()
+
+                            # forward + backward + optimize
+                            outputs, phi_cand = model(torch.Tensor(inputs), mini_batch_size)  # 100,10,150
+
+                            if method == "vips":
+                                labels = torch.squeeze(torch.Tensor(labels))
+                                loss = loss_function(outputs, labels.view(-1, 1).repeat(1, num_samps_for_switch), phi_cand,
+                                                     alpha_0, hidden_dim, how_many_samps, annealing_rate, method)
+                            elif method == "nn":
+                                labels = torch.LongTensor(labels)
+                                loss = loss_function(outputs, labels, phi_cand, alpha_0, hidden_dim, how_many_samps,
+                                                     annealing_rate, method)
+                            loss.backward()
+                            optimizer.step()
+
+                            #if i % 100 ==0:
+                            #    print(loss)
+
+
+                            # print statistics
+                            running_loss += loss.item()
+
+                            # print(model.fc1.weight[1:5])
+                            # print(model.fc3.bias[1:5])
+                            # print(model.parameter)
+
+                        # training_loss_per_epoch[epoch] = running_loss/how_many_samps
+                        #training_loss_per_epoch[epoch] = running_loss
+                        #print('epoch number is ', epoch)
+                        print('running loss is ', running_loss)
+
+                #################################################
+
+                if not args.switch_nn:
+                    estimated_params = list(model.parameters())
+
+                    """ posterior mean over the switches """
+                    # num_samps_for_switch
+                    phi_est = F.softplus(torch.Tensor(estimated_params[0]))
+
+                    print('estimated parameters are ', phi_est.detach().numpy())
+                    print("-"*20)
+
+                    switch_parameter_mat[repeat_idx,:] = phi_est.detach().numpy()
+
+                    concentration_param = phi_est.view(-1, 1).repeat(1, 5000)
+                    # beta_param = torch.ones(self.hidden_dim,1).repeat(1,num_samps)
+                    beta_param = torch.ones(concentration_param.size())
+                    Gamma_obj = Gamma(concentration_param, beta_param)
+                    gamma_samps = Gamma_obj.rsample()
+                    Sstack = gamma_samps / torch.sum(gamma_samps, 0)
+                    avg_S = torch.mean(Sstack, 1)
+                    std_S = torch.std(Sstack, 1)
+                    posterior_mean_switch = avg_S.detach().numpy()
+                    posterior_std_switch = std_S.detach().numpy()
+
+                    posterior_mean_switch_mat[repeat_idx,:] = posterior_mean_switch
+                    print('estimated posterior mean of Switch is', posterior_mean_switch)
+                    mean_of_means+=posterior_mean_switch
+
+                    ###########3
+
+
+                else: #if switch_nn is true testing a single instance
+
+                    torch.save(model.state_dict(),
+                               f"models/switches_{args.dataset}_switch_nn_{args.switch_nn}_local_{args.training_local}.pt")
+
+                    ########################
+                    # test
 
         print(filename, filename_phi)
-        print('*'*30)
-        print(mean_of_means/num_repeat)
-        np.save(filename,posterior_mean_switch_mat)
-        np.save(filename_last,posterior_mean_switch_mat)
+        np.save(filename, posterior_mean_switch_mat)
+        np.save(filename_last, posterior_mean_switch_mat)
         np.save(filename_phi, switch_parameter_mat)
+
+    elif args.mode=="test":
+
+
+
+            def test_instance(dataset, switch_nn, training_local):
+
+                path = f"models/switches_{dataset}_switch_nn_{switch_nn}_local_{training_local}.pt"
+
+                i = 0  # choose a sample
+                mini_batch_size = 20000
+
+                if switch_nn==False:
+                    model = Modelnn(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
+                else:
+                    model = Model_switchlearning(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
+
+                model.load_state_dict(torch.load(path), strict=False)
+
+
+                inputs_test_samp = X_test[i * mini_batch_size:(i + 1) * mini_batch_size, :]
+                labels_test_samp = y_test[i * mini_batch_size:(i + 1) * mini_batch_size]
+                datatypes_test_samp = datatypes_test[i * mini_batch_size:(i + 1) * mini_batch_size]
+
+
+                inputs_test_samp = torch.Tensor(inputs_test_samp)
+
+                model.eval()
+                print(datatypes_test_samp)
+                outputs, phi, S, phi_est = model(inputs_test_samp, mini_batch_size)
+                torch.set_printoptions(profile="full")
+                print("outputs", outputs)
+                print("phi", phi)
+                return S, datatypes_test_samp
+
+            def create_rank(scores, k):
+                # scores (100000, 10) #k - number opf ground truth relevant features, e.g. 2 or 4
+                """
+                Compute rank of each feature based on weight.
+
+                """
+                scores = abs(scores)
+                n, d = scores.shape
+                ranks = []
+                for i, score in enumerate(scores):
+                    # Random permutation to avoid bias due to equal weights.
+                    idx = np.random.permutation(d)
+                    permutated_weights = score[idx]
+                    permutated_rank = (-permutated_weights).argsort().argsort() + 1
+                    rank = permutated_rank[np.argsort(idx)]
+
+                    ranks.append(rank.numpy())
+
+                return np.array(ranks)
+
+            def compute_median_rank(scores, k, dataset, datatype_val=None):
+                ranks = create_rank(scores, k)
+                if dataset != "alternating":
+                    median_ranks = np.median(ranks[:, :k], axis=1)
+                else:
+                    datatype_val = datatype_val[:len(scores)]
+                    median_ranks1 = np.median(ranks[datatype_val == 'orange_skin', :][:, np.array([0, 1, 2, 3])],
+                                              axis=1)
+                    median_ranks2 = np.median(
+                        ranks[datatype_val == 'nonlinear_additive', :][:, np.array([4, 5, 6, 7])], axis=1)
+                    median_ranks = np.concatenate((median_ranks1, median_ranks2), 0)
+                return median_ranks
+
+
+
+            dataset="alternating"
+            S, datatypes_test_samp = test_instance(dataset, True, False)
+            if dataset=="xor":
+                k=2
+            else: #dummy for alternating
+                k=4
+
+            median_ranks = compute_median_rank(S, k, dataset, datatypes_test_samp)
+            mean_median_ranks=np.mean(median_ranks)
+            print(mean_median_ranks)
+
+            #1.5 - xor
+            #2.67 - orange_skin
+            #2.56 - nonlinear_additive
+            #2.88/ 3.5 - alternating
+
+
 
 
     # print('estimated posterior mean of Switch is', estimated_Switch)
