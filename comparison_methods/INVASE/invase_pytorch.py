@@ -107,24 +107,7 @@ class Invase(nn.Module):
       - loss: actor loss
     """
 
-    # Actor output
-    # actor_out = y_true[:, :self.dim]
-    # Critic output
-    # critic_out = y_true[:, self.dim:(self.dim + self.label_dim)]
-    #
-    # if self.model_type == 'invase':
-    #   # Baseline output
-    #   # baseline_out = y_true[:, (self.dim + self.label_dim):(self.dim + 2 * self.label_dim)]
-    #   # Ground truth label
-    #   # y_out = y_true[:, (self.dim + 2 * self.label_dim):]
-    # elif self.model_type == 'invase_minus':
-    #   # Ground truth label
-    #   # baseline_out = None
-    #   # y_out = y_true[:, (self.dim + self.label_dim):]
-    # else:
-    #   raise ValueError
-
-      # Critic loss
+    # Critic loss
     # critic_loss = -pt.sum(y_true * pt.log(critic_out + 1e-8), dim=1)
     selection = selection.detach()
     critic_loss = -pt.sum(y_true * log_critic_out.detach(), dim=1)
@@ -207,7 +190,8 @@ class Invase(nn.Module):
         matches = pt.max(log_critic_out, dim=1)[1] == y_batch_scalar
         # print(matches)
         critic_acc = pt.sum(matches.to(pt.float32)) / y_batch_scalar.shape[0]
-        print(f'Iterations: {iter_idx}, critic acc: {np.round(critic_acc.item(), 4)}, actor loss: {np.round(actor_loss.item(), 4)}')
+        print(f'Iterations: {iter_idx}, critic acc: {np.round(critic_acc.item(), 4)}, '
+              f'actor loss: {np.round(actor_loss.item(), 4)}')
 
   def importance_score(self, x):
     """Return featuer importance score.
@@ -229,8 +213,8 @@ class Invase(nn.Module):
     return feature_importance
 
   def predict(self, x):
-    """Predict outcomes.
-
+    """
+    Predict outcomes.
     Args:
       - x: feature
 
@@ -250,4 +234,3 @@ class Invase(nn.Module):
     if return_numpy:
       y_hat = y_hat.cpu().detach().numpy()
     return y_hat
-
