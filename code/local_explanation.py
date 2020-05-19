@@ -1,5 +1,13 @@
 """
 Test learning instancewise feature importance
+
+Structure:
+(a) we consider three networks, where
+(b) we train a baseline network using raw input/output pairs by reducing cross-entropy loss
+(c) we then train a switch network together with a predictor network
+    by reducing the change in loss of the baseline network and the predictor network
+
+Note that before running this code, run Test_Adult_data.py with alternating dataset.
 """
 
 
@@ -21,28 +29,18 @@ import sys
 import os
 import socket
 from data.synthetic_data_loader import synthetic_data_loader
-from models.switch_MLP import Model_switchlearning
+from models.switch_MLP import ThreeNet
 
 
 ########################################
-# PATH
-
+# Path
 cwd = os.getcwd()
 cwd_parent = Path(__file__).parent.parent
-if 'g0' in socket.gethostname() or 'p0' in socket.gethostname():
-    sys.path.append(os.path.join(cwd_parent, "data"))
-    from data.tab_dataloader import load_cervical, load_adult, load_credit
-    pathmain=cwd
-    path_code = os.path.join(pathmain, "code")
-elif socket.gethostname()=='worona.local':
-    pathmain = cwd
-    path_code = os.path.join(pathmain, "code")
-else:
-    from data.tab_dataloader import load_cervical, load_adult, load_credit
-    from models.nn_3hidden import FC
-    pathmain=cwd_parent
-    path_code=cwd
+pathmain = cwd
+path_code = os.path.join(pathmain, "code")
 
+########################################
+# Arguments
 
 def get_args():
 
@@ -52,7 +50,7 @@ def get_args():
     parser.add_argument("--mini_batch_size", default=200, type=int)
     parser.add_argument("--epochs", default=500, type=int)
     parser.add_argument("--alpha", default=0.001, type=float)
-    parser.add_argument("--kl_term", default=True)
+    parser.add_argument("--kl_term", default=False)
     parser.add_argument("--num_Dir_samples", default=0, type=int)
     parser.add_argument("--point_estimate", default=True)
 
@@ -60,11 +58,15 @@ def get_args():
 
     return args
 
-def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, kl_term, pre_phi):
+def loss_function(prediction, baseline_net_output, true_y, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, kl_term, pre_phi):
 
     loss = nn.CrossEntropyLoss()
 
     BCE = loss(prediction, true_y)
+
+    BCE_baseline = loss(baseline_net_output, true_y)
+
+    Diff_BCE = abs(BCE-BCE_baseline)
 
     if kl_term:
         # KLD term
@@ -103,7 +105,7 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
 
     else:
 
-        return BCE
+        return Diff_BCE
 
 def shuffle_data(y,x,how_many_samps, datatypes=None):
 
@@ -165,6 +167,11 @@ def main():
     iter_sigmas = np.array([0.])
     num_samps_for_switch = args.num_Dir_samples
 
+    # load the baseline network
+    method = 'nn'
+    baseline_net = np.load(
+        os.path.join(path_code, 'models/%s_%s_LR_model' % (dataset, method) + str(int(iter_sigmas[0])) + '.npy'),
+        allow_pickle=True)
 
     for k in range(iter_sigmas.shape[0]):
 
@@ -175,7 +182,7 @@ def main():
 
             print(repeat_idx)
 
-            model = Model_switchlearning(d, 2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
+            model = ThreeNet(baseline_net, 2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
 
             print('Starting Training')
 
@@ -210,10 +217,10 @@ def main():
                     optimizer.zero_grad()
 
                     # forward + backward + optimize
-                    outputs, phi_cand, S_cand, pre_phi = model(torch.Tensor(inputs), mini_batch_size) #100,10,150
+                    outputs, phi_cand, S_cand, pre_phi, baseline_net_output = model(torch.Tensor(inputs), mini_batch_size) #100,10,150
 
                     labels = torch.squeeze(torch.LongTensor(labels))
-                    loss = loss_function(outputs, labels, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, args.kl_term, pre_phi=pre_phi)
+                    loss = loss_function(outputs, baseline_net_output, labels, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, args.kl_term, pre_phi=pre_phi)
 
                     loss.backward()
                     optimizer.step()
