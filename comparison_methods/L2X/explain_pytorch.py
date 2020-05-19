@@ -18,10 +18,10 @@ import torch.nn.functional as nnf
 from torch.utils.data import Dataset, DataLoader
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
-from L2X.make_data import generate_data
 
 
 def create_data(datatype, n=1000):
+  from L2X.make_data import generate_data
   """
   Create train and validation datasets.
 
@@ -106,6 +106,7 @@ class L2XModel(nn.Module):
     super(L2XModel, self).__init__()
 
     self.act = nn.ReLU() if datatype in ['orange_skin', 'XOR'] else nn.SELU()
+    self.d_out = d_out
 
     # q(S|X)
     self.fc1 = nn.Linear(d_in, 100)
@@ -127,6 +128,9 @@ class L2XModel(nn.Module):
   def forward(self, x_in):
     x_select, _ = self.get_selection(x_in)
     pred = self.classify_selection(x_select)
+
+    if self.d_out == 1:
+      pred = pt.sigmoid(pred.view(-1))
     return pred
 
   def get_selection(self, x_in):
@@ -243,7 +247,6 @@ def test_model(model, x_test, datatype, batch_size, device, n_key_features, data
 def discretize_labels(y):
   one_hot = (y == np.max(y, axis=1)[:, None]).astype(np.int)
   return np.argmax(one_hot, axis=1)
-
 
 
 def L2X(datatype, batch_size, n_key_features, n_epochs, learning_rate, device, skip_training):

@@ -184,3 +184,72 @@ class Model_switchlearning(nn.Module):
 
         return output, phi, S, pre_phi
 
+
+
+class ThreeNet(nn.Module):
+
+  def __init__(self, baseline_net, input_num, output_num, num_samps_for_switch, mini_batch_size, point_estimate):
+    # def __init__(self, input_dim, hidden_dim):
+    super(ThreeNet, self).__init__()
+
+    self.trained_model = baseline_net
+
+    self.phi_fc1 = nn.Linear(input_num, 100)
+    self.phi_fc2 = nn.Linear(100, 100)
+    self.phi_fc3 = nn.Linear(100, input_num)  # outputs switch values
+
+    self.fc1_bn1 = nn.BatchNorm1d(100)
+    self.fc2_bn2 = nn.BatchNorm1d(100)
+
+    # self.parameters = -1e-10*torch.ones(input_num) #just an output
+
+    self.num_samps_for_switch = num_samps_for_switch
+    self.mini_batch_size = mini_batch_size
+
+    self.fc1 = nn.Linear(input_num, 200)
+    self.fc2 = nn.Linear(200, 200)
+    self.fc4 = nn.Linear(200, output_num)
+
+    self.bn1 = nn.BatchNorm1d(200)
+    self.bn2 = nn.BatchNorm1d(200)
+
+    self.point_estimate = point_estimate
+
+  def switch_func_fc(self, output, SstackT):
+
+      # output is (100,10,24,24), we want to have 100,150,10,24,24, I guess
+      output = torch.einsum('ij, mj -> imj', (SstackT, output))  # samples, batchsize, dimension
+      output = output.reshape(output.shape[0] * output.shape[1], output.shape[2])
+
+      return output, SstackT
+
+  def forward(self, x, mini_batch_size):  # x is mini_batch_size by input_dim
+
+      baseline_net_output = self.trained_model(x)
+
+      output = self.phi_fc1(x)
+      output = self.fc1_bn1(output)
+      output = nn.functional.relu(self.phi_fc2(output))
+      output = self.fc2_bn2(output)
+
+      pre_phi = self.phi_fc3(output)
+
+      # phi = F.softplus(phi_parameter.mean(dim=0))
+      phi = F.softplus(pre_phi)  # now the size of phi is mini_batch by input_dim
+
+      if self.point_estimate:
+          # S = phi / torch.sum(phi)
+          S = phi / torch.sum(phi, dim=1).unsqueeze(dim=1)
+          output = x * S
+
+      output = self.fc1(output)  # samples*batchsize, dimension
+      output = self.bn1(output)
+      output = nn.functional.relu(self.fc2(output))
+      output = self.bn2(output)
+      output = self.fc4(output)
+
+      if not self.point_estimate:
+          output = output.reshape(self.num_samps_for_switch, mini_batch_size, -1)
+          output = output.transpose_(0, 1)
+
+      return output, phi, S, pre_phi, baseline_net_output
