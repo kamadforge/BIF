@@ -29,12 +29,13 @@ import sys
 # sys.path.append("/home/kamil/Desktop/Dropbox/Current_research/privacy/DPDR/data")
 from data.tab_dataloader import load_cervical, load_adult, load_credit
 from data.make_synthetic_datasets import generate_data
+from data.make_synthetic_datasets import generate_invase
 
 
 if  __name__ =='__main__':
 
     """ inputs """
-    dataset = "alternating" # "xor, orange_skin, or nonlinear_additive"
+    dataset = "syn5" # "xor, orange_skin, or nonlinear_additive"
     method = "nn"
     rnd_num = 0
 
@@ -70,11 +71,32 @@ if  __name__ =='__main__':
         y_tot = np.argmax(y_tot, axis=1)
         dataset_tosave = {'x': x_tot, 'y': y_tot}
         np.save('../data/synthetic/nonlinear_additive/dataset_nonlinear_additive.npy', dataset_tosave)
+
+    #the instance depends on 5 features
     elif dataset == "alternating":
         x_tot, y_tot, datatypes = generate_data(10000, 'alternating')
         y_tot = np.argmax(y_tot, axis=1)
         dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
-        np.save('../data/synthetic/alternating/dataset_alternating.npy', dataset_tosave)
+        #np.save('../data/synthetic/alternating/dataset_alternating.npy', dataset_tosave)
+
+    #the instant depends only on 1 feature, all other features for all the instances in the dataset are either 1 or 0
+    elif dataset == "syn4":
+        x_tot, y_tot, datatypes = generate_invase(10000, 'syn4')
+        y_tot = np.argmax(y_tot, axis=1)
+        dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
+        np.save('../data/synthetic/invase/dataset_syn4.npy', dataset_tosave)
+    elif dataset == "syn5":
+        x_tot, y_tot, datatypes = generate_invase(10000, 'syn5')
+        y_tot = np.argmax(y_tot, axis=1)
+        dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
+        np.save('../data/synthetic/invase/dataset_syn5.npy', dataset_tosave)
+    elif dataset == "syn6":
+        x_tot, y_tot, datatypes = generate_invase(10000, 'syn6')
+        y_tot = np.argmax(y_tot, axis=1)
+        dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
+        np.save('../data/synthetic/invase/dataset_syn6.npy', dataset_tosave)
+
+
 
 
     ####################################
@@ -111,7 +133,7 @@ if  __name__ =='__main__':
         criterion = nn.CrossEntropyLoss()
         # optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
         optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
-        num_epochs = 200
+        num_epochs = 500
 
     """ set the privacy parameter """
     # dp_epsilon = 1
