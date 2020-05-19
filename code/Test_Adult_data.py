@@ -35,7 +35,7 @@ from data.make_synthetic_datasets import generate_invase
 if  __name__ =='__main__':
 
     """ inputs """
-    dataset = "syn5" # "xor, orange_skin, or nonlinear_additive"
+    dataset = "xor" # "xor, orange_skin, or nonlinear_additive"
     method = "nn"
     rnd_num = 0
 
@@ -77,7 +77,7 @@ if  __name__ =='__main__':
         x_tot, y_tot, datatypes = generate_data(10000, 'alternating')
         y_tot = np.argmax(y_tot, axis=1)
         dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
-        #np.save('../data/synthetic/alternating/dataset_alternating.npy', dataset_tosave)
+        np.save('../data/synthetic/alternating/dataset_alternating.npy', dataset_tosave)
 
     #the instant depends only on 1 feature, all other features for all the instances in the dataset are either 1 or 0
     elif dataset == "syn4":
