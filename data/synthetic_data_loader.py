@@ -69,5 +69,29 @@ def synthetic_data_loader(dataset):
         y_tot = xor_dataset[()]['y']
         datatypes = xor_dataset[()]['datatypes']
 
+    elif dataset == "syn4":
+
+        xor_dataset = np.load(os.path.join(pathmain, 'data/synthetic/invase/dataset_syn4.npy'),
+                              allow_pickle=True)
+        x_tot = xor_dataset[()]['x']
+        y_tot = xor_dataset[()]['y']
+        datatypes = xor_dataset[()]['datatypes']
+
+    elif dataset == "syn5":
+
+        xor_dataset = np.load(os.path.join(pathmain, 'data/synthetic/invase/dataset_syn5.npy'),
+                              allow_pickle=True)
+        x_tot = xor_dataset[()]['x']
+        y_tot = xor_dataset[()]['y']
+        datatypes = xor_dataset[()]['datatypes']
+
+    elif dataset == "syn6":
+
+        xor_dataset = np.load(os.path.join(pathmain, 'data/synthetic/invase/dataset_syn6.npy'),
+                              allow_pickle=True)
+        x_tot = xor_dataset[()]['x']
+        y_tot = xor_dataset[()]['y']
+        datatypes = xor_dataset[()]['datatypes']
+
 
     return x_tot, y_tot, datatypes

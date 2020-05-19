@@ -62,7 +62,7 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="alternating") #xor, orange_skin, nonlinear_additive, alternating
+    parser.add_argument("--dataset", default="xor") #xor, orange_skin, nonlinear_additive, alternating
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
     parser.add_argument("--epochs", default=50, type=int)
@@ -112,7 +112,7 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
             BCE = loss(prediction, true_y)
 
         if kl_term:
-            # KLD term
+            # KLD termaa
             alpha_0 = torch.Tensor([alpha_0])
             hidden_dim = torch.Tensor([hidden_dim])
 
@@ -179,14 +179,14 @@ def main():
 
     X = x_tot[:N, :]
     y = y_tot[:N]
-    if dataset == "alternating":
+    if dataset == "alternating" or "syn" in dataset:
         datatypes = datatypes_tot[:N] #only for alternating, if datatype comes from orange_skin or nonlinear
     else:
         datatypes = None
 
     X_test = x_tot[N:, :]
     y_test = y_tot[N:]
-    if dataset == "alternating":
+    if dataset == "alternating" or "syn" in dataset:
         datatypes_test = datatypes_tot[N:]
 
     input_dim = d
@@ -418,24 +418,28 @@ def main():
                     torch.save(model.state_dict(),
                                f"models/switches_{args.dataset}_switch_nn_{args.switch_nn}_local_{args.training_local}.pt")
 
-                    ########################
-                    # test
+        ########################
+
 
         print(filename, filename_phi)
         np.save(filename, posterior_mean_switch_mat)
         np.save(filename_last, posterior_mean_switch_mat)
         np.save(filename_phi, switch_parameter_mat)
 
+###################################################################################################
+
     elif args.mode=="test":
 
-
+            #############################
+            # running the test
 
             def test_instance(dataset, switch_nn, training_local):
 
                 path = f"models/switches_{dataset}_switch_nn_{switch_nn}_local_{training_local}.pt"
 
                 i = 0  # choose a sample
-                mini_batch_size = 20000
+                mini_batch_size = 2000
+                datatypes_test_samp=None
 
                 if switch_nn==False:
                     model = Modelnn(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
@@ -445,20 +449,37 @@ def main():
                 model.load_state_dict(torch.load(path), strict=False)
 
 
-                inputs_test_samp = X_test[i * mini_batch_size:(i + 1) * mini_batch_size, :]
+                inputs_test_samp = X_test[i * mini_batch_size:(i + 1) * mini_batch_size, :] #(mini_batch_size* feat_num)
                 labels_test_samp = y_test[i * mini_batch_size:(i + 1) * mini_batch_size]
-                datatypes_test_samp = datatypes_test[i * mini_batch_size:(i + 1) * mini_batch_size]
+                if dataset == "alternating" or "syn" in dataset:
+                    datatypes_test_samp = datatypes_test[i * mini_batch_size:(i + 1) * mini_batch_size]
+
+                if "syn" in dataset:
+                    relevant_features=[]
+                    for i in range(datatypes_test_samp.shape[0]):
+                        relevant_features.append(np.where(datatypes_test_samp[i]>0))
+                    datatypes_test_samp = np.array(relevant_features).squeeze(1)
 
 
                 inputs_test_samp = torch.Tensor(inputs_test_samp)
 
                 model.eval()
-                print(datatypes_test_samp)
+
                 outputs, phi, S, phi_est = model(inputs_test_samp, mini_batch_size)
                 torch.set_printoptions(profile="full")
-                print("outputs", outputs)
-                print("phi", phi)
+
+                samples_to_see=2
+                if mini_batch_size>samples_to_see and datatypes_test_samp is not None:
+                    print(datatypes_test_samp[:samples_to_see])
+                    print("outputs", outputs[:samples_to_see])
+                    print("phi", phi[:samples_to_see])
                 return S, datatypes_test_samp
+
+
+
+
+            #######################################
+            # evaluation
 
             def create_rank(scores, k):
                 # scores (100000, 10) #k - number opf ground truth relevant features, e.g. 2 or 4
@@ -480,31 +501,113 @@ def main():
 
                 return np.array(ranks)
 
+
+
+
+
+            def get_tpr(arr1, arr2):
+                def intersection(lst1, lst2):
+                    lst3 = [value for value in lst1 if value in lst2]
+                    return lst3
+
+                all=0
+                all_corr=0
+                for i in range(arr1.shape[0]):
+                    corr=intersection(arr1[i], arr2[i])
+                    all_corr+=len(corr)
+                    all+=len(arr1[i])
+
+                tpr = float(all_corr)/all
+                return tpr
+
+
+
+
+
+
+            def binary_classification_metrics(scores, k, dataset, datatype_val=None):
+                tpr, fdr = 0,0
+                ranks = create_rank(scores, k) #ranks start with 1 and end with 10 (not 0 to 9)
+
+                relevant_features_gt_positions = relevant_features = np.tile(np.arange(k) + 1, (mini_batch_size, 1))
+
+
+                if dataset == "xor" or dataset == "orange_skin" or dataset == "nonlinear_additive":
+                    switch_relevant_features_positions = ranks[:, :k] #(mini_batch_size, k)
+                elif dataset == "alternating":
+                    datatype_val = datatype_val[:len(scores)]
+                    relevant_features = np.dstack([(datatype_val == 'orange_skin')] * 5) * np.array([1, 2, 3, 4, 10])
+                    relevant_features[0][datatype_val == 'nonlinear_additive'] = np.array([5, 6, 7, 8, 10])
+                    relevant_features=relevant_features[0]
+
+                    switch_relevant_features_positions = []
+                    for i in range(mini_batch_size):
+                        switch_relevant_features_position = ranks[i][relevant_features[i] - 1]
+                        switch_relevant_features_positions.append(switch_relevant_features_position)
+                    switch_relevant_features_positions = np.array(switch_relevant_features_positions)
+
+                elif "syn" in dataset:
+                    relevant_features = datatype_val
+                    switch_relevant_features = []
+                    for i in range(relevant_features.shape[0]):
+                        switch_relevant_features.append(ranks[i][relevant_features[i]])
+                    switch_relevant_features = np.array(switch_relevant_features)
+
+
+                tpr = get_tpr(relevant_features_gt_positions, switch_relevant_features_positions)
+
+
+                return tpr, fdr
+
+
+
+
+
+
             def compute_median_rank(scores, k, dataset, datatype_val=None):
                 ranks = create_rank(scores, k)
-                if dataset != "alternating":
+                if dataset == "xor" or dataset == "orange_skin" or dataset == "nonlinear_additive":
                     median_ranks = np.median(ranks[:, :k], axis=1)
-                else:
+                elif dataset == "alternating":
                     datatype_val = datatype_val[:len(scores)]
-                    median_ranks1 = np.median(ranks[datatype_val == 'orange_skin', :][:, np.array([0, 1, 2, 3])],
+                    #[datatype_val == 'orange_skin', :] is 1 for orange skin in ranks 1st dim, and 0 otherwise
+                    median_ranks1 = np.median(ranks[datatype_val == 'orange_skin', :][:, np.array([0, 1, 2, 3, 9])],
                                               axis=1)
                     median_ranks2 = np.median(
-                        ranks[datatype_val == 'nonlinear_additive', :][:, np.array([4, 5, 6, 7])], axis=1)
+                        ranks[datatype_val == 'nonlinear_additive', :][:, np.array([4, 5, 6, 7, 9])], axis=1)
                     median_ranks = np.concatenate((median_ranks1, median_ranks2), 0)
+                elif dataset == "syn4" or dataset == "syn5" or dataset == "syn6":
+                    median_ranks_arr=[]
+                    for i, data in enumerate(datatype_val):
+                        median_ranks_arr.append(np.median(ranks[i, datatype_val[i]]))
+
+                    median_ranks=np.array(median_ranks_arr)
+
+
+
+
+
+
                 return median_ranks
 
 
 
-            dataset="alternating"
+            dataset=args.dataset
             S, datatypes_test_samp = test_instance(dataset, True, False)
             if dataset=="xor":
                 k=2
-            else: #dummy for alternating
+            elif dataset == "orange_skin" or dataset == "nonlinear_additive" or dataset == "alternating": #dummy for alternating
                 k=4
+            elif dataset == "syn4":
+                k=7
+            elif dataset == "syn5" or dataset == "syn6":
+                k=8
 
             median_ranks = compute_median_rank(S, k, dataset, datatypes_test_samp)
             mean_median_ranks=np.mean(median_ranks)
-            print(mean_median_ranks)
+            tpr, fdr = binary_classification_metrics(S, k, dataset, datatypes_test_samp)
+            print("mean median rank", mean_median_ranks)
+            print(f"tpr: {tpr}, fdr: {fdr}")
 
             #1.5 - xor
             #2.67 - orange_skin
