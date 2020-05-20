@@ -62,7 +62,7 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="syn4") #xor, orange_skin, nonlinear_additive, alternating
+    parser.add_argument("--dataset", default="syn6") #xor, orange_skin, nonlinear_additive, alternating
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
     parser.add_argument("--epochs", default=50, type=int)
@@ -514,18 +514,18 @@ def main():
                     return diff
 
                 all=0
-                all_corr=0
+                all_tp=0
                 fp=0
                 for i in range(arr1.shape[0]):
                     tp=intersection(arr1[i], arr2[i])
                     diff = difference(arr1[i], arr2[i])
 
                     fp+=len(diff)
-                    all_corr+=len(tp)
+                    all_tp+=len(tp)
                     all+=len(arr1[i])
 
-                fdr = float(fp)/(fp+all_corr)
-                tpr = float(all_corr)/all
+                fdr = float(fp)/(fp+all_tp)
+                tpr = float(all_tp)/all
                 return tpr, fdr
 
 
