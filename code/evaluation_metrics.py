@@ -78,8 +78,12 @@ def get_tpr(arr1, arr2):
 
 
 '''
-relevant_features_gt_positions - ordered position numbers for k relevant features, e.g. [1,2,3,4,5] for k=5
-switch_relevant_features_positions - 
+by 'positions' we mean the rank of a feature, best feature position = 1
+gtfeatures_positions - ordered position numbers for k relevant features, e.g. [1,2,3,4,5] for k=5
+switch_gtfeatures_positions - positions of the gtfeatures as indicated by switches, ideally set (gtfeatures_positions) = set (switch_gtfeatures_positions)
+
+by 'features' we mean the numbers corresponding to ordered features
+gtfeatures - features that generated the label, e.g. for alternating it is 1,2,3,4,10 or 5,6,7,8, 10 (starting form 1) .
 '''
 
 def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_val=None):
@@ -88,38 +92,38 @@ def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_
 
     if dataset == "xor" or dataset == "orange_skin" or dataset == "nonlinear_additive":
 
-        relevant_features_gt_positions = np.tile(np.arange(k) + 1, (mini_batch_size, 1))
+        gtfeatures_positions = np.tile(np.arange(k) + 1, (mini_batch_size, 1))
 
-        switch_relevant_features_positions = ranks[:, :k]  # (mini_batch_size, k)
+        switch_gtfeatures_positions = ranks[:, :k]  # (mini_batch_size, k)
 
 
     elif dataset == "alternating":
 
-        relevant_features_gt_positions = np.tile(np.arange(k) + 1, (mini_batch_size, 1))
+        gtfeatures_positions = np.tile(np.arange(k) + 1, (mini_batch_size, 1))
 
         datatype_val = datatype_val[:len(scores)]
-        relevant_features = np.dstack([(datatype_val == 'orange_skin')] * 5) * np.array([1, 2, 3, 4, 10])
-        relevant_features[0][datatype_val == 'nonlinear_additive'] = np.array([5, 6, 7, 8, 10])
-        relevant_features = relevant_features[0]
+        gtfeatures = np.dstack([(datatype_val == 'orange_skin')] * 5) * np.array([1, 2, 3, 4, 10])
+        gtfeatures[0][datatype_val == 'nonlinear_additive'] = np.array([5, 6, 7, 8, 10])
+        gtfeatures = gtfeatures[0]
 
-        switch_relevant_features_positions = []
+        switch_gtfeatures_positions = []
         for i in range(mini_batch_size):
-            switch_relevant_features_position = ranks[i][relevant_features[i] - 1]
-            switch_relevant_features_positions.append(switch_relevant_features_position)
-        switch_relevant_features_positions = np.array(switch_relevant_features_positions)
+            switch_gtfeatures_position = ranks[i][gtfeatures[i] - 1]
+            switch_gtfeatures_positions.append(switch_gtfeatures_position)
+        switch_gtfeatures_positions = np.array(switch_gtfeatures_positions)
 
     elif "syn" in dataset:
-        relevant_features = datatype_val + 1
+        gtfeatures = datatype_val + 1
 
-        relevant_features_gt_positions = []
-        switch_relevant_features_positions = []
-        for i in range(relevant_features.shape[0]):
-            switch_relevant_features_positions.append(ranks[i][relevant_features[i] - 1])
-            relevant_features_gt_positions.append(np.arange(len(relevant_features[i])) + 1)
-        switch_relevant_features_positions = np.array(switch_relevant_features_positions)
-        relevant_features_gt_positions = np.array(relevant_features_gt_positions)
+        gtfeatures_positions = []
+        switch_gtfeatures_positions = []
+        for i in range(gtfeatures.shape[0]):
+            switch_gtfeatures_positions.append(ranks[i][gtfeatures[i] - 1])
+            gtfeatures_positions.append(np.arange(len(gtfeatures[i])) + 1)
+        switch_gtfeatures_positions = np.array(switch_gtfeatures_positions)
+        gtfeatures_positions = np.array(gtfeatures_positions)
 
-    tpr, fdr = get_tpr(relevant_features_gt_positions, switch_relevant_features_positions)
+    tpr, fdr = get_tpr(gtfeatures_positions, switch_gtfeatures_positions)
 
     return tpr, fdr
 
