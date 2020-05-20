@@ -63,7 +63,7 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="nonlinear_additive") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
+    parser.add_argument("--dataset", default="xor") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
     parser.add_argument("--epochs", default=50, type=int)
@@ -502,12 +502,14 @@ def main():
             S, datatypes_test_samp = test_instance(dataset, True, False)
             if dataset=="xor":
                 k=2
-            elif dataset == "orange_skin" or dataset == "nonlinear_additive" or dataset == "alternating": #dummy for alternating
+            elif dataset == "orange_skin" or dataset == "nonlinear_additive":
                 k=4
+            elif dataset == "alternating":
+                k=5
             elif dataset == "syn4":
                 k=7
             elif dataset == "syn5" or dataset == "syn6":
-                k=8
+                k=9
 
             median_ranks = compute_median_rank(S, k, dataset, datatypes_test_samp)
             mean_median_ranks=np.mean(median_ranks)

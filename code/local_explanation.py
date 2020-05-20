@@ -23,6 +23,7 @@ from torch.nn.parameter import Parameter
 from torch.distributions import Gamma
 import pickle
 import argparse
+import socket
 
 from pathlib import Path
 import sys
@@ -34,12 +35,17 @@ from models.nn_3hidden import FC_net
 from evaluation_metrics import binary_classification_metrics, compute_median_rank
 
 
+
 ########################################
 # Path
 cwd = os.getcwd()
 cwd_parent = Path(__file__).parent.parent
 pathmain = cwd
 path_code = os.path.join(pathmain, "code")
+
+if socket.gethostname():
+    pathmain=cwd_parent
+    path_code=cwd
 
 ########################################
 # Arguments
@@ -55,6 +61,7 @@ def get_args():
     parser.add_argument("--kl_term", default=False)
     parser.add_argument("--num_Dir_samples", default=0, type=int)
     parser.add_argument("--point_estimate", default=True)
+    parser.add_argument("--mode", default="test")
     # parser.add_argument("--set_hooks", default=True)
 
     args = parser.parse_args()
@@ -279,37 +286,86 @@ def main():
             ########################
             # test
 
-            i=0 #samples number
-            mini_batch_size = 10
-            inputs_test_samp = X_test[i * mini_batch_size:(i + 1) * mini_batch_size, :]
-            labels_test_samp = y_test[i * mini_batch_size:(i + 1) * mini_batch_size]
-            # datatypes_test_samp = datatypes_test[i * mini_batch_size:(i + 1) * mini_batch_size]
+            if args.mode == "test":
+
+                #############################
+                # running the test
+
+                def test_instance(dataset, switch_nn, training_local):
+
+                    print(f"dataset: {dataset}")
+
+                    path = f"models/switches_{dataset}_switch_nn_{switch_nn}_local_{training_local}.pt"
+
+                    i = 0  # choose a sample
+                    mini_batch_size = 2000
+                    datatypes_test_samp = None
+
+                    # if switch_nn == False:
+                    #     model = Modelnn(d, 2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
+                    # else:
+                    #     model = Model_switchlearning(d, 2, num_samps_for_switch, mini_batch_size,
+                    #                                  point_estimate=point_estimate)
+                    #
+                    # model.load_state_dict(torch.load(path), strict=False)
+
+                    inputs_test_samp = X_test[i * mini_batch_size:(i + 1) * mini_batch_size,
+                                       :]  # (mini_batch_size* feat_num)
+                    labels_test_samp = y_test[i * mini_batch_size:(i + 1) * mini_batch_size]
+                    if dataset == "alternating" or "syn" in dataset:
+                        datatypes_test_samp = datatypes_test[i * mini_batch_size:(i + 1) * mini_batch_size]
+
+                    if "syn" in dataset:
+                        relevant_features = []
+                        for i in range(datatypes_test_samp.shape[0]):
+                            relevant_features.append(np.where(datatypes_test_samp[i] > 0))
+                        datatypes_test_samp = np.array(relevant_features).squeeze(1)
+
+                    inputs_test_samp = torch.Tensor(inputs_test_samp)
+
+                    model.eval()
+
+                    #outputs, phi, S, phi_est = model(inputs_test_samp, mini_batch_size)
+
+                    pred_label, phi_estimate, S_estimate, pre_phi_est, baseline_net_pred = model.forward(inputs_test_samp, mini_batch_size)
+
+                    torch.set_printoptions(profile="full")
+
+                    samples_to_see = 2
+                    if mini_batch_size > samples_to_see and datatypes_test_samp is not None:
+                        print(datatypes_test_samp[:samples_to_see])
+                        print("outputs", outputs[:samples_to_see])
+                        print("phi", phi_estimate[:samples_to_see])
+                    return S_estimate, datatypes_test_samp
 
 
-            inputs_test_samp = torch.Tensor(inputs_test_samp)
 
-            pred_label, phi_estimate, S_estimate, pre_phi_est, baseline_net_pred = model.forward(inputs_test_samp, mini_batch_size)
-            print('true test labels:', labels_test_samp)
-            print('pred labels: ', torch.argmax(pred_label, dim=1).detach().numpy())
-            print('baseline pred labels: ', torch.argmax(baseline_net_pred, dim=1).detach().numpy())
-            print('estimated switches are:', S_estimate)
+                # inputs_test_samp = torch.Tensor(inputs_test_samp)
+                #
+                # pred_label, phi_estimate, S_estimate, pre_phi_est, baseline_net_pred = model.forward(inputs_test_samp, mini_batch_size)
+                # print('true test labels:', labels_test_samp)
+                # print('pred labels: ', torch.argmax(pred_label, dim=1).detach().numpy())
+                # print('baseline pred labels: ', torch.argmax(baseline_net_pred, dim=1).detach().numpy())
+                # print('estimated switches are:', S_estimate)
 
-            # S, datatypes_test_samp = test_instance(dataset, True, False)
-            # if dataset == "xor":
-            #     k = 2
-            # elif dataset == "orange_skin" or dataset == "nonlinear_additive" or dataset == "alternating":  # dummy for alternating
-            #     k = 4
-            # elif dataset == "syn4":
-            #     k = 7
-            # elif dataset == "syn5" or dataset == "syn6":
-            #     k = 8
-            #
-            # median_ranks = compute_median_rank(S, k, dataset, datatypes_test_samp)
-            # mean_median_ranks = np.mean(median_ranks)
-            # tpr, fdr = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp)
-            # print("mean median rank", mean_median_ranks)
-            # print(f"tpr: {tpr}, fdr: {fdr}")
-            #
+                S, datatypes_test_samp = test_instance(dataset, True, False)
+                if dataset == "xor":
+                    k = 2
+                elif dataset == "orange_skin" or dataset == "nonlinear_additive":
+                    k = 4
+                elif dataset == "alternating":
+                    k = 5
+                elif dataset == "syn4":
+                    k = 7
+                elif dataset == "syn5" or dataset == "syn6":
+                    k = 9
+
+                median_ranks = compute_median_rank(S, k, dataset, datatypes_test_samp)
+                mean_median_ranks = np.mean(median_ranks)
+                tpr, fdr = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp)
+                print("mean median rank", mean_median_ranks)
+                print(f"tpr: {tpr}, fdr: {fdr}")
+
 
 
 

@@ -77,6 +77,11 @@ def get_tpr(arr1, arr2):
     return tpr, fdr
 
 
+'''
+relevant_features_gt_positions - ordered position numbers for k relevant features, e.g. [1,2,3,4,5] for k=5
+switch_relevant_features_positions - 
+'''
+
 def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_val=None):
     tpr, fdr = 0, 0
     ranks = create_rank(scores, k)  # ranks start with 1 and end with 10 (not 0 to 9)
@@ -90,7 +95,7 @@ def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_
 
     elif dataset == "alternating":
 
-        relevant_features_gt_positions = relevant_features = np.tile(np.arange(k) + 1, (mini_batch_size, 1))
+        relevant_features_gt_positions = np.tile(np.arange(k) + 1, (mini_batch_size, 1))
 
         datatype_val = datatype_val[:len(scores)]
         relevant_features = np.dstack([(datatype_val == 'orange_skin')] * 5) * np.array([1, 2, 3, 4, 10])
