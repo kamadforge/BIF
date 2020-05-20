@@ -77,7 +77,7 @@ def get_tpr(arr1, arr2):
     return tpr, fdr
 
 
-def binary_classification_metrics(scores, k, dataset, datatype_val=None):
+def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_val=None):
     tpr, fdr = 0, 0
     ranks = create_rank(scores, k)  # ranks start with 1 and end with 10 (not 0 to 9)
 
