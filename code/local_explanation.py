@@ -30,6 +30,8 @@ import os
 import socket
 from data.synthetic_data_loader import synthetic_data_loader
 from models.switch_MLP import ThreeNet
+from models.nn_3hidden import FC_net
+from evaluation_metrics import binary_classification_metrics, compute_median_rank
 
 
 ########################################
@@ -53,6 +55,7 @@ def get_args():
     parser.add_argument("--kl_term", default=False)
     parser.add_argument("--num_Dir_samples", default=0, type=int)
     parser.add_argument("--point_estimate", default=True)
+    # parser.add_argument("--set_hooks", default=True)
 
     args = parser.parse_args()
 
@@ -67,6 +70,8 @@ def loss_function(prediction, baseline_net_output, true_y, phi_cand, alpha_0, hi
     BCE_baseline = loss(baseline_net_output, true_y)
 
     Diff_BCE = abs(BCE-BCE_baseline)
+    # print('BCE', BCE)
+    # print('BCE_baseline', BCE_baseline)
 
     if kl_term:
         # KLD term
@@ -155,6 +160,7 @@ def main():
     input_dim = d
     hidden_dim = input_dim
     how_many_samps = N
+    output_dim = 2
 
     #######################################################
     # preparing variational inference to learn switch vector
@@ -169,9 +175,30 @@ def main():
 
     # load the baseline network
     method = 'nn'
-    baseline_net = np.load(
+    baseline_net_trained = np.load(
         os.path.join(path_code, 'models/%s_%s_LR_model' % (dataset, method) + str(int(iter_sigmas[0])) + '.npy'),
         allow_pickle=True)
+    baseline_net = FC_net(input_dim, output_dim, 200) # hidden_dim = 200
+    baseline_net.load_state_dict(baseline_net_trained[()][0], strict=False)
+
+    # baseline_net_parameters = list(baseline_net.parameters())
+
+    classifier_net = FC_net(input_dim, output_dim, 200)
+    classifier_net.load_state_dict(baseline_net_trained[()][0], strict=False)
+
+    switch_net = FC_net(input_dim, input_dim, 100) # hidden_dim = 100
+
+    other_parameters = list(classifier_net.parameters()) + list(switch_net.parameters())
+
+    # if args.set_hooks:
+    #     # in case you use pre-trained classifier
+    #
+    #     h = baseline_net.fc1.weight.register_hook(lambda grad: grad * 0)
+    #     h = baseline_net.fc2.weight.register_hook(lambda grad: grad * 0)
+    #     h = baseline_net.fc4.weight.register_hook(lambda grad: grad * 0)
+    #     h = baseline_net.fc1.bias.register_hook(lambda grad: grad * 0)
+    #     h = baseline_net.fc2.bias.register_hook(lambda grad: grad * 0)
+    #     h = baseline_net.fc4.bias.register_hook(lambda grad: grad * 0)
 
     for k in range(iter_sigmas.shape[0]):
 
@@ -182,12 +209,14 @@ def main():
 
             print(repeat_idx)
 
-            model = ThreeNet(baseline_net, 2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
+            model = ThreeNet(baseline_net, classifier_net, switch_net, input_dim, output_dim, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
+            # baseline_net, input_num, output_num, num_samps_for_switch, mini_batch_size, point_estimate)
 
             print('Starting Training')
 
-            optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-            # optimizer = optim.Adam(model.parameters(), lr=1e-1)
+            # optimizer = optim.SGD(params=other_parameters, lr=0.01, momentum=0.9)
+            optimizer = optim.Adam(params=other_parameters, lr=1e-1)
+
 
             how_many_epochs = args.epochs
             how_many_iter = np.int(how_many_samps/mini_batch_size)
@@ -233,7 +262,7 @@ def main():
 
                 # training_loss_per_epoch[epoch] = running_loss/how_many_samps
 
-                training_loss_per_epoch[epoch] = running_loss
+                training_loss_per_epoch[epoch] = running_loss/how_many_iter
                 print('epoch number is ', epoch)
                 print('running loss is ', running_loss)
 
@@ -251,20 +280,39 @@ def main():
             # test
 
             i=0 #samples number
-            mini_batch_size = 5
+            mini_batch_size = 10
             inputs_test_samp = X_test[i * mini_batch_size:(i + 1) * mini_batch_size, :]
             labels_test_samp = y_test[i * mini_batch_size:(i + 1) * mini_batch_size]
-            datatypes_test_samp = datatypes_test[i * mini_batch_size:(i + 1) * mini_batch_size]
+            # datatypes_test_samp = datatypes_test[i * mini_batch_size:(i + 1) * mini_batch_size]
 
 
             inputs_test_samp = torch.Tensor(inputs_test_samp)
 
-            pred_label, phi_estimate, S_estimate, pre_phi_est = model.forward(inputs_test_samp, mini_batch_size)
+            pred_label, phi_estimate, S_estimate, pre_phi_est, baseline_net_pred = model.forward(inputs_test_samp, mini_batch_size)
             print('true test labels:', labels_test_samp)
             print('pred labels: ', torch.argmax(pred_label, dim=1).detach().numpy())
+            print('baseline pred labels: ', torch.argmax(baseline_net_pred, dim=1).detach().numpy())
             print('estimated switches are:', S_estimate)
 
+            # S, datatypes_test_samp = test_instance(dataset, True, False)
+            # if dataset == "xor":
+            #     k = 2
+            # elif dataset == "orange_skin" or dataset == "nonlinear_additive" or dataset == "alternating":  # dummy for alternating
+            #     k = 4
+            # elif dataset == "syn4":
+            #     k = 7
+            # elif dataset == "syn5" or dataset == "syn6":
+            #     k = 8
             #
+            # median_ranks = compute_median_rank(S, k, dataset, datatypes_test_samp)
+            # mean_median_ranks = np.mean(median_ranks)
+            # tpr, fdr = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp)
+            # print("mean median rank", mean_median_ranks)
+            # print(f"tpr: {tpr}, fdr: {fdr}")
+            #
+
+
+
             # model.eval()
             # print(datatypes_test_samp)
             # outputs, phi, S = model(inputs_test_samp, mini_batch_size)
