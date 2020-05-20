@@ -69,7 +69,7 @@ def loss_function(prediction, baseline_net_output, true_y, phi_cand, alpha_0, hi
 
     BCE_baseline = loss(baseline_net_output, true_y)
 
-    Diff_BCE = abs(BCE-BCE_baseline)
+    Diff_BCE = (BCE-BCE_baseline)
     # print('BCE', BCE)
     # print('BCE_baseline', BCE_baseline)
 
