@@ -56,7 +56,7 @@ def get_args():
 
     parser.add_argument("--dataset", default="alternating") #xor, orange_skin, nonlinear_additive, alternating
     parser.add_argument("--mini_batch_size", default=200, type=int)
-    parser.add_argument("--epochs", default=500, type=int)
+    parser.add_argument("--epochs", default=200, type=int)
     parser.add_argument("--alpha", default=0.001, type=float)
     parser.add_argument("--kl_term", default=False)
     parser.add_argument("--num_Dir_samples", default=0, type=int)
@@ -145,6 +145,10 @@ def main():
 
     x_tot, y_tot, datatypes_tot = synthetic_data_loader(dataset)
 
+    #normalize x_tot
+    x_tot / np.expand_dims(np.linalg.norm(x_tot, axis=1), 1)
+
+
     # unpack data
     N_tot, d = x_tot.shape
 
@@ -188,14 +192,12 @@ def main():
     baseline_net = FC_net(input_dim, output_dim, 200) # hidden_dim = 200
     baseline_net.load_state_dict(baseline_net_trained[()][0], strict=False)
 
-    # baseline_net_parameters = list(baseline_net.parameters())
-
-    classifier_net = FC_net(input_dim, output_dim, 200)
-    classifier_net.load_state_dict(baseline_net_trained[()][0], strict=False)
-
-    switch_net = FC_net(input_dim, input_dim, 100) # hidden_dim = 100
+    classifier_net = FC_net(input_dim, output_dim, 30)
+    switch_net = FC_net(input_dim, input_dim, 20) # third input is hidden_dim
 
     other_parameters = list(classifier_net.parameters()) + list(switch_net.parameters())
+
+    # other_parameters = other_parameters + list(baseline_net.parameters())
 
     # if args.set_hooks:
     #     # in case you use pre-trained classifier
@@ -223,6 +225,7 @@ def main():
 
             # optimizer = optim.SGD(params=other_parameters, lr=0.01, momentum=0.9)
             optimizer = optim.Adam(params=other_parameters, lr=1e-1)
+            # optimizer = optim.Adam(model.parameters(), lr=1e-1)
 
 
             how_many_epochs = args.epochs
