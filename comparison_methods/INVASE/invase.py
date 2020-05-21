@@ -18,7 +18,11 @@ from tensorflow.keras import backend as K
 import tensorflow as tf
 import numpy as np
 
-from comparison_methods.INVASE.utils import bernoulli_sampling
+try:
+  from comparison_methods.INVASE.utils import bernoulli_sampling
+except ImportError:
+  # noinspection PyUnresolvedReferences
+  from utils import bernoulli_sampling
 
 
 class Invase():
