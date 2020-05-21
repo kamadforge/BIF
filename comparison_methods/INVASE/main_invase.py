@@ -21,10 +21,19 @@ from __future__ import print_function
 import argparse
 import numpy as np
 
-from comparison_methods.INVASE.data_generation import generate_dataset
-from comparison_methods.INVASE.invase import Invase
-from comparison_methods.INVASE.utils import feature_performance_metric, prediction_performance_metric
 
+
+try:
+  from comparison_methods.INVASE.data_generation import generate_dataset
+  from comparison_methods.INVASE.invase import Invase
+  from comparison_methods.INVASE.utils import feature_performance_metric, prediction_performance_metric
+except ImportError:
+  # noinspection PyUnresolvedReferences
+  from data_generation import generate_dataset
+  # noinspection PyUnresolvedReferences
+  from invase import Invase
+  # noinspection PyUnresolvedReferences
+  from utils import feature_performance_metric, prediction_performance_metric
 
 def main(args):
   """Main function for INVASE.
@@ -108,7 +117,7 @@ def main(args):
 if __name__ == '__main__':
   # Inputs for the main function
   parser = argparse.ArgumentParser()
-  parser.add_argument('--data_type', choices=['syn1', 'syn2', 'syn3', 'syn4', 'syn5', 'syn6'], default='syn2', type=str)
+  parser.add_argument('--data_type', choices=['syn1', 'syn2', 'syn3', 'syn4', 'syn5', 'syn6'], default='syn5', type=str)
   parser.add_argument('--train_no', help='the number of training data', default=10000, type=int)
   parser.add_argument('--test_no', help='the number of testing data', default=10000, type=int)
   parser.add_argument('--dim', help='the number of features', choices=[11, 100], default=11, type=int)
@@ -122,7 +131,7 @@ if __name__ == '__main__':
                       choices=['selu', 'relu'], default='relu', type=str)
   parser.add_argument('--learning_rate', help='learning rate of model training', default=0.0001, type=float)
   parser.add_argument('--model_type', help='inavse or invase- (without baseline)',
-                      choices=['invase', 'invase_minus'], default='invase_minus', type=str)
+                      choices=['invase', 'invase_minus'], default='invase', type=str)
   
   args_in = parser.parse_args() 
   
