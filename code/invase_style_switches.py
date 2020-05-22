@@ -31,10 +31,12 @@ class Net(nn.Module):
     self.fc3 = nn.Linear(d_hid, d_out)
 
   def forward(self, x_in):
-    x = self.act(self.fc1(x_in))
+    x = self.fc1(x_in)
     x = self.bn1(x) if self.use_bn else x
-    x = self.act(self.fc2(x))
+    x = self.act(x)
+    x = self.fc2(x)
     x = self.bn2(x) if self.use_bn else x
+    x = self.act(x)
     x = self.act_out(self.fc3(x))
     return x
 
@@ -91,7 +93,7 @@ class InvaseSwitch(nn.Module):
 
     self.total_parameters = list(self.critic_net.parameters()) + list(self.actor_net.parameters())
 
-    if self.model_type in {'invase', 'switch_match'}:
+    if self.model_type in {'invase', 'mse_match', 'ce_match'}:
       # Build and compile the baseline
       self.baseline_net = Net(self.dim, self.critic_h_dim, self.label_dim, act=self.activation,
                               act_out='logsoftmax').to(self.device)
@@ -124,7 +126,6 @@ class InvaseSwitch(nn.Module):
 
     # custom actor loss
     custom_actor_loss = pt.mean(-custom_actor_loss)
-
     return combined_loss + custom_actor_loss
 
   def kl_reg(self, selection):
@@ -139,13 +140,19 @@ class InvaseSwitch(nn.Module):
 
   def switch_loss(self, selection, log_critic_out, y_batch_scalar):
     critic_loss = nnf.nll_loss(log_critic_out, y_batch_scalar)
-
     return critic_loss + self.kl_reg(selection)
 
-  def match_loss(self, actor_out, log_critic_out, log_baseline_out):
+  def mse_match_loss(self, actor_out, log_critic_out, log_baseline_out):
     l_match = nnf.mse_loss(log_critic_out, log_baseline_out)
-
     return l_match + self.kl_reg(actor_out)
+
+  def ce_match_loss(self, actor_out, log_critic_out, log_baseline_out):
+    l_match = nnf.nll_loss(log_critic_out, pt.max(log_baseline_out, dim=1)[1].to(pt.long))
+    return l_match + self.kl_reg(actor_out)
+
+  def ce_loss(self, log_critic_out, y_true):
+    return nnf.nll_loss(log_critic_out, y_true)
+
 
   def switch_selection(self, x_in):
     # Generate a batch of selection probability
@@ -162,7 +169,7 @@ class InvaseSwitch(nn.Module):
       - y_train: training labels
     """
     self.train(True)
-    if self.model_type == 'switch_match':
+    if self.model_type in {'mse_match', 'ce_match'}:
       self.pretrain_baseline(x_train, y_train)
 
     optimizer = pt.optim.Adam(params=self.total_parameters, lr=self.learning_rate, weight_decay=1e-3)
@@ -179,14 +186,14 @@ class InvaseSwitch(nn.Module):
       y_batch_scalar = pt.max(y_batch_onehot, dim=1)[1]
 
       actor_out = self.switch_selection(x_batch)
-      if self.model_type == 'switch_match':
+      if self.model_type in {'mse_match', 'ce_match'}:
         selection = actor_out
       else:
         selection = actor_out.detach()
 
       log_critic_out = self.critic_net(x_batch * selection)
 
-      if self.model_type in {'invase', 'switch_match'}:
+      if self.model_type in {'invase', 'mse_match', 'ce_match'}:
         log_baseline_out = self.baseline_net(x_batch)
       elif self.model_type == 'invase_minus':
         log_baseline_out = None
@@ -198,8 +205,11 @@ class InvaseSwitch(nn.Module):
       if self.model_type in {'invase', 'invase_minus'}:
         full_loss = self.invase_loss(selection, log_critic_out, log_baseline_out,
                                      y_batch_onehot, y_batch_scalar, actor_out)
-      elif self.model_type == 'switch_match':
-        full_loss = self.match_loss(actor_out, log_critic_out, log_baseline_out)
+      elif self.model_type == 'mse_match':
+        full_loss = self.mse_match_loss(actor_out, log_critic_out, log_baseline_out)
+      elif self.model_type == 'ce_match':
+        # full_loss = self.ce_match_loss(actor_out, log_critic_out, log_baseline_out)
+        full_loss = self.ce_loss(log_critic_out, y_batch_scalar)
       else:
         raise ValueError
 
@@ -272,7 +282,7 @@ class InvaseSwitch(nn.Module):
     # Sampling the features based on the selection_probability
     # selection = pt.bernoulli(selection_probability)
     # Prediction
-    print(selection[:10])
+    # print(selection[:10])
     y_hat = pt.exp(self.critic_net(x * selection))
     if return_numpy:
       y_hat = y_hat.cpu().detach().numpy()
@@ -285,25 +295,24 @@ def feature_performance_metric(ground_truth, importance_score):
   since we can't rely on important features having a minimum weight, we take n as the number relevant ground
   truth features and then check how many of the top n activated features in the sample are relevant
   """
-
   n = importance_score.shape[0]
 
   tpr = np.zeros([n, ])
   fdr = np.zeros([n, ])
 
-  print(ground_truth[:3])
+  # print(ground_truth[:3])
   print(importance_score[:3])
   n_rel_features = np.sum(ground_truth, axis=1).astype(np.int)
-  print(n_rel_features[:3])
+  # print(n_rel_features[:3])
   sorted_scores = np.sort(importance_score)
-  print(sorted_scores[:3])
+  # print(sorted_scores[:3])
   top_act = np.asarray([sorted_scores[i, -k] for i, k in zip(range(n), n_rel_features)])
-  print(top_act[:3])
+  # print(top_act[:3])
   new_imp_score = importance_score - top_act[:, None]
   new_imp_score[new_imp_score >= 0] = 1.
   new_imp_score[new_imp_score < 0] = 0.
-  print(n, np.sum(importance_score), np.sum(new_imp_score), np.sum(ground_truth),
-        np.sum(np.sum(new_imp_score, axis=1) == np.sum(ground_truth, axis=1)))
+  # print(n, np.sum(importance_score), np.sum(new_imp_score), np.sum(ground_truth),
+  #       np.sum(np.sum(new_imp_score, axis=1) == np.sum(ground_truth, axis=1)))
 
   importance_score = new_imp_score
 
@@ -339,7 +348,7 @@ def prediction_performance_metric(y_test, y_hat):
     - apr: average precision score
     - acc: accuracy
   """
-  print(y_hat[:5])
+  # print(y_hat[:5])
   auc = roc_auc_score(y_test[:, 1], y_hat[:, 1])
   apr = average_precision_score(y_test[:, 1], y_hat[:, 1])
   acc = accuracy_score(y_test[:, 1], 1. * (y_hat[:, 1] > 0.5))
@@ -349,7 +358,7 @@ def prediction_performance_metric(y_test, y_hat):
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument('--data_type', choices=['syn1', 'syn2', 'syn3', 'syn4', 'syn5', 'syn6'], default='syn3', type=str)
+  parser.add_argument('--data_type', choices=['syn1', 'syn2', 'syn3', 'syn4', 'syn5', 'syn6'], default='syn6', type=str)
   parser.add_argument('--train_no', help='the number of training data', default=10000, type=int)
   parser.add_argument('--test_no', help='the number of testing data', default=10000, type=int)
   parser.add_argument('--dim', help='the number of features', choices=[11, 100], default=11, type=int)
@@ -363,12 +372,10 @@ def main():
                       choices=['selu', 'relu'], default='relu', type=str)
   parser.add_argument('--learning_rate', help='learning rate of model training', default=0.0001, type=float)
   parser.add_argument('--model_type', help='inavse or invase- (without baseline)',
-                      choices=['invase', 'invase_minus', 'switch_match'], default='switch_match', type=str)
+                      choices=['invase', 'invase_minus', 'mse_match', 'ce_match'], default='ce_match', type=str)
 
   parser.add_argument('--alpha_0', type=float, default=0.01)
-  parser.add_argument('--kl-weight', type=float, default=1.)
-
-
+  parser.add_argument('--kl-weight', type=float, default=0.0)
 
   parser.add_argument('--no-cuda', action='store_true', default=False)
   args = parser.parse_args()

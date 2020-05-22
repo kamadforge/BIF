@@ -14,16 +14,25 @@ Contact: jsyoon0823@gmail.com
 """
 
 # Necessary packages
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+# from __future__ import absolute_import
+# from __future__ import division
+# from __future__ import print_function
 
 import argparse
 import numpy as np
 import torch as pt
-from comparison_methods.INVASE.data_generation import generate_dataset
-from comparison_methods.INVASE.invase_pytorch import Invase
-from comparison_methods.INVASE.utils import feature_performance_metric, prediction_performance_metric
+try:
+  from comparison_methods.INVASE.data_generation import generate_dataset
+  from comparison_methods.INVASE.invase_pytorch import Invase
+  from comparison_methods.INVASE.utils import feature_performance_metric, prediction_performance_metric
+except ImportError:
+  # noinspection PyUnresolvedReferences
+  from data_generation import generate_dataset
+  # noinspection PyUnresolvedReferences
+  from invase_pytorch import Invase
+  # noinspection PyUnresolvedReferences
+  from utils import feature_performance_metric, prediction_performance_metric
+
 
 
 def main(args):
