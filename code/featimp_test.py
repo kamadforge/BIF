@@ -66,21 +66,22 @@ def get_args():
     parser.add_argument("--dataset", default="xor") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
-    parser.add_argument("--epochs", default=50, type=int)
+    parser.add_argument("--epochs", default=100, type=int)
+    parser.add_argument("--lr", default=0.001, type=float)
 
     # for switch training
     parser.add_argument("--num_Dir_samples", default=50, type=int)
-    parser.add_argument("--alpha", default=0.01, type=float)
-    parser.add_argument("--point_estimate", default=True)
+    parser.add_argument("--alpha", default=0.1, type=float)
+    parser.add_argument("--point_estimate", default=False)
 
-    parser.add_argument("--mode", default="test") #training, test
+    parser.add_argument("--mode", default="training") #training, test
 
     # for instance wise training
     parser.add_argument("--switch_nn", default=True)
     parser.add_argument("--training_local", default=False)
     parser.add_argument("--local_training_iter", default=200, type=int)
     parser.add_argument("--set_hooks", default=True)
-    parser.add_argument("--kl_term", default=False)
+    parser.add_argument("--kl_term", default=True)
 
     args = parser.parse_args()
 
@@ -255,7 +256,7 @@ def main():
                 print('Starting Training')
 
                 #optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-                optimizer = optim.Adam(model.parameters(), lr=1e-1)
+                optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
                 how_many_epochs = args.epochs
                 how_many_iter = np.int(how_many_samps/mini_batch_size)
@@ -513,6 +514,8 @@ def main():
 
             median_ranks = compute_median_rank(S, k, dataset, datatypes_test_samp)
             mean_median_ranks=np.mean(median_ranks)
+            #if not args.point_estimate:
+            #    S=S.mean(dim=1)
             tpr, fdr = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp)
             print("mean median rank", mean_median_ranks)
             print(f"tpr: {tpr}, fdr: {fdr}")
