@@ -63,15 +63,15 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="xor") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
+    parser.add_argument("--dataset", default="alternating") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
-    parser.add_argument("--epochs", default=100, type=int)
-    parser.add_argument("--lr", default=0.001, type=float)
+    parser.add_argument("--epochs", default=150, type=int)
+    parser.add_argument("--lr", default=0.01, type=float)
 
     # for switch training
     parser.add_argument("--num_Dir_samples", default=50, type=int)
-    parser.add_argument("--alpha", default=0.1, type=float)
+    parser.add_argument("--alpha", default=0.01, type=float)
     parser.add_argument("--point_estimate", default=False)
 
     parser.add_argument("--mode", default="training") #training, test
@@ -93,7 +93,7 @@ args = get_args()
 #######################
 # LOSS
 
-def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method, kl_term):
+def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method, kl_term, point_estimate):
 
     if method=="vips":
         BCE = F.binary_cross_entropy(prediction, true_y, reduction='mean')
@@ -103,7 +103,7 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
 
         loss = nn.CrossEntropyLoss()
 
-        if not args.point_estimate:
+        if not point_estimate:
             BCE_mat = torch.zeros(prediction.shape[1])
             for ind in torch.arange(0, prediction.shape[1]):
                 y_pred = prediction[:,ind,:]
@@ -114,17 +114,47 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
             BCE = loss(prediction, true_y)
 
         if kl_term:
-            # KLD termaa
-            alpha_0 = torch.Tensor([alpha_0])
-            hidden_dim = torch.Tensor([hidden_dim])
 
-            trm1 = torch.lgamma(torch.sum(phi_cand)) - torch.lgamma(hidden_dim*alpha_0)
-            trm2 = - torch.sum(torch.lgamma(phi_cand)) + hidden_dim*torch.lgamma(alpha_0)
-            trm3 = torch.sum((phi_cand-alpha_0)*(torch.digamma(phi_cand)-torch.digamma(torch.sum(phi_cand))))
+            if point_estimate:
+                # KLD termaa
+                alpha_0 = torch.Tensor([alpha_0])
+                hidden_dim = torch.Tensor([hidden_dim])
 
-            KLD = trm1 + trm2 + trm3
+                trm1 = torch.lgamma(torch.sum(phi_cand)) - torch.lgamma(hidden_dim*alpha_0)
+                trm2 = - torch.sum(torch.lgamma(phi_cand)) + hidden_dim*torch.lgamma(alpha_0)
+                trm3 = torch.sum((phi_cand-alpha_0)*(torch.digamma(phi_cand)-torch.digamma(torch.sum(phi_cand))))
 
-            return BCE + + annealing_rate*KLD/how_many_samps
+                KLD = trm1 + trm2 + trm3
+
+                return BCE + + annealing_rate*KLD/how_many_samps
+
+            else: # not point estimate
+
+                alpha_0 = torch.Tensor([alpha_0])
+                hidden_dim = torch.Tensor([hidden_dim])
+
+                mini_batch_size = phi_cand.shape[0]
+                # KL_mat = torch.zeros(mini_batch_size)
+                # for i in torch.arange(0,mini_batch_size):
+                #     phi = phi_cand[i,:]
+                #     trm1 = torch.lgamma(torch.sum(phi)) - torch.lgamma(hidden_dim*alpha_0)
+                #     trm2 = - torch.sum(torch.lgamma(phi)) + hidden_dim*torch.lgamma(alpha_0)
+                #     trm3 = torch.sum((phi-alpha_0)*(torch.digamma(phi)-torch.digamma(torch.sum(phi))))
+                #
+                #     KL_mat[i] = trm1 + trm2 + trm3
+                #
+
+                trm1_mul = torch.lgamma(torch.sum(phi_cand, dim=1)) - torch.lgamma(hidden_dim * alpha_0)
+                trm2_mul = - torch.sum(torch.lgamma(phi_cand), dim=1) + hidden_dim * torch.lgamma(alpha_0)
+                trm3_mul = torch.sum((phi_cand - alpha_0) * (torch.digamma(phi_cand) - torch.digamma(torch.sum(phi_cand,dim=1)).unsqueeze(dim=1)), dim=1)
+
+                KL_mul = trm1_mul + trm2_mul + trm3_mul
+                KLD = torch.mean(KL_mul)
+
+                # print('KLD and BCE', [KLD/mini_batch_size, BCE])
+
+                # return BCE + + annealing_rate * KLD / how_many_samps
+                return BCE + KLD / mini_batch_size
 
         else:
 
@@ -255,8 +285,8 @@ def main():
 
                 print('Starting Training')
 
-                #optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-                optimizer = optim.Adam(model.parameters(), lr=args.lr)
+                optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+                # optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
                 how_many_epochs = args.epochs
                 how_many_iter = np.int(how_many_samps/mini_batch_size)
@@ -292,7 +322,7 @@ def main():
                             loss = loss_function(outputs, labels.view(-1, 1).repeat(1, num_samps_for_switch), phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method)
                         elif method == "nn":
                             labels = torch.squeeze(torch.LongTensor(labels))
-                            loss = loss_function(outputs, labels, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method, args.kl_term)
+                            loss = loss_function(outputs, labels, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method, args.kl_term, point_estimate)
 
                         loss.backward()
                         optimizer.step()
@@ -301,9 +331,11 @@ def main():
                         running_loss += loss.item()
 
                         if i % how_many_iter ==0:
-                            phis = phi_cand / torch.sum(phi_cand)
-                            print("switch: ", phis.mean(dim=0))
-                            print("switch: ", phis[1:4])
+                            # phis = phi_cand / torch.sum(phi_cand)
+                            # print("switch: ", phis.mean(dim=0))
+                            # print("switch: ", phis[1:4])
+                            if not point_estimate:
+                                print("mean of switch samples: ", torch.mean(S[0,:,:],1))
 
                     # training_loss_per_epoch[epoch] = running_loss/how_many_samps
 
@@ -480,25 +512,6 @@ def main():
                 return S, datatypes_test_samp
 
 
-
-
-            #######################################
-            # evaluation
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             dataset=args.dataset
             S, datatypes_test_samp = test_instance(dataset, True, False)
             if dataset=="xor":
@@ -511,6 +524,11 @@ def main():
                 k=7
             elif dataset == "syn5" or dataset == "syn6":
                 k=9
+
+            #######################################
+            # evaluation
+            if not args.point_estimate:
+                S=S.mean(dim=2)
 
             median_ranks = compute_median_rank(S, k, dataset, datatypes_test_samp)
             mean_median_ranks=np.mean(median_ranks)
