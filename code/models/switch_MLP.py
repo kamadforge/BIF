@@ -148,15 +148,15 @@ class Model_switchlearning(nn.Module):
 
         self.point_estimate = point_estimate
 
-    def switch_func_fc(self, output, SstackT):
-
-        # output is (100,10,24,24) or (110,10), we want to have 100 (batch),150 (samp),10,24,24, I guess
-        #output = torch.einsum('ij, mj -> imj', (SstackT, output)) # samples, batchsize, dimension
-        output = torch.einsum('imj, mj -> imj', (SstackT, output)) # samples, batchsize, dimension
-
-        output = output.reshape(output.shape[0] * output.shape[1], output.shape[2])
-
-        return output, SstackT
+    # def switch_func_fc(self, output, SstackT):
+    #
+    #     # output is (100,10,24,24) or (110,10), we want to have 100 (batch),150 (samp),10,24,24, I guess
+    #     #output = torch.einsum('ij, mj -> imj', (SstackT, output)) # samples, batchsize, dimension
+    #     output = torch.einsum('imj, mj -> imj', (SstackT, output)) # samples, batchsize, dimension
+    #
+    #     output = output.reshape(output.shape[0] * output.shape[1], output.shape[2])
+    #
+    #     return output, SstackT
 
     def forward(self, x, mini_batch_size): # x is mini_batch_size by input_dim
 
@@ -176,6 +176,12 @@ class Model_switchlearning(nn.Module):
             S = phi/torch.sum(phi,dim=1).unsqueeze(dim=1) #[batch x featnum]
             output = x * S
 
+            output = self.fc1(output)  # samples*batchsize, dimension
+            output = self.bn1(output)
+            output = nn.functional.relu(self.fc2(output))
+            output = self.bn2(output)
+            output = self.fc4(output)
+
         else:
             """ draw Gamma RVs using phi and 1 """
             #previously we had one switch vector we learnt
@@ -185,36 +191,65 @@ class Model_switchlearning(nn.Module):
 
 
             num_samps = self.num_samps_for_switch
-            concentration_param = phi.view(-1, 1).repeat(1, num_samps)
-            beta_param = torch.ones(concentration_param.size())
-            # Gamma has two parameters, concentration and beta, all of them are copied to 200,150 matrix
-            Gamma_obj = Gamma(concentration_param, beta_param)
-            gamma_samps = Gamma_obj.rsample()  # 200, 150, feat_dim x samples_num
+            feat_dim = phi.shape[1]
+
+            # sanity check: we draw samples for each data sample in a for loop first and see if this statistic matches full one
+            S = torch.zeros((self.mini_batch_size, feat_dim, num_samps))
+
+            for i in torch.arange(0, self.mini_batch_size):
+                this_phi_vec = phi[i,:]
+
+                """ draw Gamma RVs using phi and 1 """
+                concentration_param = this_phi_vec.view(-1, 1).repeat(1, num_samps)  # [feat x sampnum]
+                beta_param = torch.ones(concentration_param.size())  # [feat x sampnum]
+                # Gamma has two parameters, concentration and beta, all of them are copied to 200,150 matrix
+                Gamma_obj = Gamma(concentration_param, beta_param)  # [feat x sampnum]
+                gamma_samps = Gamma_obj.rsample()  # feat x samples_num
+
+                if any(torch.sum(gamma_samps, 0) == 0):
+                    print("sum of gamma samps are zero!")
+                else:
+                    Sstack = gamma_samps / torch.sum(gamma_samps, 0)  # input dim by  # samples
+
+                S[i,:,:] = Sstack
+
+            x_samps = torch.einsum("ij,ijk -> ikj", (x, S)) # x: minibatch by feat_dim, samps_mat: minibatch by feat_dim by num_samps
+            bs, n_samp, n_feat = x_samps.shape
+            output = x_samps.reshape(bs * n_samp, n_feat)
+            # model_out = self.trained_model(x_samps)
+            # model_out = model_out.view(bs, n_samp)
+
+            output = self.fc1(output)  # samples*batchsize, dimension
+            output = self.bn1(output)
+            output = nn.functional.relu(self.fc2(output))
+            output = self.bn2(output)
+            output = self.fc4(output)
+            output_dim = output.shape[1]
+            output = output.view(bs, n_samp, output_dim)
+
+            # concentration_param = phi.view(-1, 1).repeat(1, num_samps)
+            # beta_param = torch.ones(concentration_param.size())
+            # # Gamma has two parameters, concentration and beta, all of them are copied to 200,150 matrix
+            # Gamma_obj = Gamma(concentration_param, beta_param)
+            # gamma_samps = Gamma_obj.rsample()  # 200, 150, feat_dim x samples_num
 
 
-            if any(torch.sum(gamma_samps, 0) == 0):
-                print("sum of gamma samps are zero!")
-            else:
-                Sstack = gamma_samps / torch.sum(gamma_samps, 0)  # input dim by  # samples
-                #S = Sstack
-            # x_samps = torch.einsum("ij,jk -> ijk",(x, Sstack)) #([100, 29, 150]) 100- batch size, 150 - samples
+            # if any(torch.sum(gamma_samps, 0) == 0):
+            #     print("sum of gamma samps are zero!")
+            # else:
+            #     Sstack = gamma_samps / torch.sum(gamma_samps, 0)  # input dim by  # samples
+            #     #S = Sstack
+            # # x_samps = torch.einsum("ij,jk -> ijk",(x, Sstack)) #([100, 29, 150]) 100- batch size, 150 - samples
+            #
+            # #Sprime = Sstack.t()  # Dirichlet samples by mini_batch
+            # Sprime = Sstack.reshape(num_samps, phi.shape[0], -1)
+            # output, Sprime = self.switch_func_fc(x, Sprime)
+            #
+            # S = Sprime.mean(dim=0)
 
-            #Sprime = Sstack.t()  # Dirichlet samples by mini_batch
-            Sprime = Sstack.reshape(num_samps, phi.shape[0], -1)
-            output, Sprime = self.switch_func_fc(x, Sprime) 
-            
-            S = Sprime.mean(dim=0)
-
-
-        output = self.fc1(output) # samples*batchsize, dimension
-        output = self.bn1(output)
-        output = nn.functional.relu(self.fc2(output))
-        output = self.bn2(output)
-        output = self.fc4(output)
-
-        if not self.point_estimate:
-            output = output.reshape(self.num_samps_for_switch, mini_batch_size, -1)
-            output = output.transpose_(0,1)
+        # if not self.point_estimate:
+        #     output = output.reshape(self.num_samps_for_switch, mini_batch_size, -1)
+        #     output = output.transpose_(0,1)
 
         # S: [batch x feat]
         return output, phi, S, pre_phi
