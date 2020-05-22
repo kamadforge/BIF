@@ -296,14 +296,23 @@ class ThreeNet(nn.Module):
       pre_phi = self.switch_net(x)
       phi = F.softplus(pre_phi)  # now the size of phi is mini_batch by input_dim
 
+      if torch.sum(torch.isnan(phi))>=1:
+          print("some Phis are NaN")
+
       if self.point_estimate:
           S = phi / torch.sum(phi, dim=1).unsqueeze(dim=1)
           output = x * S
 
+      # norm_preserving = True
+      # if norm_preserving:
+      #     x_norm = torch.norm(x,dim=1).unsqueeze(dim=1)
+      #     output_norm = torch.norm(output,dim=1).unsqueeze(dim=1)
+      #     output = output/output_norm*x_norm
+
       output = self.classifier_net(output)
 
-      if not self.point_estimate:
-          output = output.reshape(self.num_samps_for_switch, mini_batch_size, -1)
-          output = output.transpose_(0, 1)
+      # if not self.point_estimate:
+      #     output = output.reshape(self.num_samps_for_switch, mini_batch_size, -1)
+      #     output = output.transpose_(0, 1)
 
       return output, phi, S, pre_phi, baseline_net_output
