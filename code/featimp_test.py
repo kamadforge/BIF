@@ -63,14 +63,14 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="xor") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
+    parser.add_argument("--dataset", default="alternating") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
-    parser.add_argument("--epochs", default=200, type=int)
+    parser.add_argument("--epochs", default=150, type=int)
     parser.add_argument("--lr", default=0.01, type=float)
 
     # for switch training
-    parser.add_argument("--num_Dir_samples", default=10, type=int)
+    parser.add_argument("--num_Dir_samples", default=50, type=int)
     parser.add_argument("--alpha", default=0.01, type=float)
     parser.add_argument("--point_estimate", default=False)
 
@@ -512,25 +512,6 @@ def main():
                 return S, datatypes_test_samp
 
 
-
-
-            #######################################
-            # evaluation
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             dataset=args.dataset
             S, datatypes_test_samp = test_instance(dataset, True, False)
             if dataset=="xor":
@@ -543,6 +524,11 @@ def main():
                 k=7
             elif dataset == "syn5" or dataset == "syn6":
                 k=9
+
+            #######################################
+            # evaluation
+            if not args.point_estimate:
+                S=S.mean(dim=2)
 
             median_ranks = compute_median_rank(S, k, dataset, datatypes_test_samp)
             mean_median_ranks=np.mean(median_ranks)
