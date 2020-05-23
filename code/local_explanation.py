@@ -31,7 +31,7 @@ import os
 import socket
 from data.synthetic_data_loader import synthetic_data_loader
 from models.switch_MLP import ThreeNet
-from models.nn_3hidden import FC_net
+from models.nn_3hidden import FC_net, FC
 from evaluation_metrics import binary_classification_metrics, compute_median_rank
 
 
@@ -39,13 +39,13 @@ from evaluation_metrics import binary_classification_metrics, compute_median_ran
 ########################################
 # Path
 cwd = os.getcwd()
-cwd_parent = Path(__file__).parent.parent
+# cwd_parent = Path(__file__).parent.parent
 pathmain = cwd
 path_code = os.path.join(pathmain, "code")
 
-if socket.gethostname():
-    pathmain=cwd_parent
-    path_code=cwd
+# if socket.gethostname():
+#     pathmain=cwd_parent
+#     path_code=cwd
 
 ########################################
 # Arguments
@@ -54,14 +54,14 @@ def get_args():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--dataset", default="alternating") #xor, orange_skin, nonlinear_additive, alternating
-    parser.add_argument("--mini_batch_size", default=200, type=int)
-    parser.add_argument("--epochs", default=200, type=int)
-    parser.add_argument("--alpha", default=0.001, type=float)
+    parser.add_argument("--dataset", default="nonlinear_additive") #xor, orange_skin, nonlinear_additive, alternating
+    parser.add_argument("--mini_batch_size", default=110, type=int)
+    parser.add_argument("--epochs", default=400, type=int)
+    parser.add_argument("--alpha", default=0.01, type=float)
     parser.add_argument("--kl_term", default=False)
     parser.add_argument("--num_Dir_samples", default=0, type=int)
     parser.add_argument("--point_estimate", default=True)
-    parser.add_argument("--mode", default="test")
+    parser.add_argument("--mode", default="training")
     # parser.add_argument("--set_hooks", default=True)
 
     args = parser.parse_args()
@@ -74,9 +74,9 @@ def loss_function(prediction, baseline_net_output, true_y, phi_cand, alpha_0, hi
 
     BCE = loss(prediction, true_y)
 
-    BCE_baseline = loss(baseline_net_output, true_y)
-
-    Diff_BCE = (BCE-BCE_baseline)
+    # BCE_baseline = loss(baseline_net_output, true_y)
+    #
+    # Diff_BCE = (BCE-BCE_baseline)
     # print('BCE', BCE)
     # print('BCE_baseline', BCE_baseline)
 
@@ -85,7 +85,7 @@ def loss_function(prediction, baseline_net_output, true_y, phi_cand, alpha_0, hi
         alpha_0 = torch.Tensor([alpha_0])
         hidden_dim = torch.Tensor([hidden_dim])
 
-        mini_batch_size = phi_cand.shape[0]
+        # mini_batch_size = phi_cand.shape[0]
         # KL_mat = torch.zeros(mini_batch_size)
         # for i in torch.arange(0,mini_batch_size):
         #     phi = phi_cand[i,:]
@@ -96,28 +96,29 @@ def loss_function(prediction, baseline_net_output, true_y, phi_cand, alpha_0, hi
         #     KL_mat[i] = trm1 + trm2 + trm3
         #
 
-        # trm1_mul = torch.lgamma(torch.sum(phi_cand, dim=1)) - torch.lgamma(hidden_dim * alpha_0)
-        # trm2_mul = - torch.sum(torch.lgamma(phi_cand), dim=1) + hidden_dim * torch.lgamma(alpha_0)
-        # trm3_mul = torch.sum((phi_cand - alpha_0) * (torch.digamma(phi_cand) - torch.digamma(torch.sum(phi_cand,dim=1)).unsqueeze(dim=1)), dim=1)
-        #
-        # KL_mul = trm1_mul + trm2_mul + trm3_mul
-        # KLD = torch.mean(KL_mul)
+        trm1_mul = torch.lgamma(torch.sum(phi_cand, dim=1)) - torch.lgamma(hidden_dim * alpha_0)
+        trm2_mul = - torch.sum(torch.lgamma(phi_cand), dim=1) + hidden_dim * torch.lgamma(alpha_0)
+        trm3_mul = torch.sum((phi_cand - alpha_0) * (torch.digamma(phi_cand) - torch.digamma(torch.sum(phi_cand,dim=1)).unsqueeze(dim=1)), dim=1)
+
+        KL_mul = trm1_mul + trm2_mul + trm3_mul
+        KLD = torch.mean(KL_mul)
 
         # print('KLD and BCE', [KLD, BCE])
 
-        # return BCE + KLD
+        return BCE + KLD
         # return BCE + annealing_rate*KLD/how_many_samps
         # return BCE + annealing_rate * KLD
 
-        # test L1 norm
-        L1norm_phi = torch.sum(torch.abs(phi_cand))/mini_batch_size/hidden_dim
-        # L1norm_phi = torch.sum(torch.abs(pre_phi)) / mini_batch_size / hidden_dim
-        # print('L1norm and BCE', [L1norm_phi, BCE])
-        return BCE + 10*L1norm_phi
+        # # test L1 norm
+        # L1norm_phi = torch.sum(torch.abs(phi_cand))/mini_batch_size/hidden_dim
+        # # L1norm_phi = torch.sum(torch.abs(pre_phi)) / mini_batch_size / hidden_dim
+        # # print('L1norm and BCE', [L1norm_phi, BCE])
+        # return BCE + L1norm_phi
 
     else:
 
-        return Diff_BCE
+        # return Diff_BCE
+        return BCE
 
 def shuffle_data(y,x,how_many_samps, datatypes=None):
 
@@ -189,25 +190,20 @@ def main():
     baseline_net_trained = np.load(
         os.path.join(path_code, 'models/%s_%s_LR_model' % (dataset, method) + str(int(iter_sigmas[0])) + '.npy'),
         allow_pickle=True)
-    baseline_net = FC_net(input_dim, output_dim, 200) # hidden_dim = 200
+
+    which_norm = 'weight_norm'
+    baseline_net = FC_net(input_dim, output_dim, 400, which_norm) # hidden_dim = 200
     baseline_net.load_state_dict(baseline_net_trained[()][0], strict=False)
 
-    classifier_net = FC_net(input_dim, output_dim, 30)
-    switch_net = FC_net(input_dim, input_dim, 20) # third input is hidden_dim
+    classifier_net = FC_net(input_dim, output_dim, 400, which_norm)
+    classifier_net.load_state_dict(baseline_net_trained[()][0], strict=False)
 
-    other_parameters = list(classifier_net.parameters()) + list(switch_net.parameters())
+    switch_net = FC_net(input_dim, input_dim, 200, which_norm) # third input is hidden_dim
+
+    # other_parameters = list(classifier_net.parameters()) + list(switch_net.parameters())
+    other_parameters = list(switch_net.parameters())
 
     # other_parameters = other_parameters + list(baseline_net.parameters())
-
-    # if args.set_hooks:
-    #     # in case you use pre-trained classifier
-    #
-    #     h = baseline_net.fc1.weight.register_hook(lambda grad: grad * 0)
-    #     h = baseline_net.fc2.weight.register_hook(lambda grad: grad * 0)
-    #     h = baseline_net.fc4.weight.register_hook(lambda grad: grad * 0)
-    #     h = baseline_net.fc1.bias.register_hook(lambda grad: grad * 0)
-    #     h = baseline_net.fc2.bias.register_hook(lambda grad: grad * 0)
-    #     h = baseline_net.fc4.bias.register_hook(lambda grad: grad * 0)
 
     for k in range(iter_sigmas.shape[0]):
 
@@ -223,8 +219,8 @@ def main():
 
             print('Starting Training')
 
-            # optimizer = optim.SGD(params=other_parameters, lr=0.01, momentum=0.9)
-            optimizer = optim.Adam(params=other_parameters, lr=1e-1)
+            optimizer = optim.SGD(params=other_parameters, lr=0.01, momentum=0.9)
+            # optimizer = optim.Adam(params=other_parameters, lr=0.01)
             # optimizer = optim.Adam(model.parameters(), lr=1e-1)
 
 
@@ -267,8 +263,9 @@ def main():
                     # print statistics
                     running_loss += loss.item()
 
-                    # if i % how_many_iter ==0:
-                    #     print("switch: ", S_cand[0,:])
+                    if i % how_many_iter ==0:
+                        print("phi values: ", phi_cand[0,:])
+                        print("S values: ", S_cand[0, :])
 
                 # training_loss_per_epoch[epoch] = running_loss/how_many_samps
 
@@ -298,7 +295,7 @@ def main():
 
                     print(f"dataset: {dataset}")
 
-                    path = f"models/switches_{dataset}_switch_nn_{switch_nn}_local_{training_local}.pt"
+                    # path = f"models/switches_{dataset}_switch_nn_{switch_nn}_local_{training_local}.pt"
 
                     i = 0  # choose a sample
                     mini_batch_size = 2000

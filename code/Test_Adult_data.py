@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import pickle
 import autodp
 from autodp import privacy_calibrator
-from models.nn_3hidden import FC
+from models.nn_3hidden import FC, FC_net
 
 import torch.nn as nn
 import torch.optim as optim
@@ -37,6 +37,7 @@ if  __name__ =='__main__':
     """ inputs """
     dataset = "nonlinear_additive" # "xor, orange_skin, or nonlinear_additive"
     method = "nn"
+    which_net = 'FC_net' # FC_net or 'FC'
     rnd_num = 0
 
     rn.seed(rnd_num)
@@ -130,8 +131,15 @@ if  __name__ =='__main__':
         mean_alpha_prv = a0/b0
 
     elif method == "nn":
-        model = FC(input_num, output_num)
+        if which_net == 'FC_net':
+            hidden_dim = 400
+            which_norm = 'weight_norm'
+            model = FC_net(input_num, output_num, hidden_dim, which_norm)
+        else:
+            model = FC(input_num, output_num)
         criterion = nn.CrossEntropyLoss()
+
+
         # optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
         optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
         num_epochs = 1000

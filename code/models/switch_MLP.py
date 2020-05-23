@@ -203,24 +203,35 @@ class Model_switchlearning(nn.Module):
             feat_dim = phi.shape[1]
 
             # sanity check: we draw samples for each data sample in a for loop first and see if this statistic matches full one
-            S = torch.zeros((self.mini_batch_size, feat_dim, num_samps))
 
-            for i in torch.arange(0, self.mini_batch_size):
-                this_phi_vec = phi[i,:]
+            compute_loop = False
+            if compute_loop:
+                S = torch.zeros((self.mini_batch_size, feat_dim, num_samps))
 
-                """ draw Gamma RVs using phi and 1 """
-                concentration_param = this_phi_vec.view(-1, 1).repeat(1, num_samps)  # [feat x sampnum]
-                beta_param = torch.ones(concentration_param.size())  # [feat x sampnum]
-                # Gamma has two parameters, concentration and beta, all of them are copied to 200,150 matrix
-                Gamma_obj = Gamma(concentration_param, beta_param)  # [feat x sampnum]
-                gamma_samps = Gamma_obj.rsample()  # feat x samples_num
+                for i in torch.arange(0, self.mini_batch_size):
+                    this_phi_vec = phi[i,:]
 
-                if any(torch.sum(gamma_samps, 0) == 0):
-                    print("sum of gamma samps are zero!")
-                else:
-                    Sstack = gamma_samps / torch.sum(gamma_samps, 0)  # input dim by  # samples
+                    """ draw Gamma RVs using phi and 1 """
+                    concentration_param = this_phi_vec.view(-1, 1).repeat(1, num_samps)  # [feat x sampnum]
+                    beta_param = torch.ones(concentration_param.size())  # [feat x sampnum]
+                    # Gamma has two parameters, concentration and beta, all of them are copied to 200,150 matrix
+                    Gamma_obj = Gamma(concentration_param, beta_param)  # [feat x sampnum]
+                    gamma_samps = Gamma_obj.rsample()  # feat x samples_num
 
-                S[i,:,:] = Sstack
+                    if any(torch.sum(gamma_samps, 0) == 0):
+                        print("sum of gamma samps are zero!")
+                    else:
+                        Sstack = gamma_samps / torch.sum(gamma_samps, 0)  # input dim by  # samples
+
+                    S[i,:,:] = Sstack
+            else:
+                concentration_param = phi[:, :, None].expand(-1, -1, num_samps)
+                beta_param = torch.ones_like(concentration_param)
+                Gamma_obj = Gamma(concentration_param, beta_param)
+                gamma_samps = Gamma_obj.rsample()  # bs x feat_dim x samples_num
+                norm_sum = torch.sum(gamma_samps, 1, keepdim=True)
+                assert not (norm_sum == 0).any()
+                S = gamma_samps / norm_sum  # normalize in feature dimension
 
             x_samps = torch.einsum("ij,ijk -> ikj", (x, S)) # x: minibatch by feat_dim, samps_mat: minibatch by feat_dim by num_samps
             bs, n_samp, n_feat = x_samps.shape
@@ -294,14 +305,23 @@ class ThreeNet(nn.Module):
       pre_phi = self.switch_net(x)
       phi = F.softplus(pre_phi)  # now the size of phi is mini_batch by input_dim
 
+      if torch.sum(torch.isnan(phi))>=1:
+          print("some Phis are NaN")
+
       if self.point_estimate:
           S = phi / torch.sum(phi, dim=1).unsqueeze(dim=1)
           output = x * S
 
+      # norm_preserving = True
+      # if norm_preserving:
+      #     x_norm = torch.norm(x,dim=1).unsqueeze(dim=1)
+      #     output_norm = torch.norm(output,dim=1).unsqueeze(dim=1)
+      #     output = output/output_norm*x_norm
+
       output = self.classifier_net(output)
 
-      if not self.point_estimate:
-          output = output.reshape(self.num_samps_for_switch, mini_batch_size, -1)
-          output = output.transpose_(0, 1)
+      # if not self.point_estimate:
+      #     output = output.reshape(self.num_samps_for_switch, mini_batch_size, -1)
+      #     output = output.transpose_(0, 1)
 
       return output, phi, S, pre_phi, baseline_net_output
