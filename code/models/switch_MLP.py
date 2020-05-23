@@ -40,6 +40,7 @@ class Modelnn(nn.Module):
         if x.shape[0]==1:
             dummy=0
 
+        pre_phi=self.parameter
         phi = F.softplus(self.parameter)
 
         if any(torch.isnan(phi)):
@@ -69,6 +70,7 @@ class Modelnn(nn.Module):
 
             SstackT = Sstack.t() # Dirichlet samples by mini_batch
             output, Sprime = self.switch_func_fc(x, SstackT)
+            S=SstackT
 
             # x_samps = torch.einsum("ij,jk -> ijk", (x, Sstack))  # ([150, 10, 100]) batch size, dim, samples
             # x_out = torch.einsum("bjk, j -> bk", (x_samps, torch.squeeze(self.W)))  # [100,150]
@@ -86,7 +88,8 @@ class Modelnn(nn.Module):
             output = output.reshape(self.num_samps_for_switch, mini_batch_size, -1)
             output = output.transpose_(0, 1)
 
-        return output, phi
+
+        return output, phi, S, pre_phi
 
     # t = torch.tensor([[[1,2,3,4],[5,6,7,8]],[[9,10,11,12],[13,14,15,16]], [[17,18,19,20],[21,22,23,24]]])
     # t.shape is torch.Size([3, 2, 4])
@@ -127,12 +130,14 @@ class Model_switchlearning(nn.Module):
         super(Model_switchlearning, self).__init__()
 
 
-        self.phi_fc1 = nn.Linear(input_num, 100)
-        self.phi_fc2 = nn.Linear(100,100)
-        self.phi_fc3 = nn.Linear(100, input_num) #outputs switch values
+        self.phi_fc1 = nn.Linear(input_num, 200)
+        self.phi_fc2 = nn.Linear(200,200)
+        #self.phi_fc2b = nn.Linear(200, 200)
+        self.phi_fc3 = nn.Linear(200, input_num) #outputs switch values
 
-        self.fc1_bn1 = nn.BatchNorm1d(100)
-        self.fc2_bn2 = nn.BatchNorm1d(100)
+        self.fc1_bn1 = nn.BatchNorm1d(200)
+        #self.fc2_bn2b = nn.BatchNorm1d(200)
+        self.fc2_bn2 = nn.BatchNorm1d(200)
 
         #self.parameters = -1e-10*torch.ones(input_num) #just an output
 
@@ -160,10 +165,13 @@ class Model_switchlearning(nn.Module):
 
     def forward(self, x, mini_batch_size): # x is mini_batch_size by input_dim
 
-        output = self.phi_fc1(x)
-        output = self.fc1_bn1(output)
+        output = nn.functional.relu(self.phi_fc1(x))
+        
+        #output = self.fc1_bn1(output)
         output = nn.functional.relu(self.phi_fc2(output))
-        output = self.fc2_bn2(output)
+        #output = self.fc2_bn2(output)
+        #output = nn.functional.relu(self.phi_fc2b(output))
+        #output = self.fc2_bn2b(output)
 
         pre_phi = self.phi_fc3(output)
 
@@ -177,10 +185,11 @@ class Model_switchlearning(nn.Module):
             output = x * S
 
             output = self.fc1(output)  # samples*batchsize, dimension
-            output = self.bn1(output)
+            #output = self.bn1(output)
             output = nn.functional.relu(self.fc2(output))
-            output = self.bn2(output)
+            #output = self.bn2(output)
             output = self.fc4(output)
+
 
         else:
             """ draw Gamma RVs using phi and 1 """
