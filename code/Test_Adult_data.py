@@ -35,7 +35,7 @@ from data.make_synthetic_datasets import generate_invase
 if  __name__ =='__main__':
 
     """ inputs """
-    dataset = "xor" # "xor, orange_skin, or nonlinear_additive"
+    dataset = "nonlinear_additive" # "xor, orange_skin, or nonlinear_additive"
     method = "nn"
     rnd_num = 0
 
@@ -66,8 +66,9 @@ if  __name__ =='__main__':
         y_tot = np.argmax(y_tot, axis=1)
         dataset_tosave = {'x': x_tot, 'y': y_tot}
         np.save('../data/synthetic/orange_skin/dataset_orange_skin.npy', dataset_tosave)
+
     elif dataset == "nonlinear_additive":
-        x_tot, y_tot, datatypes = generate_data(10000, 'orange_skin')
+        x_tot, y_tot, datatypes = generate_data(10000, 'nonlinear_additive')
         y_tot = np.argmax(y_tot, axis=1)
         dataset_tosave = {'x': x_tot, 'y': y_tot}
         np.save('../data/synthetic/nonlinear_additive/dataset_nonlinear_additive.npy', dataset_tosave)
@@ -133,7 +134,7 @@ if  __name__ =='__main__':
         criterion = nn.CrossEntropyLoss()
         # optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
         optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
-        num_epochs = 500
+        num_epochs = 1000
 
     """ set the privacy parameter """
     # dp_epsilon = 1
