@@ -169,7 +169,7 @@ class Model_switchlearning(nn.Module):
         
         output = self.fc1_bn1(output)
         output = nn.functional.relu(self.phi_fc2(output))
-        #output = self.fc2_bn2(output)
+        output = self.fc2_bn2(output)
         #output = nn.functional.relu(self.phi_fc2b(output))
         #output = self.fc2_bn2b(output)
 
