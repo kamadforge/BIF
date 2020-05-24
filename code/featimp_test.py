@@ -63,25 +63,25 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="alternating") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
+    parser.add_argument("--dataset", default="xor") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
-    parser.add_argument("--epochs", default=150, type=int)
-    parser.add_argument("--lr", default=0.01, type=float)
+    parser.add_argument("--epochs", default=7, type=int)
+    parser.add_argument("--lr", default=0.001, type=float)
 
     # for switch training
-    parser.add_argument("--num_Dir_samples", default=50, type=int)
-    parser.add_argument("--alpha", default=0.01, type=float)
-    parser.add_argument("--point_estimate", default=False)
+    parser.add_argument("--num_Dir_samples", default=100, type=int)
+    parser.add_argument("--alpha", default=1, type=float)
+    parser.add_argument("--point_estimate", default=True)
 
-    parser.add_argument("--mode", default="training") #training, test
+    parser.add_argument("--mode", default="test") #train, test
 
     # for instance wise training
     parser.add_argument("--switch_nn", default=True)
     parser.add_argument("--training_local", default=False)
     parser.add_argument("--local_training_iter", default=200, type=int)
     parser.add_argument("--set_hooks", default=True)
-    parser.add_argument("--kl_term", default=True)
+    parser.add_argument("--kl_term", default=False)
 
     args = parser.parse_args()
 
@@ -111,7 +111,9 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
 
             BCE = torch.mean(BCE_mat)
         else:
-            BCE = loss(prediction, true_y)
+            if args.mini_batch_size==1:
+                true_y=true_y.unsqueeze(0)
+            BCE = loss(prediction, true_y )
 
         if kl_term:
 
@@ -236,7 +238,7 @@ def main():
     # iter_sigmas = np.array([0., 1., 10., 50., 100.])
     iter_sigmas = np.array([0.])
 
-    if args.mode == "training":
+    if args.mode == "train":
 
         for k in range(iter_sigmas.shape[0]):
 
@@ -277,60 +279,62 @@ def main():
                         h = model.fc1.weight.register_hook(lambda grad: grad * 0)
                         h = model.fc2.weight.register_hook(lambda grad: grad * 0)
                         h = model.fc4.weight.register_hook(lambda grad: grad * 0)
+                        h = model.bn1.weight.register_hook(lambda grad: grad * 0)
+                        h = model.bn2.weight.register_hook(lambda grad: grad * 0)
+
                         h = model.fc1.bias.register_hook(lambda grad: grad * 0)
                         h = model.fc2.bias.register_hook(lambda grad: grad * 0)
                         h = model.fc4.bias.register_hook(lambda grad: grad * 0)
+                        h = model.bn1.bias.register_hook(lambda grad: grad * 0)
+                        h = model.bn2.bias.register_hook(lambda grad: grad * 0)
 
                 ############################################################################################3
 
                 print('Starting Training')
 
-                optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-                # optimizer = optim.Adam(model.parameters(), lr=args.lr)
+                #optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+                optimizer = optim.Adam(model.parameters(), lr=args.lr)
+                #optimizer = optim.Adadelta(model.parameters(), lr=args.lr, rho=0.9, eps=1e-06, weight_decay=0)
 
                 how_many_epochs = args.epochs
                 how_many_iter = np.int(how_many_samps/mini_batch_size)
                 training_loss_per_epoch = np.zeros(how_many_epochs)
                 annealing_steps = float(8000.*how_many_epochs)
                 beta_func = lambda s: min(s, annealing_steps) / annealing_steps
-
                 # for name,par in model.named_parameters():
                 #     print (name)
 
                 yTrain, xTrain, datatypesTrain = shuffle_data(y, X, how_many_samps, datatypes)
 
-
                 for epoch in range(how_many_epochs):  # loop over the dataset multiple times
-
                     running_loss = 0.0
                     annealing_rate = beta_func(epoch)
-
                     for i in range(how_many_iter):
-
                         # get the inputs
                         inputs = xTrain[i*mini_batch_size:(i+1)*mini_batch_size,:]
                         labels = yTrain[i*mini_batch_size:(i+1)*mini_batch_size]
-
+                        if not (args.dataset == "xor" or args.dataset == "orange_skin" or args.dataset == "nonlinear_additive"):
+                            datatypes_train_batch = datatypesTrain[i*mini_batch_size:(i+1)*mini_batch_size]
                         # zero the parameter gradients
                         optimizer.zero_grad()
-
-                        # forward + backward + optimize
                         outputs, phi_cand, S, prephi = model(torch.Tensor(inputs), mini_batch_size) #100,10,150
 
                         if method=="vips":
                             labels = torch.squeeze(torch.Tensor(labels))
                             loss = loss_function(outputs, labels.view(-1, 1).repeat(1, num_samps_for_switch), phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method)
+
                         elif method == "nn":
                             labels = torch.squeeze(torch.LongTensor(labels))
                             loss = loss_function(outputs, labels, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method, args.kl_term, point_estimate)
 
                         loss.backward()
                         optimizer.step()
-
-                        # print statistics
                         running_loss += loss.item()
 
-                        if i % how_many_iter ==0:
+                        #if i % how_many_iter ==0:
+                        if i % how_many_iter == 0 or i % how_many_iter == 1 or i % how_many_iter == 2:
+                            #print(datatypes_train_batch[0:2])
+                            print(S[0:2])
                             # phis = phi_cand / torch.sum(phi_cand)
                             # print("switch: ", phis.mean(dim=0))
                             # print("switch: ", phis[1:4])
@@ -341,7 +345,7 @@ def main():
 
                     training_loss_per_epoch[epoch] = running_loss
                     print('epoch number is ', epoch)
-                    print('running loss is ', running_loss)
+                    print('running loss is \n', running_loss)
 
                 print('Finished global Training')
 
@@ -504,7 +508,7 @@ def main():
                 outputs, phi, S, phi_est = model(inputs_test_samp, mini_batch_size)
                 torch.set_printoptions(profile="full")
 
-                samples_to_see=2
+                samples_to_see=5
                 if mini_batch_size>samples_to_see and datatypes_test_samp is not None:
                     print(datatypes_test_samp[:samples_to_see])
                     print("outputs", outputs[:samples_to_see])
