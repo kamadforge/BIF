@@ -63,15 +63,15 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="xor") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
+    parser.add_argument("--dataset", default="nonlinear_additive") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
-    parser.add_argument("--epochs", default=7, type=int)
-    parser.add_argument("--lr", default=0.001, type=float)
+    parser.add_argument("--epochs", default=50, type=int)
+    parser.add_argument("--lr", default=0.1, type=float)
 
     # for switch training
-    parser.add_argument("--num_Dir_samples", default=100, type=int)
-    parser.add_argument("--alpha", default=1, type=float)
+    parser.add_argument("--num_Dir_samples", default=50, type=int)
+    parser.add_argument("--alpha", default=0.010, type=float)
     parser.add_argument("--point_estimate", default=True)
 
     parser.add_argument("--mode", default="test") #train, test
@@ -92,6 +92,8 @@ args = get_args()
 
 #######################
 # LOSS
+
+
 
 def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method, kl_term, point_estimate):
 
@@ -279,14 +281,14 @@ def main():
                         h = model.fc1.weight.register_hook(lambda grad: grad * 0)
                         h = model.fc2.weight.register_hook(lambda grad: grad * 0)
                         h = model.fc4.weight.register_hook(lambda grad: grad * 0)
-                        h = model.bn1.weight.register_hook(lambda grad: grad * 0)
-                        h = model.bn2.weight.register_hook(lambda grad: grad * 0)
+                        #h = model.bn1.weight.register_hook(lambda grad: grad * 0)
+                        #h = model.bn2.weight.register_hook(lambda grad: grad * 0)
 
                         h = model.fc1.bias.register_hook(lambda grad: grad * 0)
                         h = model.fc2.bias.register_hook(lambda grad: grad * 0)
                         h = model.fc4.bias.register_hook(lambda grad: grad * 0)
-                        h = model.bn1.bias.register_hook(lambda grad: grad * 0)
-                        h = model.bn2.bias.register_hook(lambda grad: grad * 0)
+                        #h = model.bn1.bias.register_hook(lambda grad: grad * 0)
+                        #h = model.bn2.bias.register_hook(lambda grad: grad * 0)
 
                 ############################################################################################3
 

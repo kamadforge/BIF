@@ -35,7 +35,7 @@ from data.make_synthetic_datasets import generate_invase
 if  __name__ =='__main__':
 
     """ inputs """
-    dataset = "nonlinear_additive" # "xor, orange_skin, or nonlinear_additive"
+    dataset = "alternating" # "xor, orange_skin, or nonlinear_additive"
     method = "nn"
     which_net = 'FC' # FC_net or 'FC'
     rnd_num = 0
