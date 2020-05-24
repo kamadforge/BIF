@@ -165,7 +165,8 @@ class Model_switchlearning(nn.Module):
 
     def forward(self, x, mini_batch_size): # x is mini_batch_size by input_dim
 
-        output = nn.functional.relu(self.phi_fc1(x))
+        output = self.phi_fc1(x)
+        #output = nn.functional.relu(self.phi_fc1(x))
         
         output = self.fc1_bn1(output)
         output = nn.functional.relu(self.phi_fc2(output))
@@ -185,9 +186,9 @@ class Model_switchlearning(nn.Module):
             output = x * S
 
             output = self.fc1(output)  # samples*batchsize, dimension
-            #output = self.bn1(output)
+            output = self.bn1(output)
             output = nn.functional.relu(self.fc2(output))
-            #output = self.bn2(output)
+            output = self.bn2(output)
             output = self.fc4(output)
 
 
