@@ -35,6 +35,7 @@ import sys
 sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp")
 sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp/data")
 sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp/code")
+sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp/code/models")
 
 
 from data.synthetic_data_loader import synthetic_data_loader
