@@ -31,6 +31,12 @@ from pathlib import Path
 import sys
 import os
 import socket
+import sys
+sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp")
+sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp/data")
+sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp/code")
+
+
 from data.synthetic_data_loader import synthetic_data_loader
 from evaluation_metrics import compute_median_rank, binary_classification_metrics
 
@@ -63,7 +69,7 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="nonlinear_additive") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
+    parser.add_argument("--dataset", default="syn6") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
     parser.add_argument("--epochs", default=50, type=int)
@@ -74,7 +80,7 @@ def get_args():
     parser.add_argument("--alpha", default=0.010, type=float)
     parser.add_argument("--point_estimate", default=True)
 
-    parser.add_argument("--mode", default="test") #train, test
+    parser.add_argument("--mode", default="train") #train, test
 
     # for instance wise training
     parser.add_argument("--switch_nn", default=True)
