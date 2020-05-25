@@ -47,19 +47,21 @@ from evaluation_metrics import compute_median_rank, binary_classification_metric
 
 cwd = os.getcwd()
 cwd_parent = Path(__file__).parent.parent
-if 'g0' in socket.gethostname() or 'p0' in socket.gethostname():
-    sys.path.append(os.path.join(cwd_parent, "data"))
-    from data.tab_dataloader import load_cervical, load_adult, load_credit
-    pathmain=cwd
-    path_code = os.path.join(pathmain, "code")
-elif socket.gethostname()=='worona.local':
+
+if socket.gethostname()=='worona.local':
     pathmain = cwd
     path_code = os.path.join(pathmain, "code")
-else:
+elif socket.gethostname()=='kamil':
     from data.tab_dataloader import load_cervical, load_adult, load_credit
     from models.nn_3hidden import FC
     pathmain=cwd_parent
     path_code=cwd
+#if 'g0' in socket.gethostname() or 'p0' in socket.gethostname():
+else:
+    sys.path.append(os.path.join(cwd_parent, "data"))
+    from data.tab_dataloader import load_cervical, load_adult, load_credit
+    pathmain=cwd
+    path_code = os.path.join(pathmain, "code")
 
 ##################################################3
 # ARGUMENTS
