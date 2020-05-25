@@ -70,18 +70,19 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="syn6") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
+    parser.add_argument("--dataset", default="syn4") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
-    parser.add_argument("--epochs", default=50, type=int)
+    parser.add_argument("--epochs", default=5, type=int)
     parser.add_argument("--lr", default=0.1, type=float)
 
     # for switch training
     parser.add_argument("--num_Dir_samples", default=50, type=int)
-    parser.add_argument("--alpha", default=0.010, type=float)
+    parser.add_argument("--alpha", default=0.01, type=float)
     parser.add_argument("--point_estimate", default=True)
 
-    parser.add_argument("--mode", default="train") #train, test
+    parser.add_argument("--train", default=True) #train, test
+    parser.add_argument("--test", default=True)  # train, test
 
     # for instance wise training
     parser.add_argument("--switch_nn", default=True)
@@ -95,6 +96,8 @@ def get_args():
     return args
 
 args = get_args()
+
+
 
 
 #######################
@@ -247,7 +250,7 @@ def main():
     # iter_sigmas = np.array([0., 1., 10., 50., 100.])
     iter_sigmas = np.array([0.])
 
-    if args.mode == "train":
+    if args.train:
 
         for k in range(iter_sigmas.shape[0]):
 
@@ -475,7 +478,7 @@ def main():
 
 ###################################################################################################
 
-    elif args.mode=="test":
+    if args.test:
 
             #############################
             # running the test
@@ -556,7 +559,7 @@ def main():
             #2.56 - nonlinear_additive
             #2.88/ 3.5 - alternating
 
-
+    return tpr, fdr
 
 
     # print('estimated posterior mean of Switch is', estimated_Switch)
@@ -576,4 +579,13 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    runs = 5
+
+    tprs, fdrs = [], []
+    for i in range(runs):
+        print(f"\n\nRun: {i}\n")
+        tpr, fdr = main()
+        tprs.append(tpr); fdrs.append(fdr)
+
+    print("*"*50)
+    print(f"tpr mean {np.mean(tprs)}, fdr mean: {np.mean(fdrs)}")
