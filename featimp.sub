@@ -17,6 +17,9 @@ log = clust/clust_log/$(var).$(Process).log
 request_cpus = 1
 #request_gpus = 1
 
++MaxRunningPrice = 5000
++RunningPriceExceededAction = "kill"
+
 #queue dataset,epochs,lr,mini_batch_size from /home/kadamczewski/Dropbox_from/Current_research/featimp_dp/parameters2.txt
 
 queue dataset,epochs,lr from /home/kadamczewski/Dropbox_from/Current_research/featimp_dp/parameters2.txt
