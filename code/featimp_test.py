@@ -489,7 +489,7 @@ def main():
 
                 print(f"dataset: {dataset}")
 
-                path = f"models/switches_{dataset}_switch_nn_{switch_nn}_local_{training_local}.pt"
+                path = os.path.join(path_code, f"models/switches_{args.dataset}_switch_nn_{args.switch_nn}_local_{args.training_local}.pt")
 
                 i = 0  # choose a sample
                 mini_batch_size = 2000
