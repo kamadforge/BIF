@@ -17,7 +17,7 @@ request_memory = 8040
 request_cpus = 1
 request_gpus = 1
 
-queue dataset,epochs,lr,mini_batch_size from /home/kadamczewski/Dropbox_from/Current_research/featimp_dp/code/parameters.txt
+queue dataset,epochs,lr,mini_batch_size from /home/kadamczewski/Dropbox_from/Current_research/featimp_dp/parameters.txt
 
 
 
