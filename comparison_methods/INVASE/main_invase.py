@@ -132,7 +132,10 @@ def main(args):
       - acc: accuracy
   """
   np.random.seed(args.seed)
-  tf.random.set_seed(args.seed)
+  try:
+    tf.random.set_seed(args.seed)
+  except AttributeError:
+    tf.set_random_seed(args.seed)
   # random.seed(0)
 
   print('#################### generating data')
