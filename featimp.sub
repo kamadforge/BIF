@@ -1,106 +1,36 @@
 executable = /usr/bin/unbuffer
-arguments = /home/kadamczewski/miniconda3/bin/python /home/kadamczewski/Dropbox_from/Current_research/featimp_dp/code/featimp_test.py --dataset $(dataset) --samples $(samples) --alpha $(alpha) --epochs $(epochs)
+arguments = /home/kadamczewski/miniconda3/bin/python /home/kadamczewski/Dropbox_from/Current_research/featimp_dp/code/featimp_test.py --dataset $(dataset) --lr $(lr) --epochs $(epochs) --num_Dir_samples $(num_Dir_samples)
+#arguments = /home/kadamczewski/miniconda3/bin/python /home/kadamczewski/Dropbox_from/Current_research/featimp_dp/code/featimp_test.py --dataset $(dataset) --lr $(lr) --epochs $(epochs) --mini_batch_size $(mini_batch_size) --samples $(samples) --alpha $(alpha)
 
-var=switch_featimp_$(dataset)_$(samples)_$(alpha)_$(epochs)
+
+
+#var=switch_featimp_$(dataset)_$(samples)_$(alpha)_$(epochs)
+var=switch_sampling_$(dataset)_lr_$(lr)_epochs_$(epochs)_samples_$(num_Dir_samples)
 
 error = clust/clust_err/$(var).$(Process).err
-output = clust/clust_out/$(var).$(Process).out
+output = clust/clust_out/sampling_nokl/$(var).$(Process).out
 log = clust/clust_log/$(var).$(Process).log
 #requirements = TARGET.CUDAGlobalMemoryMb > 30000
 #buffer_size = 1000
 #stream_output=True
-request_memory = 8040
+#request_memory = 8040
 request_cpus = 1
-request_gpus = 1
+#request_gpus = 1
+
++MaxRunningPrice = 5000
++RunningPriceExceededAction = "kill"
+
+#queue dataset,epochs,lr,mini_batch_size from /home/kadamczewski/Dropbox_from/Current_research/featimp_dp/parameters2.txt
+
+queue dataset,lr,epochs,num_Dir_samples from /home/kadamczewski/Dropbox_from/Current_research/featimp_dp/parameters.txt
 
 
-dataset = orange_skin
-samples=50
-alpha=0.5
-epochs=10
-queue 1
-
-dataset = orange_skin
-samples=150
-alpha=0.5
-epochs=10
-queue 1
-
-dataset = orange_skin
-samples=300
-alpha=0.5
-epochs=10
-queue 1
-
-dataset = orange_skin
-samples=500
-alpha=0.5
-epochs=10
-queue 1
-
-dataset = orange_skin
-samples=1000
-alpha=0.5
-epochs=10
-queue 1
-
-dataset = orange_skin
-samples=2000
-alpha=0.5
-epochs=10
-queue 1
 
 
-dataset = orange_skin
-samples=50
-alpha=0.5
-epochs=100
-queue 1
-
-dataset = orange_skin
-samples=50
-alpha=0.5
-epochs=100
-queue 1
-
-dataset = orange_skin
-samples=150
-alpha=0.5
-epochs=100
-queue 1
-
-dataset = orange_skin
-samples=300
-alpha=0.5
-epochs=100
-queue 1
-
-dataset = orange_skin
-samples=500
-alpha=0.5
-epochs=100
-queue 1
-
-dataset = orange_skin
-samples=500
-alpha=0.5
-epochs=100
-queue 1
-
-dataset = orange_skin
-samples=1000
-alpha=0.5
-epochs=100
-queue 1
-
-dataset = orange_skin
-samples=2000
-alpha=0.5
-epochs=100
-queue 1
-
-#
-# dataset=adult
+# dataset = orange_skin
+# samples=50
+# alpha=0.5
+# epochs=10
 # queue 1
 
 #dataset=intrusion

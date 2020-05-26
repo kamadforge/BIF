@@ -35,7 +35,7 @@ from data.make_synthetic_datasets import generate_invase
 if  __name__ =='__main__':
 
     """ inputs """
-    dataset = "alternating" # "xor, orange_skin, or nonlinear_additive"
+    dataset = "syn6" # "xor, orange_skin, or nonlinear_additive"
     method = "nn"
     which_net = 'FC' # FC_net or 'FC'
     rnd_num = 0
@@ -142,7 +142,7 @@ if  __name__ =='__main__':
 
         # optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
         optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
-        num_epochs = 1500
+        num_epochs = 2000
 
     """ set the privacy parameter """
     # dp_epsilon = 1

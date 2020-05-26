@@ -31,6 +31,13 @@ from pathlib import Path
 import sys
 import os
 import socket
+import sys
+sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp")
+sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp/data")
+sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp/code")
+sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp/code/models")
+
+
 from data.synthetic_data_loader import synthetic_data_loader
 from evaluation_metrics import compute_median_rank, binary_classification_metrics
 
@@ -40,19 +47,21 @@ from evaluation_metrics import compute_median_rank, binary_classification_metric
 
 cwd = os.getcwd()
 cwd_parent = Path(__file__).parent.parent
-if 'g0' in socket.gethostname() or 'p0' in socket.gethostname():
-    sys.path.append(os.path.join(cwd_parent, "data"))
-    from data.tab_dataloader import load_cervical, load_adult, load_credit
-    pathmain=cwd
-    path_code = os.path.join(pathmain, "code")
-elif socket.gethostname()=='worona.local':
+
+if socket.gethostname()=='worona.local':
     pathmain = cwd
     path_code = os.path.join(pathmain, "code")
-else:
+elif socket.gethostname()=='kamil':
     from data.tab_dataloader import load_cervical, load_adult, load_credit
     from models.nn_3hidden import FC
     pathmain=cwd_parent
     path_code=cwd
+#if 'g0' in socket.gethostname() or 'p0' in socket.gethostname():
+else:
+    sys.path.append(os.path.join(cwd_parent, "data"))
+    from data.tab_dataloader import load_cervical, load_adult, load_credit
+    pathmain=cwd
+    path_code = os.path.join(pathmain, "code")
 
 ##################################################3
 # ARGUMENTS
@@ -63,18 +72,19 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="nonlinear_additive") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
+    parser.add_argument("--dataset", default="syn4") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
-    parser.add_argument("--epochs", default=50, type=int)
-    parser.add_argument("--lr", default=0.1, type=float)
+    parser.add_argument("--epochs", default=5, type=int)
+    parser.add_argument("--lr", default=0.01, type=float)
 
     # for switch training
     parser.add_argument("--num_Dir_samples", default=50, type=int)
-    parser.add_argument("--alpha", default=0.010, type=float)
-    parser.add_argument("--point_estimate", default=True)
+    parser.add_argument("--alpha", default=0.01, type=float)
+    parser.add_argument("--point_estimate", default=False)
 
-    parser.add_argument("--mode", default="test") #train, test
+    parser.add_argument("--train", default=True) #train, test
+    parser.add_argument("--test", default=True)  # train, test
 
     # for instance wise training
     parser.add_argument("--switch_nn", default=True)
@@ -88,6 +98,9 @@ def get_args():
     return args
 
 args = get_args()
+print(args)
+
+
 
 
 #######################
@@ -240,7 +253,7 @@ def main():
     # iter_sigmas = np.array([0., 1., 10., 50., 100.])
     iter_sigmas = np.array([0.])
 
-    if args.mode == "train":
+    if args.train:
 
         for k in range(iter_sigmas.shape[0]):
 
@@ -456,7 +469,7 @@ def main():
                 else: #if switch_nn is true testing a single instance
 
                     torch.save(model.state_dict(),
-                               f"models/switches_{args.dataset}_switch_nn_{args.switch_nn}_local_{args.training_local}.pt")
+                               os.path.join(path_code, f"models/switches_{args.dataset}_switch_nn_{args.switch_nn}_local_{args.training_local}.pt"))
 
         ########################
 
@@ -468,7 +481,7 @@ def main():
 
 ###################################################################################################
 
-    elif args.mode=="test":
+    if args.test:
 
             #############################
             # running the test
@@ -477,7 +490,7 @@ def main():
 
                 print(f"dataset: {dataset}")
 
-                path = f"models/switches_{dataset}_switch_nn_{switch_nn}_local_{training_local}.pt"
+                path = os.path.join(path_code, f"models/switches_{args.dataset}_switch_nn_{args.switch_nn}_local_{args.training_local}.pt")
 
                 i = 0  # choose a sample
                 mini_batch_size = 2000
@@ -549,7 +562,7 @@ def main():
             #2.56 - nonlinear_additive
             #2.88/ 3.5 - alternating
 
-
+    return tpr, fdr
 
 
     # print('estimated posterior mean of Switch is', estimated_Switch)
@@ -569,4 +582,13 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    runs = 10
+
+    tprs, fdrs = [], []
+    for i in range(runs):
+        print(f"\n\nRun: {i}\n")
+        tpr, fdr = main()
+        tprs.append(tpr); fdrs.append(fdr)
+
+    print("*"*50)
+    print(f"tpr mean {np.mean(tprs)}, fdr mean: {np.mean(fdrs)}")
