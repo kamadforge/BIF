@@ -9,7 +9,7 @@ var=switch_sampling_$(dataset)_lr_$(lr)_epochs_$(epochs)_samples_$(num_Dir_sampl
 
 error = clust/clust_err/$(var).$(Process).err
 output = clust/clust_out/$(var).$(Process).out
-log = clust/clust_log/$(var).$(Process).log
+log = clust/clust_log/sampling_nokl/$(var).$(Process).log
 #requirements = TARGET.CUDAGlobalMemoryMb > 30000
 #buffer_size = 1000
 #stream_output=True
