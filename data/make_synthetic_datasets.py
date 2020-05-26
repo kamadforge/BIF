@@ -7,6 +7,7 @@ Copied from https://github.com/Jianbo-Lab/L2X/blob/master/synthetic/make_data.py
 from __future__ import print_function
 import numpy as np
 from scipy.stats import chi2
+import random
 
 def generate_XOR_labels(X):
 
@@ -163,7 +164,7 @@ def generate_data(n=100, datatype='', seed = 0, val = False):
     return X, y, datatypes
 
 
-def generate_ground_truth(x, data_type):
+def generate_ground_truth(x, data_type, rand_vector):
     """Generate ground truth feature importance corresponding to the data type
        and feature.
 
@@ -204,6 +205,17 @@ def generate_ground_truth(x, data_type):
         ground_truth[idx1, 2:6] = 1
         ground_truth[idx2, 6:10] = 1
 
+    if data_type == 'total':
+        idx1 = (rand_vector == 1) * 1
+        idx2 = (rand_vector == 2) * 1
+        idx3 = (rand_vector == 3) * 1
+        ground_truth[idx1, 0:2] = 1
+        ground_truth[idx2, 2:6] = 1
+        ground_truth[idx3, 6:10] = 1
+
+
+
+
     return ground_truth
 
 
@@ -213,10 +225,11 @@ def generate_invase(n=100, data_type='', seed = 0):
     np.random.seed(seed)
 
     x = np.random.randn(n, 11)
+    rand_vector = np.random.choice(3, n)
 
     n = x.shape[0]
 
-    ground_truth = generate_ground_truth(x, data_type)
+    ground_truth = generate_ground_truth(x, data_type, rand_vector)
 
     datatypes = ground_truth
 
@@ -243,6 +256,13 @@ def generate_invase(n=100, data_type='', seed = 0):
         logit2 = np.exp(-10 * np.sin(0.2 * x[:, 6]) + abs(x[:, 7]) + \
                         x[:, 8] + np.exp(-x[:, 9]) - 2.4)
 
+    elif data_type =='total':
+        logit1 = np.exp(x[:, 0] * x[:, 1])
+        logit2 = np.exp(np.sum(x[:, 2:6] ** 2, axis=1) - 4.0)
+        logit3 = np.exp(-10 * np.sin(0.2 * x[:, 6]) + abs(x[:, 7]) + \
+                        x[:, 8] + np.exp(-x[:, 9]) - 2.4)
+
+
         # For syn4, syn5 and syn6 only
         # the output depends only on either first or second dataset (two chosen from syn1,syn2, syn3)
     if data_type in ['syn4', 'syn5', 'syn6']:
@@ -251,6 +271,14 @@ def generate_invase(n=100, data_type='', seed = 0):
         idx1 = (x[:, 10] < 0) * 1
         idx2 = (x[:, 10] >= 0) * 1
         logit = logit1 * idx1 + logit2 * idx2 #sum of two dot products, but for each entry only idx1 or odx2 is 1 so logit is either logit1 or logit2
+
+    if data_type=="total":
+        idx1 = (rand_vector == 1) * 1
+        idx2 = (rand_vector == 2) * 1
+        idx3 = (rand_vector == 3) * 1
+        logit = logit1 * idx1 + logit2 * idx2 + logit3 * idx3
+
+
 
         # Compute P(Y=0|X)
     prob_0 = np.reshape((logit / (1 + logit)), [n, 1])
@@ -287,3 +315,8 @@ def generate_invase(n=100, data_type='', seed = 0):
 # elif data_type == 'syn6':
 #     ground_truth[idx1, 2:6] = 1
 #     ground_truth[idx2, 6:10] = 1
+
+
+
+if __name__=="__main__":
+    generate_invase(100, "total", 0)

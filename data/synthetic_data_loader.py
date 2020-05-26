@@ -93,5 +93,15 @@ def synthetic_data_loader(dataset):
         y_tot = xor_dataset[()]['y']
         datatypes = xor_dataset[()]['datatypes']
 
+    elif dataset =="total":
+
+        xor_dataset = np.load(os.path.join(pathmain, 'data/synthetic/qtip/dataset_total.npy'),
+                              allow_pickle=True)
+        x_tot = xor_dataset[()]['x']
+        y_tot = xor_dataset[()]['y']
+        datatypes = xor_dataset[()]['datatypes']
+
+
+
 
     return x_tot, y_tot, datatypes

@@ -72,16 +72,16 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="syn4") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
+    parser.add_argument("--dataset", default="orange_skin") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
-    parser.add_argument("--epochs", default=5, type=int)
-    parser.add_argument("--lr", default=0.01, type=float)
+    parser.add_argument("--epochs", default=10, type=int)
+    parser.add_argument("--lr", default=0.1, type=float)
 
     # for switch training
     parser.add_argument("--num_Dir_samples", default=50, type=int)
     parser.add_argument("--alpha", default=0.01, type=float)
-    parser.add_argument("--point_estimate", default=False)
+    parser.add_argument("--point_estimate", default=True)
 
     parser.add_argument("--train", default=True) #train, test
     parser.add_argument("--test", default=True)  # train, test
@@ -349,7 +349,9 @@ def main():
                         #if i % how_many_iter ==0:
                         if i % how_many_iter == 0 or i % how_many_iter == 1 or i % how_many_iter == 2:
                             #print(datatypes_train_batch[0:2])
-                            print(S[0:2])
+                            if point_estimate:
+                                #print(S[0:2])
+                                print("switch batch mean: ", S.mean(dim=0))
                             # phis = phi_cand / torch.sum(phi_cand)
                             # print("switch: ", phis.mean(dim=0))
                             # print("switch: ", phis[1:4])
@@ -562,7 +564,7 @@ def main():
             #2.56 - nonlinear_additive
             #2.88/ 3.5 - alternating
 
-    return tpr, fdr
+    return tpr, fdr, S
 
 
     # print('estimated posterior mean of Switch is', estimated_Switch)
@@ -582,13 +584,13 @@ def main():
 
 
 if __name__ == '__main__':
-    runs = 10
+    runs = 20
 
-    tprs, fdrs = [], []
+    tprs, fdrs, Ss = [], [], []
     for i in range(runs):
         print(f"\n\nRun: {i}\n")
-        tpr, fdr = main()
-        tprs.append(tpr); fdrs.append(fdr)
+        tpr, fdr, S = main()
+        tprs.append(tpr); fdrs.append(fdr); Ss.append(S.mean(dim=0).detach().numpy())
 
     print("*"*50)
-    print(f"tpr mean {np.mean(tprs)}, fdr mean: {np.mean(fdrs)}")
+    print(f"tpr mean {np.mean(tprs)}, fdr mean: {np.mean(fdrs)}, S_testmean: {np.round(np.mean(Ss, axis=0),3)}")
