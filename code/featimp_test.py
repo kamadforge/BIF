@@ -582,7 +582,7 @@ def main():
 
 
 if __name__ == '__main__':
-    runs = 3
+    runs = 10
 
     tprs, fdrs = [], []
     for i in range(runs):
