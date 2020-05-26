@@ -237,7 +237,7 @@ class Invase():
       dialog = 'Iterations: ' + str(iter_idx) + ', critic accuracy: ' + str(critic_loss[1]) + \
                ', actor loss: ' + str(np.round(actor_loss,4))
 
-      if iter_idx % 100 == 0:
+      if iter_idx % 2000 == 0:
         print(dialog)
 
   def importance_score(self, x):
