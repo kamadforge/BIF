@@ -150,8 +150,8 @@ class InvaseSwitch(nn.Module):
     l_match = nnf.nll_loss(log_critic_out, pt.max(log_baseline_out, dim=1)[1].to(pt.long))
     return l_match + self.kl_reg(actor_out)
 
-  def ce_loss(self, log_critic_out, y_true):
-    return nnf.nll_loss(log_critic_out, y_true)
+  def ce_loss(self, actor_out, log_critic_out, y_true):
+    return nnf.nll_loss(log_critic_out, y_true) + self.kl_reg(actor_out)
 
 
   def switch_selection(self, x_in):
@@ -186,7 +186,7 @@ class InvaseSwitch(nn.Module):
       y_batch_scalar = pt.max(y_batch_onehot, dim=1)[1]
 
       actor_out = self.switch_selection(x_batch)
-      if self.model_type in {'mse_match', 'ce_match'}:
+      if self.model_type in {'mse_match', 'ce_match', 'ce'}:
         selection = actor_out
       else:
         selection = actor_out.detach()
@@ -195,7 +195,7 @@ class InvaseSwitch(nn.Module):
 
       if self.model_type in {'invase', 'mse_match', 'ce_match'}:
         log_baseline_out = self.baseline_net(x_batch)
-      elif self.model_type == 'invase_minus':
+      elif self.model_type in {'invase_minus', 'ce'}:
         log_baseline_out = None
       else:
         raise ValueError
@@ -208,8 +208,9 @@ class InvaseSwitch(nn.Module):
       elif self.model_type == 'mse_match':
         full_loss = self.mse_match_loss(actor_out, log_critic_out, log_baseline_out)
       elif self.model_type == 'ce_match':
-        # full_loss = self.ce_match_loss(actor_out, log_critic_out, log_baseline_out)
-        full_loss = self.ce_loss(log_critic_out, y_batch_scalar)
+        full_loss = self.ce_match_loss(actor_out, log_critic_out, log_baseline_out)
+      elif self.model_type == 'ce':
+        full_loss = self.ce_loss(actor_out, log_critic_out, y_batch_scalar)
       else:
         raise ValueError
 
@@ -370,12 +371,12 @@ def main():
   parser.add_argument('--iteration', help='the number of iteration', default=10000, type=int)
   parser.add_argument('--activation', help='activation function of the networks',
                       choices=['selu', 'relu'], default='relu', type=str)
-  parser.add_argument('--learning_rate', help='learning rate of model training', default=0.0001, type=float)
+  parser.add_argument('--learning_rate', help='learning rate of model training', default=1e-4, type=float)
   parser.add_argument('--model_type', help='inavse or invase- (without baseline)',
-                      choices=['invase', 'invase_minus', 'mse_match', 'ce_match'], default='ce_match', type=str)
+                      choices=['invase', 'invase_minus', 'mse_match', 'ce_match', 'ce'], default='ce', type=str)
 
-  parser.add_argument('--alpha_0', type=float, default=0.01)
-  parser.add_argument('--kl-weight', type=float, default=0.0)
+  parser.add_argument('--alpha_0', type=float, default=0.001)
+  parser.add_argument('--kl-weight', type=float, default=.1)
 
   parser.add_argument('--no-cuda', action='store_true', default=False)
   args = parser.parse_args()

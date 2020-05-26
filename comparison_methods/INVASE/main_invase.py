@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import argparse
 import numpy as np
-
+import tensorflow as tf
 
 
 try:
@@ -34,6 +34,73 @@ except ImportError:
   from invase import Invase
   # noinspection PyUnresolvedReferences
   from utils import feature_performance_metric, prediction_performance_metric
+
+
+def load_data(dataset_name):
+  ###########################################
+  # LOAD DATA
+
+  x_tot, y_tot, datatypes_tot = synthetic_data_loader(dataset_name)
+  y_tot = np.stack([1 - y_tot, y_tot], axis=1)
+
+  # unpack data
+  N_tot, n_feats = x_tot.shape
+
+  training_data_por = 0.8
+  N = int(training_data_por * N_tot)
+
+
+  if dataset_name == "alternating" or "syn" in dataset_name:
+    datatypes = datatypes_tot[:N]  # only for alternating, if datatype comes from orange_skin or nonlinear
+    datatypes_test = datatypes_tot[N:]
+  elif dataset_name == "XOR":
+    datatypes = None
+    datatypes_test = np.zeros((N_tot - N, n_feats))
+    datatypes_test[:, :2] = 1.
+  elif dataset_name in {"orange_skin", "nonlinear_additive"}:
+    datatypes = None
+    datatypes_test = np.zeros((N_tot - N, n_feats))
+    datatypes_test[:, :4] = 1.
+  else:
+    raise ValueError
+
+  y_train, x_train, datatypes_train = shuffle_data(y_tot[:N], x_tot[:N, :], N, datatypes)
+  x_test = x_tot[N:, :]
+  y_test = y_tot[N:]
+
+
+  return x_train, y_train, x_test, y_test, datatypes_test, n_feats
+
+
+def shuffle_data(y, x, how_many_samps, datatypes=None):
+
+    idx = np.random.permutation(how_many_samps)
+    shuffled_y = y[idx]
+    shuffled_x = x[idx,:]
+    if datatypes is None:
+        shuffled_datatypes = None
+    else:
+        shuffled_datatypes = datatypes[idx]
+
+    return shuffled_y, shuffled_x, shuffled_datatypes
+
+
+def synthetic_data_loader(dataset_name):
+
+  sub_dir = 'invase' if dataset_name.startswith('syn') else dataset_name
+  data_file = '../../data/synthetic/' + sub_dir + '/dataset_' + dataset_name + '.npy'
+  loaded_dataset = np.load(data_file, allow_pickle=True)
+
+  x_tot = loaded_dataset[()]['x']
+  y_tot = loaded_dataset[()]['y']
+
+  if dataset_name in {'alternating', 'syn4', 'syn5', 'syn6'}:
+    datatypes = loaded_dataset[()]['datatypes']
+  else:
+    datatypes = None
+
+  return x_tot, y_tot, datatypes
+
 
 def main(args):
   """Main function for INVASE.
@@ -64,11 +131,15 @@ def main(args):
       - apr: average precision score
       - acc: accuracy
   """
+  np.random.seed(args.seed)
+  tf.random.set_seed(args.seed)
+  # random.seed(0)
+
   print('#################### generating data')
   # Generate dataset
-  x_train, y_train, g_train = generate_dataset(n=args.train_no, dim=args.dim, data_type=args.data_type, seed=0)
-  
-  x_test, y_test, g_test = generate_dataset(n=args.test_no, dim=args.dim,  data_type=args.data_type,  seed=0)
+  # x_train, y_train, _ = generate_dataset(n=args.train_no, dim=args.dim, data_type=args.data_type, seed=0)
+  # x_test, y_test, g_test = generate_dataset(n=args.test_no, dim=args.dim,  data_type=args.data_type,  seed=0)
+  x_train, y_train, x_test, y_test, g_test, _ = load_data(args.data_type)
   
   model_parameters = {'lamda': args.lamda,
                       'actor_h_dim': args.actor_h_dim, 
@@ -117,7 +188,8 @@ def main(args):
 if __name__ == '__main__':
   # Inputs for the main function
   parser = argparse.ArgumentParser()
-  parser.add_argument('--data_type', choices=['syn1', 'syn2', 'syn3', 'syn4', 'syn5', 'syn6'], default='syn5', type=str)
+  data_options = ['XOR', 'orange_skin', 'nonlinear_additive', 'syn4', 'syn5', 'syn6']
+  parser.add_argument('--data_type', choices=data_options, default='syn5', type=str)
   parser.add_argument('--train_no', help='the number of training data', default=10000, type=int)
   parser.add_argument('--test_no', help='the number of testing data', default=10000, type=int)
   parser.add_argument('--dim', help='the number of features', choices=[11, 100], default=11, type=int)
@@ -132,7 +204,7 @@ if __name__ == '__main__':
   parser.add_argument('--learning_rate', help='learning rate of model training', default=0.0001, type=float)
   parser.add_argument('--model_type', help='inavse or invase- (without baseline)',
                       choices=['invase', 'invase_minus'], default='invase', type=str)
-  
+  parser.add_argument('--seed', default=1, type=int)
   args_in = parser.parse_args() 
   
   # Call main function  

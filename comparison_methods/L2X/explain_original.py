@@ -114,7 +114,7 @@ def L2X(datatype, train=True):
 	st1 = time.time()
 	st2 = st1
 
-	activation = 'relu' if datatype in ['orange_skin','XOR'] else 'selu'
+	activation = 'relu' if datatype in ['orange_skin', 'XOR'] else 'selu'
 	# P(S|X)
 	model_input = Input(shape=(input_shape,), dtype='float32') 
 
@@ -165,7 +165,7 @@ if __name__ == '__main__':
 
 	parser.add_argument('--datatype', type=str, choices=['orange_skin', 'XOR', 'nonlinear_additive', 'switch'],
 											default='orange_skin')
-	parser.add_argument('--train', action='store_true', default=False)
+	parser.add_argument('--train', action='store_true', default=True)
 
 	args = parser.parse_args()
 
