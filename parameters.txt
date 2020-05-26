@@ -1,120 +1,144 @@
-xor 0.1 5
-xor 0.01 5
-xor 0.001 5
-xor 0.0001 5
-xor 0.1 10
-xor 0.01 10
-xor 0.001 10
-xor 0.0001 10
-xor 0.1 20
-xor 0.01 20
-xor 0.001 20
-xor 0.0001 20
-xor 0.1 50
-xor 0.01 50
-xor 0.001 50
-xor 0.0001 50
-xor 0.1 100
-xor 0.01 100
-xor 0.001 100
-xor 0.0001 100
-orange_skin 0.1 5
-orange_skin 0.01 5
-orange_skin 0.001 5
-orange_skin 0.0001 5
-orange_skin 0.1 10
-orange_skin 0.01 10
-orange_skin 0.001 10
-orange_skin 0.0001 10
-orange_skin 0.1 20
-orange_skin 0.01 20
-orange_skin 0.001 20
-orange_skin 0.0001 20
-orange_skin 0.1 50
-orange_skin 0.01 50
-orange_skin 0.001 50
-orange_skin 0.0001 50
-orange_skin 0.1 100
-orange_skin 0.01 100
-orange_skin 0.001 100
-orange_skin 0.0001 100
-alternating 0.1 5
-alternating 0.01 5
-alternating 0.001 5
-alternating 0.0001 5
-alternating 0.1 10
-alternating 0.01 10
-alternating 0.001 10
-alternating 0.0001 10
-alternating 0.1 20
-alternating 0.01 20
-alternating 0.001 20
-alternating 0.0001 20
-alternating 0.1 50
-alternating 0.01 50
-alternating 0.001 50
-alternating 0.0001 50
-alternating 0.1 100
-alternating 0.01 100
-alternating 0.001 100
-alternating 0.0001 100
-syn4 0.1 5
-syn4 0.01 5
-syn4 0.001 5
-syn4 0.0001 5
-syn4 0.1 10
-syn4 0.01 10
-syn4 0.001 10
-syn4 0.0001 10
-syn4 0.1 20
-syn4 0.01 20
-syn4 0.001 20
-syn4 0.0001 20
-syn4 0.1 50
-syn4 0.01 50
-syn4 0.001 50
-syn4 0.0001 50
-syn4 0.1 100
-syn4 0.01 100
-syn4 0.001 100
-syn4 0.0001 100
-syn5 0.1 5
-syn5 0.01 5
-syn5 0.001 5
-syn5 0.0001 5
-syn5 0.1 10
-syn5 0.01 10
-syn5 0.001 10
-syn5 0.0001 10
-syn5 0.1 20
-syn5 0.01 20
-syn5 0.001 20
-syn5 0.0001 20
-syn5 0.1 50
-syn5 0.01 50
-syn5 0.001 50
-syn5 0.0001 50
-syn5 0.1 100
-syn5 0.01 100
-syn5 0.001 100
-syn5 0.0001 100
-syn6 0.1 5
-syn6 0.01 5
-syn6 0.001 5
-syn6 0.0001 5
-syn6 0.1 10
-syn6 0.01 10
-syn6 0.001 10
-syn6 0.0001 10
-syn6 0.1 20
-syn6 0.01 20
-syn6 0.001 20
-syn6 0.0001 20
-syn6 0.1 50
-syn6 0.01 50
-syn6 0.001 50
-syn6 0.0001 50
-syn6 0.1 100
-syn6 0.01 100
-syn6 0.001 100
-syn6 0.0001 100
+xor 0.1 5 20
+xor 0.1 5 50
+xor 0.1 5 100
+xor 0.01 5 20
+xor 0.01 5 50
+xor 0.01 5 100
+xor 0.1 10 20
+xor 0.1 10 50
+xor 0.1 10 100
+xor 0.01 10 20
+xor 0.01 10 50
+xor 0.01 10 100
+xor 0.1 20 20
+xor 0.1 20 50
+xor 0.1 20 100
+xor 0.01 20 20
+xor 0.01 20 50
+xor 0.01 20 100
+xor 0.1 50 20
+xor 0.1 50 50
+xor 0.1 50 100
+xor 0.01 50 20
+xor 0.01 50 50
+xor 0.01 50 100
+orange_skin 0.1 5 20
+orange_skin 0.1 5 50
+orange_skin 0.1 5 100
+orange_skin 0.01 5 20
+orange_skin 0.01 5 50
+orange_skin 0.01 5 100
+orange_skin 0.1 10 20
+orange_skin 0.1 10 50
+orange_skin 0.1 10 100
+orange_skin 0.01 10 20
+orange_skin 0.01 10 50
+orange_skin 0.01 10 100
+orange_skin 0.1 20 20
+orange_skin 0.1 20 50
+orange_skin 0.1 20 100
+orange_skin 0.01 20 20
+orange_skin 0.01 20 50
+orange_skin 0.01 20 100
+orange_skin 0.1 50 20
+orange_skin 0.1 50 50
+orange_skin 0.1 50 100
+orange_skin 0.01 50 20
+orange_skin 0.01 50 50
+orange_skin 0.01 50 100
+additive_nonlinear 0.1 5 20
+additive_nonlinear 0.1 5 50
+additive_nonlinear 0.1 5 100
+additive_nonlinear 0.01 5 20
+additive_nonlinear 0.01 5 50
+additive_nonlinear 0.01 5 100
+additive_nonlinear 0.1 10 20
+additive_nonlinear 0.1 10 50
+additive_nonlinear 0.1 10 100
+additive_nonlinear 0.01 10 20
+additive_nonlinear 0.01 10 50
+additive_nonlinear 0.01 10 100
+additive_nonlinear 0.1 20 20
+additive_nonlinear 0.1 20 50
+additive_nonlinear 0.1 20 100
+additive_nonlinear 0.01 20 20
+additive_nonlinear 0.01 20 50
+additive_nonlinear 0.01 20 100
+additive_nonlinear 0.1 50 20
+additive_nonlinear 0.1 50 50
+additive_nonlinear 0.1 50 100
+additive_nonlinear 0.01 50 20
+additive_nonlinear 0.01 50 50
+additive_nonlinear 0.01 50 100
+syn4 0.1 5 20
+syn4 0.1 5 50
+syn4 0.1 5 100
+syn4 0.01 5 20
+syn4 0.01 5 50
+syn4 0.01 5 100
+syn4 0.1 10 20
+syn4 0.1 10 50
+syn4 0.1 10 100
+syn4 0.01 10 20
+syn4 0.01 10 50
+syn4 0.01 10 100
+syn4 0.1 20 20
+syn4 0.1 20 50
+syn4 0.1 20 100
+syn4 0.01 20 20
+syn4 0.01 20 50
+syn4 0.01 20 100
+syn4 0.1 50 20
+syn4 0.1 50 50
+syn4 0.1 50 100
+syn4 0.01 50 20
+syn4 0.01 50 50
+syn4 0.01 50 100
+syn5 0.1 5 20
+syn5 0.1 5 50
+syn5 0.1 5 100
+syn5 0.01 5 20
+syn5 0.01 5 50
+syn5 0.01 5 100
+syn5 0.1 10 20
+syn5 0.1 10 50
+syn5 0.1 10 100
+syn5 0.01 10 20
+syn5 0.01 10 50
+syn5 0.01 10 100
+syn5 0.1 20 20
+syn5 0.1 20 50
+syn5 0.1 20 100
+syn5 0.01 20 20
+syn5 0.01 20 50
+syn5 0.01 20 100
+syn5 0.1 50 20
+syn5 0.1 50 50
+syn5 0.1 50 100
+syn5 0.01 50 20
+syn5 0.01 50 50
+syn5 0.01 50 100
+syn6 0.1 5 20
+syn6 0.1 5 50
+syn6 0.1 5 100
+syn6 0.01 5 20
+syn6 0.01 5 50
+syn6 0.01 5 100
+syn6 0.1 10 20
+syn6 0.1 10 50
+syn6 0.1 10 100
+syn6 0.01 10 20
+syn6 0.01 10 50
+syn6 0.01 10 100
+syn6 0.1 20 20
+syn6 0.1 20 50
+syn6 0.1 20 100
+syn6 0.01 20 20
+syn6 0.01 20 50
+syn6 0.01 20 100
+syn6 0.1 50 20
+syn6 0.1 50 50
+syn6 0.1 50 100
+syn6 0.01 50 20
+syn6 0.01 50 50
+syn6 0.01 50 100

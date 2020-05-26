@@ -76,12 +76,12 @@ def get_args():
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
     parser.add_argument("--epochs", default=5, type=int)
-    parser.add_argument("--lr", default=0.1, type=float)
+    parser.add_argument("--lr", default=0.01, type=float)
 
     # for switch training
     parser.add_argument("--num_Dir_samples", default=50, type=int)
     parser.add_argument("--alpha", default=0.01, type=float)
-    parser.add_argument("--point_estimate", default=True)
+    parser.add_argument("--point_estimate", default=False)
 
     parser.add_argument("--train", default=True) #train, test
     parser.add_argument("--test", default=True)  # train, test
@@ -581,7 +581,7 @@ def main():
 
 
 if __name__ == '__main__':
-    runs = 20
+    runs = 3
 
     tprs, fdrs = [], []
     for i in range(runs):
