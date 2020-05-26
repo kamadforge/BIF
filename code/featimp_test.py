@@ -98,6 +98,7 @@ def get_args():
     return args
 
 args = get_args()
+print(args)
 
 
 
