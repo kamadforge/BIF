@@ -72,7 +72,7 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="orange_skin") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6
+    parser.add_argument("--dataset", default="adult") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
     parser.add_argument("--epochs", default=10, type=int)
@@ -83,7 +83,7 @@ def get_args():
     parser.add_argument("--alpha", default=0.01, type=float)
     parser.add_argument("--point_estimate", default=True)
 
-    parser.add_argument("--train", default=True) #train, test
+    parser.add_argument("--train", default=False) #train, test
     parser.add_argument("--test", default=True)  # train, test
 
     # for instance wise training
@@ -328,7 +328,7 @@ def main():
                         # get the inputs
                         inputs = xTrain[i*mini_batch_size:(i+1)*mini_batch_size,:]
                         labels = yTrain[i*mini_batch_size:(i+1)*mini_batch_size]
-                        if not (args.dataset == "xor" or args.dataset == "orange_skin" or args.dataset == "nonlinear_additive"):
+                        if (args.dataset == "alternating" or "syn" in args.dataset):
                             datatypes_train_batch = datatypesTrain[i*mini_batch_size:(i+1)*mini_batch_size]
                         # zero the parameter gradients
                         optimizer.zero_grad()
@@ -548,21 +548,22 @@ def main():
 
             #######################################
             # evaluation
-            if not args.point_estimate:
-                S=S.mean(dim=2)
 
-            median_ranks = compute_median_rank(S, k, dataset, datatypes_test_samp)
-            mean_median_ranks=np.mean(median_ranks)
-            #if not args.point_estimate:
-            #    S=S.mean(dim=1)
-            tpr, fdr = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp)
-            print("mean median rank", mean_median_ranks)
-            print(f"tpr: {tpr}, fdr: {fdr}")
+            if args.dataset != "adult":
+                if not args.point_estimate:
+                    S=S.mean(dim=2)
 
-            #1.5 - xor
-            #2.67 - orange_skin
-            #2.56 - nonlinear_additive
-            #2.88/ 3.5 - alternating
+                median_ranks = compute_median_rank(S, k, dataset, datatypes_test_samp)
+                mean_median_ranks=np.mean(median_ranks)
+                #if not args.point_estimate:
+                #    S=S.mean(dim=1)
+                tpr, fdr = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp)
+                print("mean median rank", mean_median_ranks)
+                print(f"tpr: {tpr}, fdr: {fdr}")
+
+            else:
+                tpr, fdr = -1,-1
+
 
     return tpr, fdr, S
 

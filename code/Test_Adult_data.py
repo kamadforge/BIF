@@ -18,6 +18,7 @@ import pickle
 import autodp
 from autodp import privacy_calibrator
 from models.nn_3hidden import FC, FC_net
+from itertools import combinations, chain
 
 import torch.nn as nn
 import torch.optim as optim
@@ -165,8 +166,17 @@ if  __name__ =='__main__':
     # print('privacy parameter is ', sigma)
     # iter_sigmas = np.array([0, sigma])  # test non-private first, then private with the desired epsilon level
 
-    mode='training'
+    mode='test'
     file_write=True
+
+    # at every repeat, we reshuffle data
+    rand_perm_nums = np.random.permutation(N_tot)
+
+    # train and test data
+    X = x_tot[rand_perm_nums[0:N], :]
+    y = y_tot[rand_perm_nums[0:N]]
+    Xtst = x_tot[rand_perm_nums[N:], :]
+    ytst = y_tot[rand_perm_nums[N:]]
 
     if mode=='training':
 
@@ -189,15 +199,6 @@ if  __name__ =='__main__':
             sigma = iter_sigmas[k]
 
             for repeat_idx in range(num_repeat):
-
-                # at every repeat, we reshuffle data
-                rand_perm_nums = np.random.permutation(N_tot)
-
-                #train and test data
-                X = x_tot[rand_perm_nums[0:N], :]
-                y = y_tot[rand_perm_nums[0:N]]
-                Xtst = x_tot[rand_perm_nums[N:], :]
-                ytst = y_tot[rand_perm_nums[N:]]
 
                 if method=="vips":
                     for iter in range(MaxIter):
@@ -272,6 +273,52 @@ if  __name__ =='__main__':
             np.save('models/%s_%s_LR_model100' % (dataset, method), LR_model100)
         elif method == "nn":
             np.save('models/%s_%s_LR_model0' % (dataset, method), LR_model0)
+
+
+    elif mode == "test":
+
+        print(f"dataset: {dataset}")
+
+        features_num=np.arange(Xtst.shape[1])
+
+        def powerset(iterable):
+            "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+            s = list(iterable)
+            #return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
+            return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
+
+        test=Xtst.copy()
+
+        for result in powerset(features_num):
+            print(result)
+
+            test = Xtst.copy()
+
+            if len(result)==4:
+
+
+                if dataset=="adult":
+                    #important_features=[0,5,7,10]
+                    important_features = result
+                    unimportant_features = np.delete(features_num,important_features)
+
+                test[:, unimportant_features] = 0
+
+                i = 0  # choose a sample
+                mini_batch_size = 2000
+                datatypes_test_samp = None
+
+                LR_model = np.load('models/%s_%s_LR_model0.npy' % (dataset,method), allow_pickle=True)
+
+                model.load_state_dict(LR_model[()][0], strict=False)
+
+
+
+                y_pred = model(torch.Tensor(test))
+                y_pred = torch.argmax(y_pred, dim=1)
+
+                accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == ytst) / len(ytst))
+                print("test accuracy: ", accuracy)
 
 
     # elif mode=='test':
