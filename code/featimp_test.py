@@ -72,10 +72,10 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="adult") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6
+    parser.add_argument("--dataset", default="cervical") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
-    parser.add_argument("--epochs", default=10, type=int)
+    parser.add_argument("--epochs", default=20, type=int)
     parser.add_argument("--lr", default=0.1, type=float)
 
     # for switch training
@@ -83,7 +83,7 @@ def get_args():
     parser.add_argument("--alpha", default=0.01, type=float)
     parser.add_argument("--point_estimate", default=True)
 
-    parser.add_argument("--train", default=False) #train, test
+    parser.add_argument("--train", default=True) #train, test
     parser.add_argument("--test", default=True)  # train, test
 
     # for instance wise training
@@ -549,7 +549,9 @@ def main():
             #######################################
             # evaluation
 
-            if args.dataset != "adult":
+            synthetic=["xor", "orange_skin", "nonlinear_additive", "alternating", "syn4", "syn5", "syn6"]
+
+            if args.dataset in synthetic:
                 if not args.point_estimate:
                     S=S.mean(dim=2)
 
@@ -585,7 +587,7 @@ def main():
 
 
 if __name__ == '__main__':
-    runs = 20
+    runs = 10
 
     tprs, fdrs, Ss = [], [], []
     for i in range(runs):
@@ -594,4 +596,7 @@ if __name__ == '__main__':
         tprs.append(tpr); fdrs.append(fdr); Ss.append(S.mean(dim=0).detach().numpy())
 
     print("*"*50)
-    print(f"tpr mean {np.mean(tprs)}, fdr mean: {np.mean(fdrs)}, S_testmean: {np.round(np.mean(Ss, axis=0),3)}")
+    S_average = np.round(np.mean(Ss, axis=0),3)
+    S_average_nums = np.argsort(S_average)[::-1]
+    print(f"tpr mean {np.mean(tprs)}, fdr mean: {np.mean(fdrs)}, S_testmean: {S_average}, S_args: {S_average_nums}")
+    print(",".join([str(a) for a in S_average_nums]))

@@ -146,6 +146,8 @@ def compute_median_rank(scores, k, dataset, datatype_val=None):
             median_ranks_arr.append(np.median(ranks[i, datatype_val[i]]))
 
         median_ranks = np.array(median_ranks_arr)
+    else:
+        median_ranks = -1
 
     return median_ranks
 

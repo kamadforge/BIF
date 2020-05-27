@@ -35,13 +35,16 @@ from data.synthetic_data_loader import synthetic_data_loader
 
 
 
+
+
 if  __name__ =='__main__':
 
     """ inputs """
-    dataset = "adult" # "xor, orange_skin, or nonlinear_additive"
+    dataset = "cervical" # "xor, orange_skin, or nonlinear_additive"
     method = "nn"
     which_net = 'FC' # FC_net or 'FC'
     rnd_num = 0
+    mode = 'test' #training, test&
 
     rn.seed(rnd_num)
 
@@ -166,7 +169,7 @@ if  __name__ =='__main__':
     # print('privacy parameter is ', sigma)
     # iter_sigmas = np.array([0, sigma])  # test non-private first, then private with the desired epsilon level
 
-    mode='test'
+
     file_write=True
 
     # at every repeat, we reshuffle data
@@ -289,18 +292,39 @@ if  __name__ =='__main__':
 
         test=Xtst.copy()
 
-        for result in powerset(features_num):
-            print(result)
+        # for result in powerset(features_num):
+        #     print(result)
+        #
+        #     test = Xtst.copy()
+        #
+        #     if len(result)==4:
+        if 1:
+            if 1:
 
-            test = Xtst.copy()
-
-            if len(result)==4:
-
-
+                k = 5
+                met = 1
                 if dataset=="adult":
-                    #important_features=[0,5,7,10]
-                    important_features = result
-                    unimportant_features = np.delete(features_num,important_features)
+                    if met==1:
+                        important_features=[10,5,0,12,4,7,9,3,8,11,6,1,2,13]#qfit
+                    elif met==2:
+                        important_features=[7,4,10,0,12,11,6,1,3,5,2,13,9,8]#shap
+
+                elif dataset=="credit":
+                    if met == 1:
+                        important_features = [13,3,11,27,10,9,25,19,6,7,16,8,0,17,5,15,26,21,14,12,4,23,2,28,24,22,1,20,18]  # ,15,6,18,7,12,17] #qfit
+                    elif met==2:
+                        important_features = [13,16,6,3,11,9,1,7,0,24,4,18,25,5,10,28,22,20,17,8,2,21,26,23,27,14,12,15,19]#,0,19,18,8,9] #shap
+
+                elif dataset=="cervical":
+                    if met==1:
+                        important_features = [32,0,11,31,2,1,3,33,4,20,10,15,6,28,9,30,5,17,13,7,8,24,16,23,12,27,14,18,19,22,29,25,26,21]
+                    elif met==2:
+                        important_features = [32,0,4,5,33,2,3,28,20,10,1,6,31,7,13,30,8,9,11,12,14,27,15,29,17,18,19,21,22,23,24,25,26,16]
+
+
+                #important_features = result
+                important_features=important_features[:k]
+                unimportant_features = np.delete(features_num, important_features)
 
                 test[:, unimportant_features] = 0
 
