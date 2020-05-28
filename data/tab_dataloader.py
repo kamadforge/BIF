@@ -8,6 +8,9 @@ import math
 if sys.version_info[0] > 2:
     import sdgym
 # import xgboost
+import pickle
+from pathlib import Path
+import os
 
 
 
@@ -468,6 +471,25 @@ def load_adult():
 
     X_train, X_test, y_train, y_test = train_test_split(inputs, target, train_size=0.90, test_size=0.10,
                                                         random_state=seed_number)
+
+    return X_train, y_train, X_test, y_test
+
+def load_adult_short():
+
+    #if 'g0' not in socket.gethostname() and 'p0' not in socket.gethostname():
+
+    cwd = Path(__file__).parent.parent
+    pathmain = os.path.join(cwd, "data/adult/")
+
+    filename = 'adult.p'
+    with open(os.path.join(pathmain, filename), 'rb') as f:
+        u = pickle._Unpickler(f)
+        u.encoding = 'latin1'
+        data = u.load()
+        y_tot, x_tot = data
+
+    X_train, X_test, y_train, y_test = train_test_split(x_tot, y_tot, train_size=0.80, test_size=0.20,
+                                                        random_state=0)
 
     return X_train, y_train, X_test, y_test
 

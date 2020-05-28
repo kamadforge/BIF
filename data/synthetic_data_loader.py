@@ -27,11 +27,15 @@ def synthetic_data_loader(dataset):
 
     elif dataset == "adult":
 
-        cwd = os.getcwd()
-        pathmain = cwd+"/data/adult/"
+        # X_train, y_train, X_test, y_test = load_credit()
+        # x_tot = np.concatenate([X_train, X_test])
+        # y_tot = np.concatenate([y_train, y_test])
+
+        cwd = Path(__file__).parent.parent
+        pathmain = os.path.join(cwd,"data/adult/")
 
         filename = 'adult.p'
-        with open(pathmain+filename, 'rb') as f:
+        with open(os.path.join(pathmain,filename), 'rb') as f:
             u = pickle._Unpickler(f)
             u.encoding = 'latin1'
             data = u.load()
