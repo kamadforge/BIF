@@ -52,14 +52,11 @@ if socket.gethostname()=='worona.local':
     pathmain = cwd
     path_code = os.path.join(pathmain, "code")
 elif socket.gethostname()=='kamil':
-    from data.tab_dataloader import load_cervical, load_adult, load_credit
-    from models.nn_3hidden import FC
     pathmain=cwd_parent
     path_code=cwd
 #if 'g0' in socket.gethostname() or 'p0' in socket.gethostname():
 else:
     sys.path.append(os.path.join(cwd_parent, "data"))
-    from data.tab_dataloader import load_cervical, load_adult, load_credit
     pathmain=cwd
     path_code = os.path.join(pathmain, "code")
 
@@ -72,26 +69,26 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="cervical") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6
+    parser.add_argument("--dataset", default="orange_skin") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
-    parser.add_argument("--epochs", default=20, type=int)
+    parser.add_argument("--epochs", default=100, type=int)
     parser.add_argument("--lr", default=0.1, type=float)
 
     # for switch training
     parser.add_argument("--num_Dir_samples", default=50, type=int)
-    parser.add_argument("--alpha", default=0.01, type=float)
-    parser.add_argument("--point_estimate", default=True)
+    parser.add_argument("--alpha", default=5, type=float)
+    parser.add_argument("--point_estimate", default=False)
 
     parser.add_argument("--train", default=True) #train, test
     parser.add_argument("--test", default=True)  # train, test
 
     # for instance wise training
-    parser.add_argument("--switch_nn", default=True)
+    parser.add_argument("--switch_nn", default=False)
     parser.add_argument("--training_local", default=False)
     parser.add_argument("--local_training_iter", default=200, type=int)
     parser.add_argument("--set_hooks", default=True)
-    parser.add_argument("--kl_term", default=False)
+    parser.add_argument("--kl_term", default=True)
 
     args = parser.parse_args()
 
@@ -346,12 +343,15 @@ def main():
                         optimizer.step()
                         running_loss += loss.item()
 
-                        #if i % how_many_iter ==0:
-                        if i % how_many_iter == 0 or i % how_many_iter == 1 or i % how_many_iter == 2:
+                        if i % how_many_iter ==0:
+                        #if i % how_many_iter == 0 or i % how_many_iter == 1 or i % how_many_iter == 2:
                             #print(datatypes_train_batch[0:2])
-                            if point_estimate:
-                                #print(S[0:2])
-                                print("switch batch mean: ", S.mean(dim=0))
+                            if args.switch_nn: #instancewise, averaging over all the exmaples
+                                if point_estimate:
+                                    #print(S[0:2])
+                                    print("switch batch mean: ", S.mean(dim=0))
+                            else: #non switchnn
+                                print(S)
                             # phis = phi_cand / torch.sum(phi_cand)
                             # print("switch: ", phis.mean(dim=0))
                             # print("switch: ", phis[1:4])
@@ -465,6 +465,10 @@ def main():
                     print('estimated posterior mean of Switch is', posterior_mean_switch)
                     mean_of_means+=posterior_mean_switch
 
+                    torch.save(model.state_dict(),
+                               os.path.join(path_code,
+                                            f"models/switches_{args.dataset}_switch_nn_{args.switch_nn}_local_{args.training_local}.pt"))
+
                     ###########3
 
 
@@ -498,10 +502,12 @@ def main():
                 mini_batch_size = 2000
                 datatypes_test_samp=None
 
-                if switch_nn==False:
-                    model = Modelnn(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
-                else:
+
+                if switch_nn:
                     model = Model_switchlearning(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
+                else:
+                    model = Modelnn(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
+
 
                 model.load_state_dict(torch.load(path), strict=False)
 
@@ -534,7 +540,7 @@ def main():
 
 
             dataset=args.dataset
-            S, datatypes_test_samp = test_instance(dataset, True, False)
+            S, datatypes_test_samp = test_instance(dataset, args.switch_nn, False)
             if dataset=="xor":
                 k=2
             elif dataset == "orange_skin" or dataset == "nonlinear_additive":
@@ -551,7 +557,7 @@ def main():
 
             synthetic=["xor", "orange_skin", "nonlinear_additive", "alternating", "syn4", "syn5", "syn6"]
 
-            if args.dataset in synthetic:
+            if (args.dataset in synthetic) and (args.switch_nn) :
                 if not args.point_estimate:
                     S=S.mean(dim=2)
 
@@ -587,7 +593,7 @@ def main():
 
 
 if __name__ == '__main__':
-    runs = 10
+    runs = 1
 
     tprs, fdrs, Ss = [], [], []
     for i in range(runs):
