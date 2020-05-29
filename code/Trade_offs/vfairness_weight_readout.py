@@ -290,8 +290,6 @@ def train_fair(x_train, x_test, y_train, y_test, z_train, z_test):
   # initialise FairClassifier
   fair_clf = FairClassifier(n_features=x_train.shape[1], n_sensitive=z_train.shape[1], lambdas=[130., 30.])
 
-
-
   print('starting to pretrain')
   # pre-train both adverserial and classifier networks
   fair_clf.pretrain(x_train, y_train, z_train, verbose=0, epochs=5)
@@ -301,7 +299,9 @@ def train_fair(x_train, x_test, y_train, y_test, z_train, z_test):
   print('starting to train')
 
   fair_clf.fit(x_train, y_train, z_train, validation_data=(x_test, y_test, z_test), T_iter=165, save_figs=False)
-
+  pred_on_0 = fair_clf._clf.predict(np.zeros(shape=(1, 94)))
+  pred_on_1 = fair_clf._clf.predict(np.ones(shape=(1, 94)))
+  print('pred after training', pred_on_0, pred_on_1)
   extract_layers(fair_clf._clf, 'fair_clf.npz')
 
 
@@ -324,7 +324,7 @@ def extract_layers(model, save_file):
 def main():
   data = load_data()
   
-  train_baseline(*data)
+  # train_baseline(*data)
 
   train_fair(*data)
 

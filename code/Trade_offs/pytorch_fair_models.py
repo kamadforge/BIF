@@ -29,7 +29,7 @@ class ImportedClassifier(nn.Module):
     x = nnf.relu(x)
     x = self.do3(x)
     x = self.fc4(x)
-    x = nnf.sigmoid(x)
+    x = pt.sigmoid(x)
     return x  # assume BCE with logits as loss
 
   def load_weights(self, weights_file):
@@ -49,9 +49,13 @@ class ImportedClassifier(nn.Module):
       # print(new_w.shape, new_w.dtype, new_b.shape)
     self.load_state_dict(load_dict)
 
+
 def main():
   base_clf = ImportedClassifier(d_in=94, weights_file='baseline_clf.npz')
   fair_clf = ImportedClassifier(d_in=94, weights_file='fair_clf.npz')
+  # print(base_clf(pt.zeros(3, 94)))
+  print(fair_clf(pt.zeros(1, 94)))
+  print(fair_clf(pt.ones(1, 94)))
   # clf.load_state_dict()
 
 if __name__ == '__main__':
