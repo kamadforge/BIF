@@ -30,23 +30,14 @@ class ImportedClassifier(nn.Module):
     x = self.do3(x)
     x = self.fc4(x)
     x = pt.sigmoid(x)
-    return x  # assume BCE with logits as loss
+    return x
 
   def load_weights(self, weights_file):
     w_dict = np.load(weights_file)
-
-    # print([k for k in w_dict.keys()])
-    # print(self.state_dict().keys())
     load_dict = self.state_dict().copy()
     for idx in range(4):
-      # old_w = load_dict[f'fc{idx + 1}.weight']
-      # old_b = load_dict[f'fc{idx + 1}.bias']
-      # print(old_w.shape, old_w.dtype, old_b.shape)
       load_dict[f'fc{idx + 1}.weight'] = pt.tensor(w_dict[f'weight{idx}'].T)
       load_dict[f'fc{idx + 1}.bias'] = pt.tensor(w_dict[f'bias{idx}'])
-      # new_w = load_dict[f'fc{idx + 1}.weight']
-      # new_b = load_dict[f'fc{idx + 1}.bias']
-      # print(new_w.shape, new_w.dtype, new_b.shape)
     self.load_state_dict(load_dict)
 
 
