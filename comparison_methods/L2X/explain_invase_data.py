@@ -374,6 +374,27 @@ def syn_test_full_run():
   run_experiment('syn6', seed=5, custom_k=4, train=True)
 
 
+def syn_test_follow_up():
+  run_experiment('syn4', seed=1, custom_k=5, train=True)
+  run_experiment('syn4', seed=2, custom_k=5, train=True)
+  run_experiment('syn4', seed=3, custom_k=5, train=True)
+  run_experiment('syn4', seed=4, custom_k=5, train=True)
+  run_experiment('syn4', seed=5, custom_k=5, train=True)
+
+  # run_experiment('syn5', seed=1, custom_k=5, train=True)
+  # run_experiment('syn5', seed=2, custom_k=5, train=True)
+  # run_experiment('syn5', seed=3, custom_k=5, train=True)
+  # run_experiment('syn5', seed=4, custom_k=5, train=True)
+  # run_experiment('syn5', seed=5, custom_k=5, train=True)
+  #
+  # run_experiment('syn6', seed=1, custom_k=5, train=True)
+  # run_experiment('syn6', seed=2, custom_k=5, train=True)
+  # run_experiment('syn6', seed=3, custom_k=5, train=True)
+  # run_experiment('syn6', seed=4, custom_k=5, train=True)
+  # run_experiment('syn6', seed=5, custom_k=5, train=True)
+
+
 if __name__ == '__main__':
-  main()
+  # main()
   # syn_test_full_run()
+  syn_test_follow_up()
