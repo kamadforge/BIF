@@ -28,7 +28,7 @@ from data.make_synthetic_datasets import generate_data
 from Mijungs_Models import Feedforward, Feature_Importance_Model
 from Mijungs_Losses import loss_function
 
-np.random.seed(0)
+np.random.seed(4)
 
 """ generate data """
 N_tot = 10000
@@ -71,9 +71,9 @@ for epoch in range(epoch):
 
 """ learn feature importance """
 # input_dim, classifier,
-num_Dir_samps = 10
+num_Dir_samps = 1
 importance = Feature_Importance_Model(input_dim, classifier, num_Dir_samps)
-optimizer = optim.Adam(importance.parameters(), lr=0.05)
+optimizer = optim.Adam(importance.parameters(), lr=0.075)
 
 # We freeze the classifier
 ct = 0
@@ -86,16 +86,17 @@ for child in importance.children():
 # print(list(importance.parameters())) # make sure I only update the gradients of feature importance
 
 importance.train()
-epoch = 500
+epoch = 400
 alpha_0 = 0.1
 annealing_rate = 1 # we don't anneal. don't want to think about this.
+kl_term = True
 
 for epoch in range(epoch):
 
     optimizer.zero_grad()
     y_pred, phi_cand = importance(torch.Tensor(X))
     labels = torch.squeeze(torch.Tensor(y))
-    loss = loss_function(y_pred, labels.view(-1, 1).repeat(1, num_Dir_samps), phi_cand, alpha_0, input_dim, annealing_rate, N)
+    loss = loss_function(y_pred, labels.view(-1, 1).repeat(1, num_Dir_samps), phi_cand, alpha_0, input_dim, annealing_rate, N, kl_term)
     loss.backward()
     optimizer.step()
 
