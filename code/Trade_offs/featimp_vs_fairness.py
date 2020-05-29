@@ -290,11 +290,14 @@ class FairClassifier(object):
 clf = FairClassifier(n_features=X_train.shape[1], n_sensitive=Z_train.shape[1],
                      lambdas=[130., 30.])
 
+print('starting to pretrain')
 # pre-train both adverserial and classifier networks
 clf.pretrain(X_train, y_train, Z_train, verbose=0, epochs=5)
 
 # if create_gif:
 #     !rm output/*.png
+print('starting to train')
+
 
 clf.fit(X_train, y_train, Z_train,
         validation_data=(X_test, y_test, Z_test),
