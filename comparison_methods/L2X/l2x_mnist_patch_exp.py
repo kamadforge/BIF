@@ -12,6 +12,7 @@ from PIL import Image
 # from torch.nn.parameter import Parameter
 # import sys
 import torch as pt
+import torch.nn as nn
 import torch.nn.functional as nnf
 import torch.optim as optim
 from torch.distributions import Gamma
@@ -19,157 +20,126 @@ from torch.distributions import Gamma
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader
 # from switch_model_wrapper import SwitchWrapper, loss_function, MnistNet
-from switch_model_wrapper import SwitchNetWrapper, BinarizedMnistNet, MnistPatchSelector
+# from switch_model_wrapper import SwitchNetWrapper, BinarizedMnistNet, MnistPatchSelector
 import matplotlib
 matplotlib.use('Agg')  # to plot without Xserver
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
-
-class BinarizedMnistDataset(Dataset):
-  def __init__(self, train, label_a=3, label_b=8, data_path='../data'):
-    super(BinarizedMnistDataset, self).__init__()
-    self.train = train
-    base_data = datasets.MNIST(data_path, train=train, download=True)
-
-    ids_a, ids_b = base_data.targets == label_a, base_data.targets == label_b
-    smp_a, smp_b = base_data.data[ids_a], base_data.data[ids_b]
-    n_a, n_b = smp_a.shape[0], smp_b.shape[0]
-    print(n_a, n_b)
-    tgt_a, tgt_b = base_data.targets[ids_a], base_data.targets[ids_b]
-    pert = np.random.permutation(n_a + n_b)
-    tgt = np.concatenate([np.zeros(tgt_a.shape), np.ones(tgt_b.shape)])[pert]
-    smp = np.concatenate([smp_a, smp_b])[pert]
-
-    smp = np.reshape(smp, (-1, 784))
-    self.tgt = tgt.astype(np.float32)
-    self.smp = smp.astype(np.float32) / 255
-
-  def __len__(self):
-    return self.tgt.shape[0]
-
-  def __getitem__(self, idx):
-    return pt.tensor(self.smp[idx]), pt.tensor(self.tgt[idx])
+from switch_mnist_featimp import BinarizedMnistDataset, load_two_label_mnist_data, switch_select_data, \
+  hard_select_data, make_select_loader
 
 
-def load_mnist_data(use_cuda, batch_size, test_batch_size, data_path='../data', ):
-  kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
-  transform = transforms.Compose([transforms.ToTensor()])
-  train_data = datasets.MNIST(data_path, train=True, download=True, transform=transform)
-  train_loader = pt.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True, **kwargs)
-  test_data = datasets.MNIST(data_path, train=False, transform=transforms.Compose([transform]))
-  test_loader = pt.utils.data.DataLoader(test_data, batch_size=test_batch_size, shuffle=True, **kwargs)
-  return train_loader, test_loader
+class L2XModel(nn.Module):
+  def __init__(self, d_in, d_out, datatype, n_key_features, device, tau=0.1):
+    super(L2XModel, self).__init__()
+
+    self.act = nn.ReLU() if datatype in ['orange_skin', 'XOR'] else nn.SELU()
+    self.d_out = d_out
+
+    # q(S|X)
+    self.fc1 = nn.Linear(d_in, 100)
+    self.fc2 = nn.Linear(100, 100)
+    self.fc3 = nn.Linear(100, 49)
+
+    # concrete sampling
+    self.tau = tau
+    self.n_key_features = n_key_features
+    self.device = device
+
+    # q(X_S)
+    self.fc4 = nn.Linear(d_in, 200)
+    self.bn4 = nn.BatchNorm1d(200)
+    self.fc5 = nn.Linear(200, 200)
+    self.bn5 = nn.BatchNorm1d(200)
+    self.fc6 = nn.Linear(200, d_out)
+
+  def forward(self, x_in):
+    x_select, _ = self.get_selection(x_in)
+    pred = self.classify_selection(x_select)
+
+    if self.d_out == 1:
+      pred = pt.sigmoid(pred.view(-1))
+    return pred
+
+  def get_selection(self, x_in):
+    x = self.act(self.fc1(x_in))
+    x = self.act(self.fc2(x))
+    x = self.fc3(x)
+
+    low_res_selection = self._sample_concrete(x)
+    low_res_selection = low_res_selection.view(-1, 7, 7)
+    high_res_selection = pt.repeat_interleave(pt.repeat_interleave(low_res_selection, 4, dim=1), 4, dim=2)
+    high_res_selection = high_res_selection.reshape(-1, 784)
+    x_select = x_in * high_res_selection
+    return x_select, high_res_selection
+
+  def _sample_concrete(self, logits):
+    # logits: [BATCH_SIZE, d]
+    batch_size, n_features = logits.shape
+    uniform = pt.rand(batch_size, self.n_key_features, n_features, device=self.device)
+    uniform_safe = uniform.clamp(min=np.finfo(np.float32).tiny)
+
+    if self.training:
+      gumbel = - pt.log(-pt.log(uniform_safe))
+      noisy_logits = (gumbel + logits[:, None, :]) / self.tau
+      samples = pt.softmax(noisy_logits, dim=-1)
+      samples, _ = pt.max(samples, dim=1)
+      return samples
+    else:
+      # Explanation Stage output.
+      threshold = pt.topk(logits, self.n_key_features, sorted=True)[0][:, -1]
+      discrete_logits = (logits >= threshold[:, None]).to(pt.float32)
+      return discrete_logits
+
+  def classify_selection(self, x_select):
+    x = self.act(self.fc4(x_select))
+    x = self.bn4(x)
+    x = self.act(self.fc5(x))
+    x = self.bn5(x)
+    x = self.act(self.fc6(x))
+    return x
 
 
-def load_two_label_mnist_data(use_cuda, batch_size, test_batch_size, data_path='../data', label_a=3, label_b=8):
-  # select only samples of labels a and b, then binarize labels as a=0 and b=1
 
-  kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
+def train_model(model, selected_label, learning_rate, n_epochs, train_loader, test_loader, device):
+  adam = pt.optim.Adam(params=model.parameters(), lr=learning_rate, weight_decay=1e-3)
 
-  train_data = BinarizedMnistDataset(train=True, label_a=label_a, label_b=label_b, data_path=data_path)
-  test_data = BinarizedMnistDataset(train=False, label_a=label_a, label_b=label_b, data_path=data_path)
+  filepath = f"models/mnist/model.pt"
 
-  train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, **kwargs)
-  test_loader = DataLoader(test_data, batch_size=test_batch_size, shuffle=True, **kwargs)
-  return train_loader, test_loader
+  for ep in range(n_epochs):
 
+    model.train(True)
+    for x_batch, y_batch in train_loader:
+      x_batch = x_batch.reshape(x_batch.shape[0], -1).to(device)
+      y_batch = (y_batch == selected_label).to(pt.float32).to(device)
+      adam.zero_grad()
 
-def switch_select_data(selector, loader, device):
-    x_data, y_data, selection = [], [], []
-    with pt.no_grad():
-      for x_tr, y_tr in loader:
-        x_data.append(x_tr.numpy())
-        y_data.append(y_tr.numpy())
-        x_sel = nnf.softplus(selector(x_tr.to(device)))
-        x_sel = x_sel / pt.sum(x_sel, dim=1)[:, None] * 16  # multiply by patch size
-        selection.append(x_sel.cpu().numpy())
-    return np.concatenate(x_data), np.concatenate(y_data), np.concatenate(selection)
+      loss = nnf.binary_cross_entropy(model(x_batch), y_batch)
 
+      loss.backward()
+      adam.step()
 
-def hard_select_data(data, selection, mode='topk', k=1, baseline_val=0):
-  # if mode == 'mult':
-  #   return data * selection
-  if mode.startswith('topk'):
-    # due to 4x4 patching, each value occurs 16 times
-    effective_k = 16 * k
-    sorted_selection = np.sort(selection, axis=1)
-    threshold_by_sample = sorted_selection[:, -effective_k]
-
-    below_threshold = selection < threshold_by_sample[:, None]  # , 784, axis=1)
-    # print(below_threshold[0])
-    feats_selected = 784 - np.sum(below_threshold, axis=1)
-    assert np.max(feats_selected) == float(effective_k)
-    assert np.max(feats_selected) == np.min(feats_selected)
-    data_to_select = np.copy(data)
-    data_to_select[below_threshold] = baseline_val
-
-    # if mode == 'topk_mult':
-    #   data_to_select = data_to_select * selection
-
-    # make sure no sample has more nonzero entries than allowed in the selection
-    assert np.max(np.sum(data_to_select != baseline_val, axis=1)) <= float(effective_k)
-    return data_to_select
-  else:
-    raise ValueError
+    model.train(False)
+    summed_loss = 0
+    correct_preds = 0
+    n_tested = 0
+    for x_batch, y_batch in test_loader:
+      x_batch = x_batch.reshape(x_batch.shape[0], -1).to(device)
+      y_batch = (y_batch == selected_label).to(pt.float32).to(device)
 
 
-def make_select_loader(x_select, y_select, train, batch_size, use_cuda):
-  train_data = BinarizedMnistDataset(train=train)
-  train_data.smp, train_data.tgt = x_select, y_select
-  kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
-  data_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, **kwargs)
-  return data_loader
+      preds = model(x_batch)
+      loss = nnf.binary_cross_entropy(preds, y_batch)
 
+      summed_loss += loss.item() * y_batch.shape[0]
+      class_pred = pt.round(preds)
+      correct_preds += pt.sum(class_pred == y_batch).item()
+      n_tested += y_batch.shape[0]
 
-def plot_switches(switch_mat, n_rows, n_cols, save_path):
-  # normalize to fit the plot
-  switch_mat = switch_mat - np.min(switch_mat, axis=1)[:, None]
-  switch_mat = switch_mat / np.max(switch_mat, axis=1)[:, None]
-  print(np.min(switch_mat), np.max(switch_mat))
+    print(f'epoch {ep} done. Acc: {correct_preds / n_tested}, Loss: {summed_loss / n_tested}')
 
-  bs = switch_mat.shape[0]
-  n_to_fill = n_rows * n_cols - bs
-  mnist_mat = np.reshape(switch_mat, (bs, 28, 28))
-  fill_mat = np.zeros((n_to_fill, 28, 28))
-  mnist_mat = np.concatenate([mnist_mat, fill_mat])
-  mnist_mat_as_list = [np.split(mnist_mat[n_rows * i:n_rows * (i + 1)], n_rows) for i in range(n_cols)]
-  mnist_mat_flat = np.concatenate([np.concatenate(k, axis=1).squeeze() for k in mnist_mat_as_list], axis=1)
-
-  plt.imsave(save_path + '.png', mnist_mat_flat, cmap=cm.gray, vmin=0., vmax=1.)
-
-
-def global_switch_eval(model, point_estimate, ar):
-  estimated_params = list(model.selector_params())
-  phi_est = nnf.softplus(pt.Tensor(estimated_params[0]))
-
-  if point_estimate:
-    posterior_mean_switch = phi_est / pt.sum(phi_est)
-    posterior_mean_switch = posterior_mean_switch.detach().numpy()
-
-  else:
-    switch_parameter_mat = phi_est.detach().numpy()
-
-    concentration_param = phi_est.view(-1, 1).repeat(1, 5000)
-    # beta_param = pt.ones(self.hidden_dim,1).repeat(1,num_samps)
-    beta_param = pt.ones(concentration_param.size())
-    gamma_obj = Gamma(concentration_param, beta_param)
-    gamma_samps = gamma_obj.rsample()
-    s_stack = gamma_samps / pt.sum(gamma_samps, 0)
-    avg_s = pt.mean(s_stack, 1)
-    # std_s = pt.std(s_stack, 1)
-    posterior_mean_switch = avg_s.detach().numpy()
-
-    save_file_phi = f'weights/{ar.dataset}_switch_parameter '
-    np.save(save_file_phi, switch_parameter_mat)
-
-  kl_str = '' if not ar.KL_reg else f'_alpha{ar.alpha_0}'
-  vis_save_file = f'weights/{ar.dataset}_switch_vis_label{ar.selected_label}_lr{ar.lr}{kl_str}'
-  plot_switches(posterior_mean_switch, posterior_mean_switch.shape[0], 1, vis_save_file)
-
-  # save_file = 'weights/%s_switch_posterior_mean' % dataset + str(int(iter_sigmas[k]))
-  # save_file_phi = 'weights/%s_switch_parameter' % dataset + str(int(iter_sigmas[k]))
-  # save_file = f'weights/{ar.dataset}_switch_posterior_mean'
+  pt.save(model.state_dict(), filepath)
 
 
 def test_classifier_epoch(classifier, test_loader, device):
@@ -292,9 +262,14 @@ def do_featimp_exp(ar):
   train_classifier(classifier, train_loader, test_loader, ar.epochs, ar.lr, device)
   print('Finished Training Classifier')
 
-  selector = MnistPatchSelector().to(device)
-  model = SwitchNetWrapper(selector, classifier, n_features, ar.n_switch_samples, ar.point_estimate).to(device)
+  # selector = MnistPatchSelector().to(device)
+  # model = SwitchNetWrapper(selector, classifier, n_features, ar.n_switch_samples, ar.point_estimate).to(device)
 
+  model = L2XModel(d_in=784, d_out=1, datatype=None, n_key_features=n_select, device=device).to(device)
+
+
+  train_model(model, selected_label, learning_rate, n_epochs, train_loader, test_loader, device)
+  st2 = time.time()
 
   train_selector(model, train_loader, ar.epochs, ar.lr, device)
   # , ar.point_estimate, ar.n_switch_samples, ar.alpha_0, n_features, n_data, ar.KL_reg)
@@ -323,7 +298,6 @@ def main():
   np.random.seed(ar.seed)
 
   do_featimp_exp(ar)
-
 
 if __name__ == '__main__':
   main()
