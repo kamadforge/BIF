@@ -86,7 +86,7 @@ def main(args):
   model = Invase(x_train, y_train, args.model_type, model_parameters, device)
 
   model.run_training(x_train, y_train)
-  model.train(False)
+  model.eval()
 
   print('#################### evaluating')
   # # Evaluation

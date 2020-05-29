@@ -110,6 +110,5 @@ def main():
     if args.save_model:
         torch.save(model.state_dict(), f"models/mnist_nn_ep{args.epochs}.pt")
 
-
 if __name__ == '__main__':
     main()

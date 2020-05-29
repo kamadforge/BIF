@@ -6,7 +6,7 @@ __author__ = 'mijung'
 
 import argparse
 import numpy as np
-from PIL import Image
+# from PIL import Image
 # import matplotlib.pyplot as plt
 # import torch.nn as nn
 # from torch.nn.parameter import Parameter
@@ -15,19 +15,31 @@ import torch as pt
 import torch.nn as nn
 import torch.nn.functional as nnf
 import torch.optim as optim
-from torch.distributions import Gamma
+# from torch.distributions import Gamma
 # from data.tab_dataloader import load_cervical, load_adult, load_credit
-from torchvision import datasets, transforms
-from torch.utils.data import Dataset, DataLoader
+# from torchvision import datasets, transforms
+# from torch.utils.data import Dataset, DataLoader
 # from switch_model_wrapper import SwitchWrapper, loss_function, MnistNet
-# from switch_model_wrapper import SwitchNetWrapper, BinarizedMnistNet, MnistPatchSelector
+from switch_model_wrapper import BinarizedMnistNet
 import matplotlib
 matplotlib.use('Agg')  # to plot without Xserver
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
+# import matplotlib.pyplot as plt
+# import matplotlib.cm as cm
 
-from switch_mnist_featimp import BinarizedMnistDataset, load_two_label_mnist_data, switch_select_data, \
-  hard_select_data, make_select_loader
+from switch_mnist_featimp import load_two_label_mnist_data, hard_select_data, make_select_loader
+from mnist_posthoc_accuracy_eval import test_posthoc_acc
+
+def l2x_select_data(l2x_model, loader, device):
+  x_data, y_data, selection = [], [], []
+  with pt.no_grad():
+    for x, y in loader:
+      x_data.append(x.numpy())
+      y_data.append(y.numpy())
+      # x_sel = nnf.softplus(selector(x.to(device)))
+      # x_sel = x_sel / pt.sum(x_sel, dim=1)[:, None] * 16  # multiply by patch size
+      _, x_sel = l2x_model.get_selection(x.to(device))
+      selection.append(x_sel.cpu().numpy())
+  return np.concatenate(x_data), np.concatenate(y_data), np.concatenate(selection)
 
 
 class L2XModel(nn.Module):
@@ -102,7 +114,7 @@ class L2XModel(nn.Module):
 
 
 
-def train_model(model, selected_label, learning_rate, n_epochs, train_loader, test_loader, device):
+def train_model(model, learning_rate, n_epochs, train_loader, test_loader, device):
   adam = pt.optim.Adam(params=model.parameters(), lr=learning_rate, weight_decay=1e-3)
 
   filepath = f"models/mnist/model.pt"
@@ -111,8 +123,9 @@ def train_model(model, selected_label, learning_rate, n_epochs, train_loader, te
 
     model.train(True)
     for x_batch, y_batch in train_loader:
+      x_batch, y_batch = x_batch.to(device), y_batch.to(device)
       x_batch = x_batch.reshape(x_batch.shape[0], -1).to(device)
-      y_batch = (y_batch == selected_label).to(pt.float32).to(device)
+
       adam.zero_grad()
 
       loss = nnf.binary_cross_entropy(model(x_batch), y_batch)
@@ -125,9 +138,8 @@ def train_model(model, selected_label, learning_rate, n_epochs, train_loader, te
     correct_preds = 0
     n_tested = 0
     for x_batch, y_batch in test_loader:
-      x_batch = x_batch.reshape(x_batch.shape[0], -1).to(device)
-      y_batch = (y_batch == selected_label).to(pt.float32).to(device)
-
+      x_batch, y_batch = x_batch.to(device), y_batch.to(device)
+      x_batch = x_batch.reshape(x_batch.shape[0], -1)
 
       preds = model(x_batch)
       loss = nnf.binary_cross_entropy(preds, y_batch)
@@ -158,7 +170,7 @@ def test_classifier_epoch(classifier, test_loader, device):
 
   test_loss /= len(test_loader.dataset)
 
-  print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+  print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
     test_loss, correct, len(test_loader.dataset),
     100. * correct / len(test_loader.dataset)))
 
@@ -180,47 +192,6 @@ def train_classifier(classifier, train_loader, test_loader, epochs, lr, device):
     test_classifier_epoch(classifier, test_loader, device)
 
 
-def train_selector(model, train_loader, epochs, lr, device):
-  # , point_estimate, n_switch_samples, alpha_0, n_features, n_data, KL_reg):
-  optimizer = optim.Adam(model.selector_params(), lr=lr)
-  training_loss_per_epoch = np.zeros(epochs)
-  # annealing_steps = float(8000. * epochs)
-
-  # def beta_func(s):
-  #   return min(s, annealing_steps) / annealing_steps
-
-  for epoch in range(epochs):  # loop over the dataset multiple times
-    print(f'epoch {epoch}')
-    running_loss = 0.0
-
-    # annealing_rate = beta_func(epoch)
-
-    for x_batch, y_batch in train_loader:
-      x_batch, y_batch = x_batch.to(device), y_batch.to(device)
-
-      # zero the parameter gradients
-      optimizer.zero_grad()
-      # forward + backward + optimize
-      outputs, phi_cand = model(x_batch)  # 100,10,150
-
-      loss = nnf.binary_cross_entropy_with_logits(outputs, y_batch)
-      # loss = loss_function(outputs, labels, phi_cand, alpha_0, n_features, n_data, annealing_rate, KL_reg)
-      loss.backward()
-      optimizer.step()
-
-      # print statistics
-      running_loss += loss.item()
-
-    # training_loss_per_epoch[epoch] = running_loss/how_many_samps
-    training_loss_per_epoch[epoch] = running_loss
-    print('epoch number is ', epoch)
-    print('running loss is ', running_loss)
-
-
-def local_switch_eval(model, test_loader):
-  pass
-
-
 def parse_args():
   parser = argparse.ArgumentParser()
   parser.add_argument('--batch-size', type=int, default=200)
@@ -238,9 +209,9 @@ def parse_args():
   parser.add_argument("--point_estimate", default=True)
   # parser.add_argument("--KL_reg", default=False)
   # parser.add_argument('--alpha_0', type=float, default=50000.)
-  parser.add_argument('--label-a', type=int, default=3)
-  parser.add_argument('--label-b', type=int, default=8)
-  parser.add_argument('--select-k', type=int, default=4)
+  parser.add_argument('--label-a', type=int, default=4)
+  parser.add_argument('--label-b', type=int, default=9)
+  parser.add_argument('--select-k', type=int, default=1)
 
   # parser.add_argument("--freeze-classifier", default=True)
   # parser.add_argument("--patch-selection", default=True)
@@ -253,43 +224,21 @@ def do_featimp_exp(ar):
   device = pt.device("cuda" if use_cuda else "cpu")
   # train_loader, test_loader = load_mnist_data(use_cuda, ar.batch_size, ar.test_batch_size)
   train_loader, test_loader = load_two_label_mnist_data(use_cuda, ar.batch_size, ar.test_batch_size,
+                                                        data_path='../../data',
                                                         label_a=ar.label_a, label_b=ar.label_b)
-  # unpack data
-  n_data, n_features = 60000, 784
 
-  classifier = BinarizedMnistNet().to(device)
-  # classifier.load_state_dict(pt.load(f'models/{ar.dataset}_nn_ep4.pt'))
-  train_classifier(classifier, train_loader, test_loader, ar.epochs, ar.lr, device)
-  print('Finished Training Classifier')
-
-  # selector = MnistPatchSelector().to(device)
-  # model = SwitchNetWrapper(selector, classifier, n_features, ar.n_switch_samples, ar.point_estimate).to(device)
-
-  model = L2XModel(d_in=784, d_out=1, datatype=None, n_key_features=n_select, device=device).to(device)
-
-
-  train_model(model, selected_label, learning_rate, n_epochs, train_loader, test_loader, device)
-  st2 = time.time()
-
-  train_selector(model, train_loader, ar.epochs, ar.lr, device)
+  model = L2XModel(d_in=784, d_out=1, datatype=None, n_key_features=ar.select_k, device=device).to(device)
+  train_model(model, ar.lr, ar.epochs, train_loader, test_loader, device)
   # , ar.point_estimate, ar.n_switch_samples, ar.alpha_0, n_features, n_data, ar.KL_reg)
+
   print('Finished Training Selector')
-
-
-
-  x_tr, y_tr, tr_selection = switch_select_data(selector, train_loader, device)
-  x_ts, y_ts, ts_selection = switch_select_data(selector, test_loader, device)
-  x_tr_select = hard_select_data(x_tr, tr_selection, k=ar.select_k)
+  x_ts, y_ts, ts_selection = l2x_select_data(model, test_loader, device)
   x_ts_select = hard_select_data(x_ts, ts_selection, k=ar.select_k)
-  select_train_loader = make_select_loader(x_tr_select, y_tr, train=True, batch_size=ar.batch_size, use_cuda=use_cuda)
   select_test_loader = make_select_loader(x_ts_select, y_ts, train=False, batch_size=ar.test_batch_size,
-                                          use_cuda=use_cuda)
+                                          use_cuda=use_cuda, data_path='../../data')
   print('testing classifier')
-  test_classifier_epoch(classifier, select_test_loader, device)
 
-  # print('testing retrained classifier')
-  # new_classifier = BinarizedMnistNet().to(device)
-  # train_classifier(new_classifier, select_train_loader, select_test_loader, ar.epochs, ar.lr, device)
+  test_posthoc_acc(ar.label_a, ar.label_b, select_test_loader, device, model_path_prefix='../../code/')
 
 
 def main():
@@ -298,6 +247,7 @@ def main():
   np.random.seed(ar.seed)
 
   do_featimp_exp(ar)
+
 
 if __name__ == '__main__':
   main()
