@@ -20,7 +20,7 @@ import torch.optim as optim
 # from torchvision import datasets, transforms
 # from torch.utils.data import Dataset, DataLoader
 # from switch_model_wrapper import SwitchWrapper, loss_function, MnistNet
-from switch_model_wrapper import BinarizedMnistNet
+# from switch_model_wrapper import BinarizedMnistNet
 import matplotlib
 matplotlib.use('Agg')  # to plot without Xserver
 # import matplotlib.pyplot as plt
@@ -28,6 +28,16 @@ matplotlib.use('Agg')  # to plot without Xserver
 
 from switch_mnist_featimp import load_two_label_mnist_data, hard_select_data, make_select_loader
 from mnist_posthoc_accuracy_eval import test_posthoc_acc
+
+
+"""Instance-wise Variable Selection (INVASE) module - with baseline
+
+Reference: Jinsung Yoon, James Jordon, Mihaela van der Schaar,
+           "IINVASE: Instance-wise Variable Selection using Neural Networks,"
+           International Conference on Learning Representations (ICLR), 2019.
+Paper Link: https://openreview.net/forum?id=BJg_roAcK7
+Contact: jsyoon0823@gmail.com
+"""
 
 
 def invase_select_data(invase_model, loader, device):
@@ -43,19 +53,6 @@ def invase_select_data(invase_model, loader, device):
   return np.concatenate(x_data), np.concatenate(y_data), np.concatenate(selection)
 
 
-"""Instance-wise Variable Selection (INVASE) module - with baseline
-
-Reference: Jinsung Yoon, James Jordon, Mihaela van der Schaar,
-           "IINVASE: Instance-wise Variable Selection using Neural Networks,"
-           International Conference on Learning Representations (ICLR), 2019.
-Paper Link: https://openreview.net/forum?id=BJg_roAcK7
-Contact: jsyoon0823@gmail.com
-"""
-import torch as pt
-import torch.nn as nn
-import torch.nn.functional as nnf
-
-import numpy as np
 
 
 class Net(nn.Module):
@@ -79,7 +76,8 @@ class Net(nn.Module):
     x = self.fc2(x)
     x = self.bn2(x) if self.use_bn else x
     x = self.act(x)
-    x = self.act_out(self.fc3(x))
+    x = self.fc3(x)
+    x = self.act_out(x)
     return x
 
 
@@ -93,7 +91,6 @@ class Invase(nn.Module):
     - model_parameters:
       - actor_h_dim: hidden state dimensions for actor
       - critic_h_dim: hidden state dimensions for critic
-      - n_layer: the number of layers
       - batch_size: the number of samples in mini batch
       - iteration: the number of iterations
       - activation: activation function of models
@@ -107,16 +104,14 @@ class Invase(nn.Module):
     self.lamda = model_parameters['lamda']
     self.actor_h_dim = model_parameters['actor_h_dim']
     self.critic_h_dim = model_parameters['critic_h_dim']
-    self.n_layer = model_parameters['n_layer']
     self.batch_size = model_parameters['batch_size']
-    self.iteration = model_parameters['iteration']
     self.activation = model_parameters['activation']
     self.learning_rate = model_parameters['learning_rate']
     self.model_type = model_parameters['model_type']
 
     self.device = device
     self.dim = 784
-    self.label_dim = 1
+    self.label_dim = 2
 
 
     # Build and compile critic
@@ -154,8 +149,6 @@ class Invase(nn.Module):
       - loss: actor loss
     """
 
-    # Critic loss
-    # critic_loss = -pt.sum(y_true * pt.log(critic_out + 1e-8), dim=1)
     selection = selection.detach()
     critic_loss = -pt.sum(y_true * log_critic_out.detach(), dim=1)
 
@@ -239,7 +232,7 @@ class Invase(nn.Module):
 def train_model(model, learning_rate, n_epochs, train_loader, test_loader, device):
   adam = pt.optim.Adam(params=model.parameters(), lr=learning_rate, weight_decay=1e-3)
 
-  filepath = f"models/mnist/model.pt"
+  # filepath = f"models/mnist/model.pt"
 
   for ep in range(n_epochs):
 
@@ -258,6 +251,8 @@ def train_model(model, learning_rate, n_epochs, train_loader, test_loader, devic
 
       if model.model_type == 'invase':
         log_baseline_out = model.baseline_net(x_batch)
+        # print(pt.max(log_baseline_out), pt.min(log_baseline_out))
+        # print(pt.max(y_batch), pt.min(y_batch))
         baseline_loss = nnf.nll_loss(log_baseline_out, y_batch)
         combined_loss += baseline_loss
       elif model.model_type == 'invase_minus':
@@ -290,8 +285,6 @@ def train_model(model, learning_rate, n_epochs, train_loader, test_loader, devic
       n_tested += y_batch.shape[0]
 
     print(f'epoch {ep} done. Acc: {correct_preds / n_tested}, Loss: {summed_loss / n_tested}')
-
-  pt.save(model.state_dict(), filepath)
 
 
 def test_classifier_epoch(classifier, test_loader, device):
@@ -334,7 +327,7 @@ def train_classifier(classifier, train_loader, test_loader, epochs, lr, device):
 
 def parse_args():
   parser = argparse.ArgumentParser()
-  parser.add_argument('--batch-size', type=int, default=200)
+  parser.add_argument('--batch-size', type=int, default=64)
   parser.add_argument('--test-batch-size', type=int, default=1000)
   parser.add_argument('--epochs', type=int, default=10)
   parser.add_argument('--lr', type=float, default=1e-3)
@@ -343,9 +336,9 @@ def parse_args():
   parser.add_argument('--dataset', type=str, default='mnist')
   # parser.add_argument('--selected-label', type=int, default=3)  # label for 1-v-rest training
   # parser.add_argument('--log-interval', type=int, default=500)
-  parser.add_argument('--n-switch-samples', type=int, default=10)
+  # parser.add_argument('--n-switch-samples', type=int, default=3)
 
-  parser.add_argument('--lamda', help='inavse hyper-parameter lambda', default=0.1, type=float)
+  parser.add_argument('--lamda', help='inavse hyper-parameter lambda', default=25.5, type=float)
   parser.add_argument('--actor_h_dim', help='hidden state dimensions for actor', default=100, type=int)
   parser.add_argument('--critic_h_dim', help='hidden state dimensions for critic', default=200, type=int)
   parser.add_argument('--activation', help='activation function of the networks',
@@ -353,7 +346,7 @@ def parse_args():
   parser.add_argument('--learning_rate', help='learning rate of model training', default=0.0001, type=float)
   parser.add_argument('--model_type', help='inavse or invase- (without baseline)',
                       choices=['invase', 'invase_minus'], default='invase', type=str)
-  parser.add_argument('--no-cuda', action='store_true', default=False)
+
 
   parser.add_argument('--label-a', type=int, default=4)
   parser.add_argument('--label-b', type=int, default=9)
@@ -371,27 +364,28 @@ def do_featimp_exp(ar):
   # train_loader, test_loader = load_mnist_data(use_cuda, ar.batch_size, ar.test_batch_size)
   train_loader, test_loader = load_two_label_mnist_data(use_cuda, ar.batch_size, ar.test_batch_size,
                                                         data_path='../../data',
-                                                        label_a=ar.label_a, label_b=ar.label_b)
+                                                        label_a=ar.label_a, label_b=ar.label_b,
+                                                        tgt_type=np.int64)
 
   model_parameters = {'lamda': ar.lamda,
                       'actor_h_dim': ar.actor_h_dim,
                       'critic_h_dim': ar.critic_h_dim,
-                      'n_layer': ar.n_layer,
                       'batch_size': ar.batch_size,
-                      'iteration': ar.iteration,
                       'activation': ar.activation,
                       'learning_rate': ar.learning_rate,
                       'model_type': ar.model_type}
 
-
   model = Invase(model_parameters, device)
-    # d_in=784, d_out=1, datatype=None, n_key_features=ar.select_k, device=device).to(device)
+  # d_in=784, d_out=1, datatype=None, n_key_features=ar.select_k, device=device).to(device)
   train_model(model, ar.lr, ar.epochs, train_loader, test_loader, device)
   # , ar.point_estimate, ar.n_switch_samples, ar.alpha_0, n_features, n_data, ar.KL_reg)
 
   print('Finished Training Selector')
-  x_ts, y_ts, ts_selection = l2x_select_data(model, test_loader, device)
-  x_ts_select = hard_select_data(x_ts, ts_selection, k=ar.select_k)
+  x_ts, y_ts, ts_selection = invase_select_data(model, test_loader, device)
+  # y_ts = y_ts.astype(np.int64)
+  x_ts_select = x_ts * ts_selection
+  print('average number of selected patches: ', np.mean(np.sum(ts_selection, axis=1))/16)
+  # x_ts_select = hard_select_data(x_ts, ts_selection, k=ar.select_k)
   select_test_loader = make_select_loader(x_ts_select, y_ts, train=False, batch_size=ar.test_batch_size,
                                           use_cuda=use_cuda, data_path='../../data')
   print('testing classifier')

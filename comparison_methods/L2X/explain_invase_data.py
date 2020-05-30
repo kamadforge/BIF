@@ -273,6 +273,7 @@ def L2X(datatype, train=True):
   # test_preds = model.predict(x_val * scores, verbose=1, batch_size=BATCH_SIZE)
   test_preds = model.predict(x_val, verbose=0, batch_size=BATCH_SIZE)
   # print('shapes:', scores.shape, ground_truth_val.shape, test_preds.shape, y_val.shape)
+  # print('shapes:', scores.shape, ground_truth_val.shape, test_preds.shape, y_val.shape)
   # print('sums:', np.sum(scores), np.sum(ground_truth_val), np.sum(test_preds), np.sum(y_val))
   invase_style_analysis(scores, ground_truth_val, test_preds, y_val)
   # median_ranks = compute_median_rank(scores, k=ks[datatype], datatype_val=None)
