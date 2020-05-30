@@ -26,36 +26,41 @@ import keras as ke
 import keras.backend as K
 from keras.layers import Input, Dense, Dropout
 from keras.models import Model
+from sdgym import load_dataset
+import pickle
 
-
-def load_ICU_data(path):
-  column_names = ['age', 'workclass', 'fnlwgt', 'education', 'education_num',
-                  'marital_status', 'occupation', 'relationship', 'race', 'sex',
-                  'capital_gain', 'capital_loss', 'hours_per_week', 'country', 'target']
-
-  input_data = (pd.read_csv(path, names=column_names,
-                            na_values="?", sep=r'\s*,\s*', engine='python')
-    .loc[lambda df: df['race'].isin(['White', 'Black'])])
-
-  # sensitive attributes; we identify 'race' and 'sex' as sensitive attributes
-  sensitive_attribs = ['race', 'sex']
-  Z = (input_data.loc[:, sensitive_attribs]
-       .assign(race=lambda df: (df['race'] == 'White').astype(int),
-               sex=lambda df: (df['sex'] == 'Male').astype(int)))
-
-  # targets; 1 when someone makes over 50k , otherwise 0
-  y = (input_data['target'] == '>50K').astype(int)
-
-  # features; note that the 'target' and sentive attribute columns are dropped
-  X = (input_data
-       .drop(columns=['target', 'race', 'sex'])
-       .fillna('Unknown')
-       .pipe(pd.get_dummies, drop_first=True))
-
-  print(f"features X: {X.shape[0]} samples, {X.shape[1]} attributes")
-  print(f"targets y: {y.shape[0]} samples")
-  print(f"sensitives Z: {Z.shape[0]} samples, {Z.shape[1]} attributes")
-  return X, y, Z
+# def load_ICU_data(path):
+#   column_names = ['age', 'workclass', 'fnlwgt', 'education', 'education_num',
+#                   'marital_status', 'occupation', 'relationship', 'race', 'sex',
+#                   'capital_gain', 'capital_loss', 'hours_per_week', 'country', 'target']
+#
+#   input_data = (pd.read_csv(path, names=column_names,
+#                             na_values="?", sep=r'\s*,\s*', engine='python')
+#     .loc[lambda df: df['race'].isin(['White', 'Black'])])
+#
+#   # sensitive attributes; we identify 'race' and 'sex' as sensitive attributes
+#   sensitive_attribs = ['race', 'sex']
+#   Z = (input_data.loc[:, sensitive_attribs]
+#        .assign(race=lambda df: (df['race'] == 'White').astype(int),
+#                sex=lambda df: (df['sex'] == 'Male').astype(int)))
+#
+#   # targets; 1 when someone makes over 50k , otherwise 0
+#   y = (input_data['target'] == '>50K').astype(int)
+#
+#   # features; note that the 'target' and sentive attribute columns are dropped
+#   X = (input_data
+#        .drop(columns=['target', 'race', 'sex'])
+#        .fillna('Unknown')
+#        .pipe(pd.get_dummies, drop_first=True))
+#
+#   # to check out the column names
+#   # for col in X.columns:
+#   #   print(col)
+#
+#   print(f"features X: {X.shape[0]} samples, {X.shape[1]} attributes")
+#   print(f"targets y: {y.shape[0]} samples")
+#   print(f"sensitives Z: {Z.shape[0]} samples, {Z.shape[1]} attributes")
+#   return X, y, Z
 
 
 def nn_classifier(n_features):
@@ -204,11 +209,14 @@ class FairClassifier(object):
 
   def pretrain(self, x, y, z, epochs=10, verbose=0):
     self._trainable_clf_net(True)
-    self._clf.fit(x.values, y.values, epochs=epochs, verbose=verbose)
+    # self._clf.fit(x.values, y.values, epochs=epochs, verbose=verbose)
+    self._clf.fit(x, y, epochs=epochs, verbose=verbose)
     self._trainable_clf_net(False)
     self._trainable_adv_net(True)
     class_weight_adv = self._compute_class_weights(z)
-    self._adv.fit(x.values, np.hsplit(z.values, z.shape[1]), class_weight=class_weight_adv,
+    # self._adv.fit(x.values, np.hsplit(z.values, z.shape[1]), class_weight=class_weight_adv,
+    #               epochs=epochs, verbose=verbose)
+    self._adv.fit(x, np.hsplit(z, z.shape[1]), class_weight=class_weight_adv,
                   epochs=epochs, verbose=verbose)
 
   def fit(self, x, y, z, validation_data=None, T_iter=250, batch_size=128,
@@ -222,13 +230,17 @@ class FairClassifier(object):
     self._val_metrics = pd.DataFrame()
     self._fairness_metrics = pd.DataFrame()
     for idx in range(T_iter):
+      print("Iteration index out of", [idx, T_iter])
       if validation_data is not None:
-        y_pred = pd.Series(self._clf.predict(x_val).ravel(), index=y_val.index)
+        # y_pred = pd.Series(self._clf.predict(x_val).ravel(), index=y_val.index)
+        y_pred = self._clf.predict(x_val)
         self._val_metrics.loc[idx, 'ROC AUC'] = roc_auc_score(y_val, y_pred)
         self._val_metrics.loc[idx, 'Accuracy'] = (accuracy_score(y_val, (y_pred > 0.5)) * 100)
-        for sensitive_attr in z_val.columns:
+        # for sensitive_attr in z_val.columns:
+
+        for sensitive_attr in range(n_sensitive):
           self._fairness_metrics.loc[idx, sensitive_attr] = p_rule(y_pred,
-                                                                   z_val[sensitive_attr])
+                                                                   z_val[:,sensitive_attr])
         # display.clear_output(wait=True)
         # plot_distributions(y_pred, z_val, idx + 1, self._val_metrics.loc[idx],
         #                    self._fairness_metrics.loc[idx],
@@ -238,30 +250,110 @@ class FairClassifier(object):
       # train adverserial
       self._trainable_clf_net(False)
       self._trainable_adv_net(True)
-      self._adv.fit(x.values, np.hsplit(z.values, z.shape[1]), batch_size=batch_size,
+      # self._adv.fit(x.values, np.hsplit(z.values, z.shape[1]), batch_size=batch_size,
+      #               class_weight=class_weight_adv, epochs=1, verbose=0)
+      self._adv.fit(x, np.hsplit(z, z.shape[1]), batch_size=batch_size,
                     class_weight=class_weight_adv, epochs=1, verbose=0)
 
       # train classifier
       self._trainable_clf_net(True)
       self._trainable_adv_net(False)
       indices = np.random.permutation(len(x))[:batch_size]
-      self._clf_w_adv.train_on_batch(x.values[indices],
-                                     [y.values[indices]] + np.hsplit(z.values[indices], n_sensitive),
+      # self._clf_w_adv.train_on_batch(x.values[indices],
+      #                                [y.values[indices]] + np.hsplit(z.values[indices], n_sensitive),
+      #                                class_weight=class_weight_clf_w_adv)
+
+      self._clf_w_adv.train_on_batch(x[indices],
+                                     [y[indices]] + np.hsplit(z[indices], n_sensitive),
                                      class_weight=class_weight_clf_w_adv)
 
 
 def load_data():
-  X, y, Z = load_ICU_data('data/adult/adult.data')
 
-  # split into train/test set
-  x_train, x_test, y_train, y_test, z_train, z_test = train_test_split(X, y, Z, test_size=0.5,
-                                                                       stratify=y, random_state=7)
+  # data, categorical_columns, ordinal_columns = load_dataset('adult')
+  #
+  # """ some specifics on this dataset """
+  # numerical_columns = list(set(np.arange(data[:, :-1].shape[1])) - set(categorical_columns + ordinal_columns))
+  # n_classes = 2
+  #
+  # data = data[:, numerical_columns + ordinal_columns + categorical_columns]
+  #
+  # num_numerical_inputs = len(numerical_columns)
+  # num_categorical_inputs = len(categorical_columns + ordinal_columns) - 1
+  #
+  # inputs = data[:, :-1]
+  # target = data[:, -1]
 
-  # standardize the data
-  scaler = StandardScaler().fit(x_train)
-  scale_df = lambda df, scaler: pd.DataFrame(scaler.transform(df), columns=df.columns, index=df.index)
-  x_train = x_train.pipe(scale_df, scaler)
-  x_test = x_test.pipe(scale_df, scaler)
+  # X, y, Z = load_ICU_data('data/adult/adult.data')
+  #
+  # # split into train/test set
+  # x_train, x_test, y_train, y_test, z_train, z_test = train_test_split(X, y, Z, test_size=0.5,
+  #                                                                      stratify=y, random_state=7)
+  #
+  # # standardize the data
+  # scaler = StandardScaler().fit(x_train)
+  # scale_df = lambda df, scaler: pd.DataFrame(scaler.transform(df), columns=df.columns, index=df.index)
+  # x_train = x_train.pipe(scale_df, scaler)
+  # x_test = x_test.pipe(scale_df, scaler)
+
+  filename = 'code/adult.p'
+  with open(filename, 'rb') as f:
+    u = pickle._Unpickler(f)
+    u.encoding = 'latin1'
+    data = u.load()
+    y_tot, x_tot = data
+
+  # sort out Z from x_tot
+
+  #
+  # data = [
+  #     age(0), workclass(1), fnlwgt(2), education(3), education_num(4),
+  #     marital_status(5), occupation(6), relationship(7), race(8), sex(9),
+  #     capital_gain(10), capital_loss(11), hours_per_week(12), native_country(13)]
+
+
+  ind_race = 8
+  ind_sex = 9
+
+  race_feature = x_tot[:,ind_race]
+
+  # I have take data for only white and black race.
+  uval = np.unique(race_feature)
+  ind_white = race_feature == uval[4]
+  ind_black = race_feature == uval[2]
+
+  x_tot = x_tot[ind_black + ind_white, :]
+  y_tot = y_tot[ind_black+ind_white]
+
+  race_feature = x_tot[:,ind_race]
+  sex_feature = x_tot[:,ind_sex]
+
+  # Z = (input_data.loc[:, sensitive_attribs]
+  #      .assign(race=lambda df: (df['race'] == 'White').astype(int),
+  #              sex=lambda df: (df['sex'] == 'Male').astype(int)))
+
+  # binarize sensitive attributes
+  Z = np.concatenate((np.expand_dims(race_feature,axis=1), np.expand_dims(sex_feature, axis=1)), axis=1) # two sensitive features
+
+  ind_white = Z[:,0]==uval[4]
+  Z[ind_white, 0] = 1 # White
+  Z[~ind_white, 0] = 0 # rest
+
+  uval = np.unique(Z[:, 1])
+  ind_male = Z[:,1]==uval[1]
+  Z[ind_male, 1] = 1 # Male
+  Z[~ind_male, 1] = 0 # rest
+
+
+  X = np.concatenate((x_tot[:,:8], x_tot[:,10:]),axis=1) # 12 input features
+  y = y_tot
+
+  # np.save('X_adult_for_fairness.npy', X)
+  # np.save('y_adult_for_fairness.npy',y)
+
+
+  x_train, x_test, y_train, y_test, z_train, z_test = train_test_split(X, y, Z, test_size=0.5, stratify=y, random_state=7)
+
   return x_train, x_test, y_train, y_test, z_train, z_test
 
 
@@ -270,22 +362,24 @@ def train_baseline(x_train, x_test, y_train, y_test, z_train, z_test):
   base_clf = nn_classifier(n_features=x_train.shape[1])
 
   # train on train set
-  history = base_clf.fit(x_train.values, y_train.values, epochs=20, verbose=0)
+  # history = base_clf.fit(x_train.values, y_train.values, epochs=20, verbose=0)
+  history = base_clf.fit(x_train, y_train, epochs=20, verbose=0)
 
-  y_pred = pd.Series(base_clf.predict(x_test).ravel(), index=y_test.index)
+  # y_pred = pd.Series(base_clf.predict(x_test).ravel(), index=y_test.index)
+  y_pred = base_clf.predict(x_test)
   print(f"ROC AUC: {roc_auc_score(y_test, y_pred):.2f}")
   print(f"Accuracy: {100 * accuracy_score(y_test, (y_pred > 0.5)):.1f}%")
 
-  fig = plot_distributions(y_pred, z_test, fname='images/biased_training.png')
-
-  print("The classifier satisfies the following %p-rules:")
-  print(f"\tgiven attribute race; {p_rule(y_pred, z_test['race']):.0f}%-rule")
-  print(f"\tgiven attribute sex;  {p_rule(y_pred, z_test['sex']):.0f}%-rule")
+  # fig = plot_distributions(y_pred, z_test, fname='images/biased_training.png')
+  #
+  # print("The classifier satisfies the following %p-rules:")
+  # print(f"\tgiven attribute race; {p_rule(y_pred, z_test['race']):.0f}%-rule")
+  # print(f"\tgiven attribute sex;  {p_rule(y_pred, z_test['sex']):.0f}%-rule")
 
   extract_layers(base_clf, 'baseline_clf.npz')
   
 
-def train_fair(x_train, x_test, y_train, y_test, z_train, z_test):
+def train_fair(x_train, x_test, y_train, y_test, z_train, z_test, T_iter):
   ##########################################
   # initialise FairClassifier
   fair_clf = FairClassifier(n_features=x_train.shape[1], n_sensitive=z_train.shape[1], lambdas=[130., 30.])
@@ -298,11 +392,23 @@ def train_fair(x_train, x_test, y_train, y_test, z_train, z_test):
   #     !rm output/*.png
   print('starting to train')
 
-  fair_clf.fit(x_train, y_train, z_train, validation_data=(x_test, y_test, z_test), T_iter=165, save_figs=False)
-  pred_on_0 = fair_clf._clf.predict(np.zeros(shape=(1, 94)))
-  pred_on_1 = fair_clf._clf.predict(np.ones(shape=(1, 94)))
-  print('pred after training', pred_on_0, pred_on_1)
-  extract_layers(fair_clf._clf, 'fair_clf.npz')
+  fair_clf.fit(x_train, y_train, z_train, validation_data=(x_test, y_test, z_test), T_iter=T_iter, save_figs=False)
+
+  # To save fairness metrics and accuracy
+  fairness_metrics = fair_clf._fairness_metrics
+  fairness_metrics.to_pickle("fairness_metrics.pkl")
+
+  eval_metrics = fair_clf._val_metrics
+  eval_metrics.to_pickle("eval_metrics.pkl")
+
+
+  # pred_on_0 = fair_clf._clf.predict(np.zeros(shape=(1, 94)))
+  # pred_on_1 = fair_clf._clf.predict(np.ones(shape=(1, 94)))
+  # print('pred after training', pred_on_0, pred_on_1)
+
+  # change the number to include T_iter
+  filename = 'fair_clf_' + str(T_iter) + '.npz'
+  extract_layers(fair_clf._clf, filename)
 
 
 def extract_layers(model, save_file):
@@ -319,6 +425,7 @@ def extract_layers(model, save_file):
 
   print(f'saving the following weights: {w_dict.keys()}')
   np.savez(save_file, **w_dict)
+  print("saving is done")
 
 
 def main():
@@ -326,7 +433,11 @@ def main():
   
   # train_baseline(*data)
 
-  train_fair(*data)
+  train_fair(*data, T_iter=250)
+
+  # train_fair(*data, T_iter=125)
+
+  # train_fair(*data, T_iter=1)
 
 
 if __name__ == '__main__':

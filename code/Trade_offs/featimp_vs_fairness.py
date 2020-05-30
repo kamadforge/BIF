@@ -56,6 +56,8 @@ def load_ICU_data(path):
          .drop(columns=['target', 'race', 'sex'])
          .fillna('Unknown')
          .pipe(pd.get_dummies, drop_first=True))
+    # X = (input_data
+    #      .drop(columns=['target', 'race', 'sex']))
 
     print(f"features X: {X.shape[0]} samples, {X.shape[1]} attributes")
     print(f"targets y: {y.shape[0]} samples")
