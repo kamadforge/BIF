@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 
 # Main path: featimp_dp
 
+
 class ImportedClassifier(nn.Module):
   def __init__(self, d_in, weights_file):
     super(ImportedClassifier, self).__init__()
@@ -186,6 +187,7 @@ def main():
   # print(fair_clf(pt.zeros(1, 94)))
   # print(fair_clf(pt.ones(1, 94)))
   # clf.load_state_dict()
+
 
 if __name__ == '__main__':
   main()
