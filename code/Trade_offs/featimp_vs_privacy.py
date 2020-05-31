@@ -175,10 +175,11 @@ def parse():
     parser.add_argument('--switch-epochs', type=int, default=100)
     parser.add_argument('--switch-batch-size', type=int, default=2000)
 
-    # sig = 1.35 -> eps 8.07
-    # sig = 2.3 -> eps 4.01
-    # sig = 4.4 -> eps 1.94
-    # sig = 8.4 -> eps 0.984
+    # sig = 1.35 -> eps 8.07 ~= 8
+    # sig = 2.3 -> eps 4.01  ~= 4
+    # sig = 4.4 -> eps 1.94  ~= 2
+    # sig = 8.4 -> eps 0.984 ~= 1
+    # sig = 17. -> eps 0.48  ~= 0.5
     parser.add_argument('--dp-sigma', type=float, default=8.4)
     parser.add_argument('--dp-clip', type=float, default=0.01)
 
