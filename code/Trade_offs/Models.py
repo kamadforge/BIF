@@ -7,14 +7,15 @@ from torch.distributions import Gamma
 class Feedforward(torch.nn.Module):
     def __init__(self, input_size, hidden_size, hidden_size2):
         super(Feedforward, self).__init__()
+
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.hidden_size2 = hidden_size2
         self.fc1 = torch.nn.Linear(self.input_size, self.hidden_size)
-        self.bn1 = nn.BatchNorm1d(self.hidden_size)
+        # self.bn1 = nn.BatchNorm1d(self.hidden_size)
         self.relu = torch.nn.ReLU()
         self.fc2 = torch.nn.Linear(self.hidden_size, self.hidden_size2)
-        self.bn2 = nn.BatchNorm1d(self.hidden_size2)
+        # self.bn2 = nn.BatchNorm1d(self.hidden_size2)
         self.fc3 = torch.nn.Linear(self.hidden_size2, 1)
         self.sigmoid = torch.nn.Sigmoid()
 

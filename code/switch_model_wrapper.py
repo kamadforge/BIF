@@ -88,7 +88,7 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, n_features, n_data, ann
 
 class SwitchNetWrapper(nn.Module):
 
-  def __init__(self, selector, classifier, input_dim, num_samps_for_switch, do_point_estimate):
+  def __init__(self, selector, classifier, num_samps_for_switch=10, do_point_estimate=True):
     # def __init__(self, input_dim, hidden_dim):
     super(SwitchNetWrapper, self).__init__()
 
@@ -124,6 +124,36 @@ class MnistPatchSelector(nn.Module):
     x = self.fc1(x)
     x = nnf.relu(x)
     x = self.fc2(x)
+
+    x = x.view(-1, 7, 7)
+    x = pt.repeat_interleave(pt.repeat_interleave(x, 4, dim=1), 4, dim=2)
+
+    return x.view(-1, 784)
+
+
+class BigMnistPatchSelector(nn.Module):
+  def __init__(self):
+    super(BigMnistPatchSelector, self).__init__()
+    d_in = 784
+    d_hid = 300
+    d_out = 49
+
+    self.act = nn.ReLU()
+    self.fc1 = nn.Linear(d_in, d_hid)
+    self.bn1 = nn.BatchNorm1d(d_hid)
+    self.fc2 = nn.Linear(d_hid, d_hid)
+    self.bn2 = nn.BatchNorm1d(d_hid)
+    self.fc3 = nn.Linear(d_hid, d_out)
+
+  def forward(self, x):
+    x = pt.flatten(x, 1)
+    x = self.fc1(x)
+    x = self.bn1(x)
+    x = self.act(x)
+    x = self.fc2(x)
+    x = self.bn2(x)
+    x = self.act(x)
+    x = self.fc3(x)
 
     x = x.view(-1, 7, 7)
     x = pt.repeat_interleave(pt.repeat_interleave(x, 4, dim=1), 4, dim=2)
@@ -192,3 +222,54 @@ class BinarizedMnistNet(nn.Module):
     x = self.fc2(x)
     x = x.flatten()
     return x  # assume BCE with logits as loss
+
+class BigBinarizedMnistNet(nn.Module):
+  def __init__(self):
+    super(BigBinarizedMnistNet, self).__init__()
+    d_in = 784
+    d_hid = 300
+    d_out = 1
+
+    self.act = nn.ReLU()
+    self.fc1 = nn.Linear(d_in, d_hid)
+    self.bn1 = nn.BatchNorm1d(d_hid)
+    self.fc2 = nn.Linear(d_hid, d_hid)
+    self.bn2 = nn.BatchNorm1d(d_hid)
+    self.fc3 = nn.Linear(d_hid, d_out)
+
+  def forward(self, x):
+    x = self.fc1(x)
+    # x = self.bn1(x)
+    x = self.act(x)
+    x = self.fc2(x)
+    # x = self.bn2(x)
+    x = self.act(x)
+    x = self.fc3(x)
+    x = x.flatten()
+    return x  # assume BCE with logits as loss
+
+
+class Net(nn.Module):
+  def __init__(self, d_in, d_hid, d_out, act='relu', act_out='logsoftmax', use_bn=True):
+    assert act in {'relu', 'selu'}
+    assert act_out in {'logsoftmax', 'sigmoid'}
+    super(Net, self).__init__()
+    self.use_bn = use_bn
+    self.act = nn.ReLU() if act == 'relu' else nn.SELU()
+    self.act_out = nn.LogSoftmax(dim=1) if act_out == 'logsoftmax' else nn.Sigmoid()
+    self.fc1 = nn.Linear(d_in, d_hid)
+    self.bn1 = nn.BatchNorm1d(d_hid) if use_bn else None
+    self.fc2 = nn.Linear(d_hid, d_hid)
+    self.bn2 = nn.BatchNorm1d(d_hid) if use_bn else None
+    self.fc3 = nn.Linear(d_hid, d_out)
+
+  def forward(self, x_in):
+    x = self.fc1(x_in)
+    x = self.bn1(x) if self.use_bn else x
+    x = self.act(x)
+    x = self.fc2(x)
+    x = self.bn2(x) if self.use_bn else x
+    x = self.act(x)
+    x = self.fc3(x)
+    x = self.act_out(x)
+    return x

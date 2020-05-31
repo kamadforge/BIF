@@ -9,6 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.nn.parameter import Parameter
+import argparse
 from torch.distributions import Gamma
 import pickle
 import numpy.random as rn
@@ -16,10 +17,14 @@ from Models import Feedforward, Feature_Importance_Model
 from sklearn.metrics import roc_auc_score
 from Losses import loss_function
 
+from dp_sgd import dp_sgd_backward
+from backpack import extend
+
+
 def main():
 
-    rnd_num = 0
-    rn.seed(rnd_num)
+    ar = parse()
+    rn.seed(ar.seed)
 
     """ load data """
     filename = 'adult.p'
@@ -32,6 +37,9 @@ def main():
     y_tot, x_tot = data
     N_tot, input_dim = x_tot.shape
 
+    use_cuda = not ar.no_cuda and torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+
     """ set the privacy parameter """
     # dp_epsilon = 1
     # dp_delta = 1/N_tot
@@ -42,6 +50,7 @@ def main():
 
     # train and test data
     N = np.int(N_tot * 0.9)
+    print('n_data:', N)
     rand_perm_nums = np.random.permutation(N_tot)
     X = x_tot[rand_perm_nums[0:N], :]
     y = y_tot[rand_perm_nums[0:N]]
@@ -53,27 +62,34 @@ def main():
 #############################################################
     classifier = Feedforward(input_dim, 100, 20)
     criterion = torch.nn.BCELoss()
-    optimizer = optim.Adam(classifier.parameters(), lr=0.05)
+    optimizer = optim.Adam(classifier.parameters(), lr=ar.lr)
 
     classifier.train()
-    how_many_epochs = 10
-    mini_batch_size = 100
-    how_many_iter = np.int(N / mini_batch_size)
+    if ar.dp_sigma is not None:
+        extend(classifier)
+    # how_many_epochs = 10
+    # mini_batch_size = 100
+    how_many_iter = np.int(N / ar.clf_batch_size)
 
-    for epoch in range(how_many_epochs):  # loop over the dataset multiple times
+    for epoch in range(ar.clf_epochs):  # loop over the dataset multiple times
 
         running_loss = 0.0
 
         for i in range(how_many_iter):
             # get the inputs
-            inputs = X[i * mini_batch_size:(i + 1) * mini_batch_size, :]
-            labels = y[i * mini_batch_size:(i + 1) * mini_batch_size]
+            inputs = X[i * ar.clf_batch_size:(i + 1) * ar.clf_batch_size, :]
+            labels = y[i * ar.clf_batch_size:(i + 1) * ar.clf_batch_size]
 
             optimizer.zero_grad()
             y_pred = classifier(torch.Tensor(inputs))
             loss = criterion(y_pred.squeeze(), torch.FloatTensor(labels))
 
-            loss.backward()
+            if ar.dp_sigma is not None:
+                global_norms, global_clips = dp_sgd_backward(classifier.parameters(), loss, device, ar.dp_clip, ar.dp_sigma)
+                # print(f'max_norm:{torch.max(global_norms).item()}, mean_norm:{torch.mean(global_norms).item()}')
+                # print(f'mean_clip:{torch.mean(global_clips).item()}')
+            else:
+                loss.backward()
             optimizer.step()
             running_loss += loss.item()
 
@@ -105,22 +121,22 @@ def main():
     # print(list(importance.parameters())) # make sure I only update the gradients of feature importance
 
     importance.train()
-    how_many_epochs = 100
-    mini_batch_size = 2000 # generally larger mini batch size is more helpful for switch learning
-    how_many_iter = np.int(N / mini_batch_size)
+    # how_many_epochs = 100
+    # mini_batch_size = 2000  # generally larger mini batch size is more helpful for switch learning
+    how_many_iter = np.int(N / ar.switch_batch_size)
 
     alpha_0 = 0.1
-    annealing_rate = 1 # we don't anneal. don't want to think about this.
+    annealing_rate = 1  # we don't anneal. don't want to think about this.
     kl_term = True
 
-    for epoch in range(how_many_epochs):  # loop over the dataset multiple times
+    for epoch in range(ar.switch_epochs):  # loop over the dataset multiple times
 
         running_loss = 0.0
 
         for i in range(how_many_iter):
 
-            inputs = X[i * mini_batch_size:(i + 1) * mini_batch_size, :]
-            labels = y[i * mini_batch_size:(i + 1) * mini_batch_size]
+            inputs = X[i * ar.switch_batch_size:(i + 1) * ar.switch_batch_size, :]
+            labels = y[i * ar.switch_batch_size:(i + 1) * ar.switch_batch_size]
 
             optimizer.zero_grad()
             y_pred, phi_cand = importance(torch.Tensor(inputs))
@@ -148,6 +164,25 @@ def main():
     print('Finished feature importance Training')
 
 
+def parse():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--no-cuda', action='store_true', default=True)
+    parser.add_argument('--seed', type=int, default=1)
+    parser.add_argument('--lr', type=float, default=1e-2)
+    parser.add_argument('--clf-epochs', type=int, default=20)
+    parser.add_argument('--clf-batch-size', type=int, default=1000)
+    parser.add_argument('--switch-epochs', type=int, default=100)
+    parser.add_argument('--switch-batch-size', type=int, default=2000)
+
+    # sig = 1.35 -> eps 8.07
+    # sig = 2.3 -> eps 4.01
+    # sig = 4.4 -> eps 1.94
+    # sig = 8.4 -> eps 0.984
+    parser.add_argument('--dp-sigma', type=float, default=8.4)
+    parser.add_argument('--dp-clip', type=float, default=0.01)
+
+    return parser.parse_args()
 
 
 

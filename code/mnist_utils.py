@@ -37,7 +37,7 @@ class BinarizedMnistDataset(Dataset):
     ids_a, ids_b = base_data.targets == label_a, base_data.targets == label_b
     smp_a, smp_b = base_data.data[ids_a], base_data.data[ids_b]
     n_a, n_b = smp_a.shape[0], smp_b.shape[0]
-    print(n_a, n_b)
+    # print(n_a, n_b)
     tgt_a, tgt_b = base_data.targets[ids_a], base_data.targets[ids_b]
     pert = np.random.permutation(n_a + n_b)
     tgt = np.concatenate([np.zeros(tgt_a.shape), np.ones(tgt_b.shape)])[pert]
