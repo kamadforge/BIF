@@ -20,10 +20,10 @@ class Feedforward(torch.nn.Module):
 
     def forward(self, x):
         hidden = self.fc1(x)
-        hidden = self.bn1(hidden)
+        # hidden = self.bn1(hidden)
         relu = self.relu(hidden)
         output = self.fc2(relu)
-        output = self.bn2(output)
+        # output = self.bn2(output)
         output = self.fc3(self.relu(output))
         output = self.sigmoid(output)
         return output
@@ -67,3 +67,31 @@ class Feature_Importance_Model(nn.Module):
         # reshaping back to batch by Dir samps
         labelstack = labelstack.reshape(batch, Dir_samps)
         return labelstack, phi
+
+
+
+class Classifier(nn.Module):
+  def __init__(self, d_in):
+    super(Classifier, self).__init__()
+
+    self.fc1 = nn.Linear(d_in, 32)
+    self.fc2 = nn.Linear(32, 32)
+    self.fc3 = nn.Linear(32, 32)
+    self.fc4 = nn.Linear(32, 1)
+    self.do1 = nn.Dropout(0.2)
+    self.do2 = nn.Dropout(0.2)
+    self.do3 = nn.Dropout(0.2)
+
+  def forward(self, x):
+    x = self.fc1(x)
+    x = F.relu(x)
+    x = self.do1(x)
+    x = self.fc2(x)
+    x = F.relu(x)
+    x = self.do2(x)
+    x = self.fc3(x)
+    x = F.relu(x)
+    x = self.do3(x)
+    x = self.fc4(x)
+    x = torch.sigmoid(x)
+    return x
