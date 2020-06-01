@@ -380,7 +380,7 @@ def parse_args():
                       choices=['invase', 'invase_minus'], default='invase_minus', type=str)
 
   # parser.add_argument('--clf-weights-file', type=str, default='../../code/Trade_offs/fair_clf_250.npz')
-  parser.add_argument('--clf-iter', type=str, default=250)
+  parser.add_argument('--clf-iter', type=str, default=1)
 
 
   # parser.add_argument("--freeze-classifier", default=True)
