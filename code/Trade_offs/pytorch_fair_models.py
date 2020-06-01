@@ -70,7 +70,7 @@ def main():
   if baseline:
     classifier = ImportedClassifier(d_in=input_dim, weights_file='baseline_clf.npz')
   else:
-    T_iter = 1 # either 1, 125 or 250
+    T_iter = 1  # either 1, 125 or 250
     filename = 'fair_clf_' + str(T_iter) + '.npz'
     classifier = ImportedClassifier(d_in=input_dim, weights_file=filename)
 
