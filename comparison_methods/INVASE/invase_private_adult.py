@@ -12,17 +12,45 @@ import torch.optim as optim
 import matplotlib
 matplotlib.use('Agg')  # to plot without Xserver
 from torch.utils.data import Dataset, DataLoader
-from pytorch_fair_models import ImportedClassifier
+
 import pickle
 from sklearn.model_selection import train_test_split
-import time
-from switch_mnist_featimp import make_select_loader
-from mnist_posthoc_accuracy_eval import test_posthoc_acc
 
 
-class FairAdultDataset(Dataset):
+
+class ImportedDPClassifier(nn.Module):
+  def __init__(self, d_in, weights_file):
+    super(ImportedDPClassifier, self).__init__()
+    self.input_size = 12
+    self.hidden_size = 100
+    self.hidden_size2 = 20
+
+    self.fc1 = nn.Linear(d_in, 100)
+    self.fc2 = nn.Linear(100, 20)
+    self.fc3 = nn.Linear(20, 1)
+    self.load_weights(weights_file)
+    self.eval()
+
+  def forward(self, x):
+    x = self.fc1(x)
+    x = nnf.relu(x)
+    x = self.fc2(x)
+    x = nnf.relu(x)
+    x = self.fc3(x)
+    x = pt.sigmoid(x)
+    return x
+
+  def load_weights(self, weights_file):
+    loaded_states = pt.load(weights_file)
+    clean_states = dict()
+    for key in self.state_dict().keys():
+      clean_states[key] = loaded_states[key]
+    self.load_state_dict(clean_states)
+
+
+class AdultDataset(Dataset):
   def __init__(self, train, data_file='code/adult.p'):
-    super(FairAdultDataset, self).__init__()
+    super(AdultDataset, self).__init__()
     self.train = train
     self.data_file = data_file
     self.inputs, self.labels = self.load_dataset()
@@ -41,22 +69,10 @@ class FairAdultDataset(Dataset):
       data = u.load()
       y_tot, x_tot = data
 
-    ind_race = 8
-    race_feature = x_tot[:, ind_race]
-
-    # I have take data for only white and black race.
-    uval = np.unique(race_feature)
-    ind_white = race_feature == uval[4]
-    ind_black = race_feature == uval[2]
-
-    x_tot = x_tot[ind_black + ind_white, :]
-    y_tot = y_tot[ind_black + ind_white]
-
-    x_blind = np.concatenate((x_tot[:, :8], x_tot[:, 10:]), axis=1)  # 12 input features
-    x_blind = x_blind.astype(np.float32)
+    x_tot = x_tot.astype(np.float32)
     y_tot = y_tot.astype(np.int64)
 
-    x_train, x_test, y_train, y_test = train_test_split(x_blind, y_tot, test_size=0.5, stratify=y_tot, random_state=7)
+    x_train, x_test, y_train, y_test = train_test_split(x_tot, y_tot, test_size=0.5, stratify=y_tot, random_state=7)
 
 
     if self.train:
@@ -68,9 +84,9 @@ class FairAdultDataset(Dataset):
 def get_adult_dataloaders(use_cuda, batch_size, test_batch_size, data_file):
   kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
 
-  train_data = FairAdultDataset(train=True, data_file=data_file)
+  train_data = AdultDataset(train=True, data_file=data_file)
   train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, **kwargs)
-  test_data = FairAdultDataset(train=False, data_file=data_file)
+  test_data = AdultDataset(train=False, data_file=data_file)
   test_loader = DataLoader(test_data, batch_size=test_batch_size, shuffle=True, **kwargs)
   return train_loader, test_loader
 
@@ -149,14 +165,14 @@ class Invase(nn.Module):
     self.model_type = model_parameters['model_type']
 
     self.device = device
-    self.dim = 12
+    self.dim = 14
     self.label_dim = 2
 
 
     # Build and compile critic
     # self.critic_net = Net(self.dim, self.critic_h_dim, self.label_dim, act=self.activation,
     #                       act_out='logsoftmax').to(self.device)
-    self.critic_net = ImportedClassifier(d_in=12, weights_file=clf_weights_file).to(self.device)
+    self.critic_net = ImportedDPClassifier(d_in=self.dim, weights_file=clf_weights_file).to(self.device)
 
 
     # Build and compile the actor
@@ -167,7 +183,7 @@ class Invase(nn.Module):
       # Build and compile the baseline
       # self.baseline_net = Net(self.dim, self.critic_h_dim, self.label_dim, act=self.activation,
       #                         act_out='logsoftmax').to(self.device)
-      self.baseline_net = ImportedClassifier(d_in=12, weights_file=clf_weights_file).to(self.device)
+      self.baseline_net = ImportedDPClassifier(d_in=self.dim, weights_file=clf_weights_file).to(self.device)
 
     self.optimizer = pt.optim.Adam(params=self._actor_net.parameters(), lr=self.learning_rate, weight_decay=1e-3)
 
@@ -380,7 +396,7 @@ def parse_args():
                       choices=['invase', 'invase_minus'], default='invase_minus', type=str)
 
   # parser.add_argument('--clf-weights-file', type=str, default='../../code/Trade_offs/fair_clf_250.npz')
-  parser.add_argument('--clf-iter', type=str, default=-1)
+  parser.add_argument('--epsilon', type=str, default=0.5)
 
 
   # parser.add_argument("--freeze-classifier", default=True)
@@ -415,11 +431,11 @@ def do_featimp_exp(ar):
                       'activation': ar.activation,
                       'learning_rate': ar.learning_rate,
                       'model_type': ar.model_type}
+  eps_to_sig = {0.5: '17.0', 1.: '8.4', 2.: '4.4', 4.: '2.3', 8.: '1.35', None:'0.0'}
 
-  if ar.clf_iter > 0:
-    clf_weights_file = f'../../code/Trade_offs/fair_clf_{ar.clf_iter}.npz'
-  else:
-    clf_weights_file = f'../../code/Trade_offs/baseline_clf.npz'
+
+  clf_weights_file = f'../../code/Trade_offs/dp_classifier_sig{eps_to_sig[ar.epsilon]}.pt'
+
   model = Invase(model_parameters, device, clf_weights_file)
   # d_in=784, d_out=1, datatype=None, n_key_features=ar.select_k, device=device).to(device)
   train_model(model, ar.lr, ar.epochs, train_loader, test_loader, device)
@@ -429,9 +445,9 @@ def do_featimp_exp(ar):
   x_ts, y_ts, ts_selection, ts_selection_prob = invase_select_data(model, test_loader, device)
   x_tr, y_tr, tr_selection, tr_selection_prob = invase_select_data(model, train_loader, device)
 
-  fair_or_no = 'fair' if ar.clf_iter > 0 else 'baseline'
-  aggregate_global_importance(tr_selection_prob, f'{fair_or_no}_global_importance_trainset_{ar.clf_iter}.npy')
-  aggregate_global_importance(ts_selection_prob, f'{fair_or_no}_global_importance_testset_{ar.clf_iter}.npy')
+
+  aggregate_global_importance(tr_selection_prob, f'private_global_importance_trainset_eps{ar.epsilon}.npy')
+  aggregate_global_importance(ts_selection_prob, f'private_global_importance_testset_{ar.epsilon}.npy')
 
   # y_ts = y_ts.astype(np.int64)
   # x_ts_select = x_ts * ts_selection

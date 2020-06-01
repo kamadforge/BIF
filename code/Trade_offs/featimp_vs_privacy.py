@@ -99,6 +99,12 @@ def main():
 
     print('Finished Classifier Training')
 
+    if ar.save_model:
+        print('saving model')
+        torch.save(classifier.state_dict(), f'dp_classifier_sig{ar.dp_sigma}.pt')
+        # assert 1 % 1 == 1
+
+
 
 #############################################################
     """ learn feature importance """
@@ -174,17 +180,16 @@ def parse():
     parser.add_argument('--clf-batch-size', type=int, default=1000)
     parser.add_argument('--switch-epochs', type=int, default=100)
     parser.add_argument('--switch-batch-size', type=int, default=2000)
-
+    parser.add_argument('--save-model', action='store_true', default=True)
     # sig = 1.35 -> eps 8.07 ~= 8
     # sig = 2.3 -> eps 4.01  ~= 4
     # sig = 4.4 -> eps 1.94  ~= 2
     # sig = 8.4 -> eps 0.984 ~= 1
     # sig = 17. -> eps 0.48  ~= 0.5
-    parser.add_argument('--dp-sigma', type=float, default=8.4)
+    parser.add_argument('--dp-sigma', type=float, default=0.)
     parser.add_argument('--dp-clip', type=float, default=0.01)
 
     return parser.parse_args()
-
 
 
 if __name__ == '__main__':
