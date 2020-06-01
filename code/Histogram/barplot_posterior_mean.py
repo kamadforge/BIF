@@ -4,6 +4,32 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+
+def mean_then_normalize(v):
+    v_mean = np.mean(v,0)
+    normalized_mean = v_mean/sum(v_mean)
+    return normalized_mean
+
+
+# load results
+dataset = 'nonlinear_additive'
+filename = dataset+'posterior_mean.npy'
+qfit = mean_then_normalize(np.load(filename))
+# mean_five_run = np.mean(five_run,0)
+# normalized_mean = mean_five_run/sum(mean_five_run)
+
+# https://seaborn.pydata.org/examples/color_palettes.html
+plt.figure(1)
+# plt.title('Shapely Value')
+f, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(7, 5), sharex=True)
+x = np.arange(0,10)
+
+sns.barplot(x=x, y=qfit, palette="rocket", ax=ax1)
+ax1.axhline(0, color="k", clip_on=False)
+ax1.set_ylabel(dataset)
+ax1.set_title("Q-FIT")
+
+
 sns.set(font_scale=1.3)
 
 # https://seaborn.pydata.org/examples/color_palettes.html
