@@ -65,7 +65,7 @@ def main():
     optimizer = optim.Adam(classifier.parameters(), lr=ar.lr)
 
     classifier.train()
-    if ar.dp_sigma is not None:
+    if ar.dp_sigma > 0.:
         extend(classifier)
     # how_many_epochs = 10
     # mini_batch_size = 100
@@ -84,7 +84,7 @@ def main():
             y_pred = classifier(torch.Tensor(inputs))
             loss = criterion(y_pred.squeeze(), torch.FloatTensor(labels))
 
-            if ar.dp_sigma is not None:
+            if ar.dp_sigma > 0.:
                 global_norms, global_clips = dp_sgd_backward(classifier.parameters(), loss, device, ar.dp_clip, ar.dp_sigma)
                 # print(f'max_norm:{torch.max(global_norms).item()}, mean_norm:{torch.mean(global_norms).item()}')
                 # print(f'mean_clip:{torch.mean(global_clips).item()}')
