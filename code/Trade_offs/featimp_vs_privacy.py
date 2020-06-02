@@ -109,69 +109,82 @@ def main():
 #############################################################
     """ learn feature importance """
 #############################################################
+    seedmax = 6
 
-    """ learn feature importance """
-    # input_dim, classifier,
-    num_Dir_samps = 10
-    importance = Feature_Importance_Model(input_dim, classifier, num_Dir_samps)
-    optimizer = optim.Adam(importance.parameters(), lr=0.075)
-    # optimizer = optim.Adam(importance.parameters(), lr=0.1)
+    mean_importance = np.zeros((seedmax, input_dim))
+    phi_est_mat = np.zeros((seedmax, input_dim))
 
-    # We freeze the classifier
-    ct = 0
-    for child in importance.children():
-        ct +=1
-        if ct>=1:
-            for param in child.parameters():
-                param.requires_grad = False
+    for seednum in range(1,seedmax):
 
-    # print(list(importance.parameters())) # make sure I only update the gradients of feature importance
+        rn.seed(seednum)
 
-    importance.train()
-    # how_many_epochs = 100
-    # mini_batch_size = 2000  # generally larger mini batch size is more helpful for switch learning
-    how_many_iter = np.int(N / ar.switch_batch_size)
+        """ learn feature importance """
+        # input_dim, classifier,
+        num_Dir_samps = 1
+        importance = Feature_Importance_Model(input_dim, classifier, num_Dir_samps)
+        # optimizer = optim.Adam(importance.parameters(), lr=0.075)
+        optimizer = optim.Adam(importance.parameters(), lr=0.1)
 
-    alpha_0 = 0.05
-    annealing_rate = 1  # we don't anneal. don't want to think about this.
-    kl_term = True
+        # We freeze the classifier
+        ct = 0
+        for child in importance.children():
+            ct +=1
+            if ct>=1:
+                for param in child.parameters():
+                    param.requires_grad = False
 
-    for epoch in range(ar.switch_epochs):  # loop over the dataset multiple times
+        # print(list(importance.parameters())) # make sure I only update the gradients of feature importance
 
-        running_loss = 0.0
+        importance.train()
+        # how_many_epochs = 100
+        # mini_batch_size = 2000  # generally larger mini batch size is more helpful for switch learning
+        how_many_iter = np.int(N / ar.switch_batch_size)
 
-        for i in range(how_many_iter):
+        alpha_0 = 0.01
+        annealing_rate = 1  # we don't anneal. don't want to think about this.
+        kl_term = True
 
-            inputs = X[i * ar.switch_batch_size:(i + 1) * ar.switch_batch_size, :]
-            labels = y[i * ar.switch_batch_size:(i + 1) * ar.switch_batch_size]
+        for epoch in range(ar.switch_epochs):  # loop over the dataset multiple times
 
-            optimizer.zero_grad()
-            y_pred, phi_cand = importance(torch.Tensor(inputs))
-            labels = torch.squeeze(torch.Tensor(labels))
-            loss = loss_function(y_pred, labels.view(-1, 1).repeat(1, num_Dir_samps), phi_cand, alpha_0, input_dim,
-                                 annealing_rate, N, kl_term)
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
+            running_loss = 0.0
 
-        print('Epoch {}: running_loss : {}'.format(epoch, running_loss/how_many_iter))
+            for i in range(how_many_iter):
 
-    print('Finished feature importance Training')
+                inputs = X[i * ar.switch_batch_size:(i + 1) * ar.switch_batch_size, :]
+                labels = y[i * ar.switch_batch_size:(i + 1) * ar.switch_batch_size]
 
-    """ checking the results """
-    estimated_params = list(importance.parameters())
-    phi_est = F.softplus(torch.Tensor(estimated_params[0]))
-    concentration_param = phi_est.view(-1, 1).repeat(1, 5000)
-    beta_param = torch.ones(concentration_param.size())
-    Gamma_obj = Gamma(concentration_param, beta_param)
-    gamma_samps = Gamma_obj.rsample()
-    Sstack = gamma_samps / torch.sum(gamma_samps, 0)
-    avg_S = torch.mean(Sstack, 1)
-    posterior_mean_switch = avg_S.detach().numpy()
-    print('estimated posterior mean of feature importance is', posterior_mean_switch)
+                optimizer.zero_grad()
+                y_pred, phi_cand = importance(torch.Tensor(inputs))
+                labels = torch.squeeze(torch.Tensor(labels))
+                loss = loss_function(y_pred, labels.view(-1, 1).repeat(1, num_Dir_samps), phi_cand, alpha_0, input_dim,
+                                     annealing_rate, N, kl_term)
+                loss.backward()
+                optimizer.step()
+                running_loss += loss.item()
 
-    order_by_importance = np.argsort(posterior_mean_switch)[::-1]
-    print('order by importance: ', order_by_importance)
+            if np.remainder(epoch,50)==0:
+                print('Epoch {}: running_loss : {}'.format(epoch, running_loss/how_many_iter))
+
+        print('Finished feature importance Training')
+
+        """ checking the results """
+        estimated_params = list(importance.parameters())
+        phi_est = F.softplus(torch.Tensor(estimated_params[0]))
+        concentration_param = phi_est.view(-1, 1).repeat(1, 5000)
+        beta_param = torch.ones(concentration_param.size())
+        Gamma_obj = Gamma(concentration_param, beta_param)
+        gamma_samps = Gamma_obj.rsample()
+        Sstack = gamma_samps / torch.sum(gamma_samps, 0)
+        avg_S = torch.mean(Sstack, 1)
+        posterior_mean_switch = avg_S.detach().numpy()
+        print('estimated posterior mean of feature importance is', posterior_mean_switch)
+
+        mean_importance[seednum,:] = posterior_mean_switch
+        phi_est_mat[seednum,:] = phi_est.detach().numpy()
+
+        order_by_importance = np.argsort(posterior_mean_switch)[::-1]
+        print('order by importance: ', order_by_importance)
+
     # [ 7  4 10  0 12 11  6  1  5  3  2  9 13  8]
     # [0:'age', 1:'workclass', 2:'fnlwgt', 3:'education', 4:'education_num',
     #  5:'marital_status', 6:'occupation', 7:'relationship', 8:'race', 9:'sex',
@@ -179,11 +192,17 @@ def main():
 
     # store the result
 
+    # filename = 'pri_' + str(ar.dp_sigma) + 'seed_' + str(ar.seed) + 'importance.npy'
+    # np.save(filename, posterior_mean_switch)
+    #
+    # filename = 'pri_' + str(ar.dp_sigma) + 'seed_' + str(ar.seed) + 'phi_est.npy'
+    # np.save(filename, phi_est.detach().numpy())
+
     filename = 'pri_' + str(ar.dp_sigma) + 'seed_' + str(ar.seed) + 'importance.npy'
-    np.save(filename, posterior_mean_switch)
+    np.save(filename, mean_importance)
 
     filename = 'pri_' + str(ar.dp_sigma) + 'seed_' + str(ar.seed) + 'phi_est.npy'
-    np.save(filename, phi_est.detach().numpy())
+    np.save(filename, phi_est_mat)
 
     filename = 'pri_' + str(ar.dp_sigma) + 'seed_' + str(ar.seed) + 'roc.npy'
     np.save(filename, ROC)
@@ -197,9 +216,9 @@ def parse():
     parser.add_argument('--clf-epochs', type=int, default=20)
     parser.add_argument('--clf-batch-size', type=int, default=1000)
 
-    parser.add_argument('--switch-epochs', type=int, default=100)
-    parser.add_argument('--switch-batch-size', type=int, default=2000)
-    parser.add_argument('--save-model', action='store_true', default=True)
+    parser.add_argument('--switch-epochs', type=int, default=400)
+    parser.add_argument('--switch-batch-size', type=int, default=20000)
+    parser.add_argument('--save-model', action='store_true', default=False)
     # parser.add_argument('--switch-epochs', type=int, default= 400)
     # parser.add_argument('--switch-batch-size', type=int, default=20000)
 
@@ -213,7 +232,7 @@ def parse():
     # sig = 17. -> eps 0.48  ~= 0.5
 
     parser.add_argument('--dp-sigma', type=float, default=0.)
-    parser.add_argument('--dp-clip', type=float, default=0.01)
+    # parser.add_argument('--dp-clip', type=float, default=0.01)
     parser.add_argument('--seed', type=int, default=0)
     # parser.add_argument('--dp-sigma', type=float, default=1.35)
     # parser.add_argument('--dp-sigma', type=float, default=2.3)

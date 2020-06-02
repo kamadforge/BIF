@@ -12,44 +12,47 @@ from distance_Dirichlet import L2dist, expected_suff_stats, KL_Dir, KL_Bern
 
 """ first plot : accuracy vs privacy """
 # for baseline, seednum = range(0, 10)
-maxseed = 1
-maxepoch = 20
-maxnoise = 6 # including sigma = 0
+# maxseed = 1
+# maxepoch = 20
+# maxnoise = 6 # including sigma = 0
+#
+# ROC = np.zeros((maxseed, maxepoch, maxnoise))
+#
+# for seednum in range(0, maxseed):
+#
+#     for noise_level in range(0, maxnoise):
+#         if noise_level==0:
+#             dp_sigma=0.
+#         elif noise_level==1:
+#             dp_sigma=1.35
+#         elif noise_level==2:
+#             dp_sigma = 2.3
+#         elif noise_level==3:
+#             dp_sigma = 4.4
+#         elif noise_level==4:
+#             dp_sigma = 8.4
+#         else:
+#             dp_sigma = 17.
+#         filename = 'pri_' + str(dp_sigma) + 'seed_' + str(seednum) + 'roc.npy'
+#         roc = np.load(filename)
+#         print(filename)
+#         print(roc)
+#         ROC[seednum,:,noise_level] = np.load(filename)
+#
+# mean_ROC = np.mean(ROC[:,19,:], 0)
+#
+# privacy_level = [0., 1.35, 2.3, 4.4, 8.4, 17.]
+#
+# sns.set(style="whitegrid")
+# plt.figure(1)
+# # plt.plot(fairness_metrics["race"], eval_metrics["ROC AUC"])
+# ax = sns.lineplot(privacy_level, mean_ROC, palette="tab10", linewidth=2.5)
+# ax.set(xlabel='Privacy in terms of noise level', ylabel='ROC AUC')
+# plt.savefig('privacy_vs_roc.pdf')
 
-ROC = np.zeros((maxseed, maxepoch, maxnoise))
 
-for seednum in range(0, maxseed):
-
-    for noise_level in range(0, maxnoise):
-        if noise_level==0:
-            dp_sigma=0.
-        elif noise_level==1:
-            dp_sigma=1.35
-        elif noise_level==2:
-            dp_sigma = 2.3
-        elif noise_level==3:
-            dp_sigma = 4.4
-        elif noise_level==4:
-            dp_sigma = 8.4
-        else:
-            dp_sigma = 17.
-        filename = 'pri_' + str(dp_sigma) + 'seed_' + str(seednum) + 'roc.npy'
-        roc = np.load(filename)
-        print(filename)
-        print(roc)
-        ROC[seednum,:,noise_level] = np.load(filename)
-
-mean_ROC = np.mean(ROC[:,19,:], 0)
 
 privacy_level = [0., 1.35, 2.3, 4.4, 8.4, 17.]
-
-sns.set(style="whitegrid")
-plt.figure(1)
-# plt.plot(fairness_metrics["race"], eval_metrics["ROC AUC"])
-ax = sns.lineplot(privacy_level, mean_ROC, palette="tab10", linewidth=2.5)
-ax.set(xlabel='Privacy in terms of noise level', ylabel='ROC AUC')
-plt.savefig('privacy_vs_roc.pdf')
-
 
 # """ second plot : learned features when privacy_level = [0., 1.35, 2.3, 4.4, 8.4, 17.] """
 plt.figure(2)
@@ -58,10 +61,11 @@ f, (ax1, ax2, ax3, ax4, ax5, ax6) = plt.subplots(6, 1, figsize=(7, 5), sharex=Tr
 ylim_max = 0.6
 
 input_dim  = 14
-mean_importance_baseline = np.zeros((maxseed, input_dim))
-for seednum in range(0, maxseed):
-    filename = 'pri_' + str(0.) + 'seed_' + str(seednum) + 'importance.npy'
-    mean_importance_baseline[seednum,:] = np.load(filename)
+seednum = 0
+# mean_importance_baseline = np.zeros((maxseed, input_dim))
+# for seednum in range(0, maxseed):
+filename = 'pri_' + str(0.0) + 'seed_' + str(seednum) + 'importance.npy'
+mean_importance_baseline = np.load(filename)
 mean_importance_baseline = np.mean(mean_importance_baseline,0)
 
 x = np.arange(0,input_dim)
@@ -75,11 +79,10 @@ ax1.set_title('Q-FIT')
 # privacy_level = [0., 1.35, 2.3, 4.4, 8.4, 17.]
 T = 1
 level = privacy_level[T]
-
-mean_importance = np.zeros((maxseed, input_dim))
-for seednum in range(0, maxseed):
-    filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'importance.npy'
-    mean_importance[seednum,:] = np.load(filename)
+# mean_importance = np.zeros((maxseed, input_dim))
+# for seednum in range(0, maxseed):
+filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'importance.npy'
+mean_importance = np.load(filename)
 mean_importance = np.mean(mean_importance,0)
 
 sns.barplot(x=x, y=mean_importance, palette="rocket", ax=ax2)
@@ -89,11 +92,10 @@ ax2.set_ylim(0,ylim_max)
 
 T = 2
 level = privacy_level[T]
-
-mean_importance = np.zeros((maxseed, input_dim))
-for seednum in range(0, maxseed):
-    filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'importance.npy'
-    mean_importance[seednum,:] = np.load(filename)
+# mean_importance = np.zeros((maxseed, input_dim))
+# for seednum in range(0, maxseed):
+filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'importance.npy'
+mean_importance = np.load(filename)
 mean_importance = np.mean(mean_importance,0)
 
 sns.barplot(x=x, y=mean_importance, palette="rocket", ax=ax3)
@@ -103,11 +105,10 @@ ax3.set_ylim(0,ylim_max)
 
 T = 3
 level = privacy_level[T]
-
-mean_importance = np.zeros((maxseed, input_dim))
-for seednum in range(0, maxseed):
-    filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'importance.npy'
-    mean_importance[seednum,:] = np.load(filename)
+# mean_importance = np.zeros((maxseed, input_dim))
+# for seednum in range(0, maxseed):
+filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'importance.npy'
+mean_importance = np.load(filename)
 mean_importance = np.mean(mean_importance,0)
 
 sns.barplot(x=x, y=mean_importance, palette="rocket", ax=ax4)
@@ -117,11 +118,10 @@ ax4.set_ylim(0,ylim_max)
 
 T = 4
 level = privacy_level[T]
-
-mean_importance = np.zeros((maxseed, input_dim))
-for seednum in range(0, maxseed):
-    filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'importance.npy'
-    mean_importance[seednum,:] = np.load(filename)
+# mean_importance = np.zeros((maxseed, input_dim))
+# for seednum in range(0, maxseed):
+filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'importance.npy'
+mean_importance = np.load(filename)
 mean_importance = np.mean(mean_importance,0)
 
 sns.barplot(x=x, y=mean_importance, palette="rocket", ax=ax5)
@@ -132,10 +132,10 @@ ax5.set_ylim(0,ylim_max)
 T = 5
 level = privacy_level[T]
 
-mean_importance = np.zeros((maxseed, input_dim))
-for seednum in range(0, maxseed):
-    filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'importance.npy'
-    mean_importance[seednum,:] = np.load(filename)
+# mean_importance = np.zeros((maxseed, input_dim))
+# for seednum in range(0, maxseed):
+filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'importance.npy'
+mean_importance = np.load(filename)
 mean_importance = np.mean(mean_importance,0)
 
 sns.barplot(x=x, y=mean_importance, palette="rocket", ax=ax6)
@@ -153,51 +153,51 @@ plt.savefig('learned_importance_vs_privacy.pdf')
 
 T = 0
 level = privacy_level[T]
-phi_estimate = np.zeros((maxseed, input_dim))
-for seednum in range(0, maxseed):
-    filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'phi_est.npy'
-    phi_estimate[seednum,:] = np.load(filename)
+# phi_estimate = np.zeros((maxseed, input_dim))
+# for seednum in range(0, maxseed):
+filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'phi_est.npy'
+phi_estimate = np.load(filename)
 phi_estimate_0 = np.mean(phi_estimate,0)
 
 T = 1
 level = privacy_level[T]
-phi_estimate = np.zeros((maxseed, input_dim))
-for seednum in range(0, maxseed):
-    filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'phi_est.npy'
-    phi_estimate[seednum,:] = np.load(filename)
+# phi_estimate = np.zeros((maxseed, input_dim))
+# for seednum in range(0, maxseed):
+filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'phi_est.npy'
+phi_estimate = np.load(filename)
 phi_estimate_1 = np.mean(phi_estimate,0)
 
 T = 2
 level = privacy_level[T]
-phi_estimate = np.zeros((maxseed, input_dim))
-for seednum in range(0, maxseed):
-    filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'phi_est.npy'
-    phi_estimate[seednum,:] = np.load(filename)
+# phi_estimate = np.zeros((maxseed, input_dim))
+# for seednum in range(0, maxseed):
+filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'phi_est.npy'
+phi_estimate = np.load(filename)
 phi_estimate_2 = np.mean(phi_estimate,0)
 
 
 T = 3
 level = privacy_level[T]
-phi_estimate = np.zeros((maxseed, input_dim))
-for seednum in range(0, maxseed):
-    filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'phi_est.npy'
-    phi_estimate[seednum,:] = np.load(filename)
+# phi_estimate = np.zeros((maxseed, input_dim))
+# for seednum in range(0, maxseed):
+filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'phi_est.npy'
+phi_estimate = np.load(filename)
 phi_estimate_3 = np.mean(phi_estimate,0)
 
 T = 4
 level = privacy_level[T]
-phi_estimate = np.zeros((maxseed, input_dim))
-for seednum in range(0, maxseed):
-    filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'phi_est.npy'
-    phi_estimate[seednum,:] = np.load(filename)
+# phi_estimate = np.zeros((maxseed, input_dim))
+# for seednum in range(0, maxseed):
+filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'phi_est.npy'
+phi_estimate = np.load(filename)
 phi_estimate_4 = np.mean(phi_estimate,0)
 
 T = 5
 level = privacy_level[T]
-phi_estimate = np.zeros((maxseed, input_dim))
-for seednum in range(0, maxseed):
-    filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'phi_est.npy'
-    phi_estimate[seednum,:] = np.load(filename)
+# phi_estimate = np.zeros((maxseed, input_dim))
+# for seednum in range(0, maxseed):
+filename = 'pri_' + str(level) + 'seed_' + str(seednum) + 'phi_est.npy'
+phi_estimate = np.load(filename)
 phi_estimate_5 = np.mean(phi_estimate,0)
 
 # # L2distance in suff stats
@@ -222,9 +222,6 @@ plt.figure(4)
 ax = sns.regplot(x=privacy_level[1:], y=KLD, fit_reg=False, scatter_kws={"color":"darkred","alpha":0.3,"s":200})
 ax = sns.lineplot(x=privacy_level[1:], y=KLD)
 ax.set_title('Q-FIT')
-# ax = sns.regplot(x=x_axis, y=L2_dist,
-#                  scatter_kws={"s": 80},
-#                  order=3, ci=None)
 
 ax.set_xlabel("privacy in terms of noise level")
 ax.set_ylabel("KLD")
