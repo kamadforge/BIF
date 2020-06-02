@@ -114,7 +114,8 @@ def main():
     # input_dim, classifier,
     num_Dir_samps = 10
     importance = Feature_Importance_Model(input_dim, classifier, num_Dir_samps)
-    optimizer = optim.Adam(importance.parameters(), lr=0.005)
+    optimizer = optim.Adam(importance.parameters(), lr=0.075)
+    # optimizer = optim.Adam(importance.parameters(), lr=0.1)
 
     # We freeze the classifier
     ct = 0
@@ -131,7 +132,7 @@ def main():
     # mini_batch_size = 2000  # generally larger mini batch size is more helpful for switch learning
     how_many_iter = np.int(N / ar.switch_batch_size)
 
-    alpha_0 = 0.1
+    alpha_0 = 0.05
     annealing_rate = 1  # we don't anneal. don't want to think about this.
     kl_term = True
 
@@ -155,40 +156,70 @@ def main():
 
         print('Epoch {}: running_loss : {}'.format(epoch, running_loss/how_many_iter))
 
-        """ checking the results """
-        estimated_params = list(importance.parameters())
-        phi_est = F.softplus(torch.Tensor(estimated_params[0]))
-        concentration_param = phi_est.view(-1, 1).repeat(1, 5000)
-        beta_param = torch.ones(concentration_param.size())
-        Gamma_obj = Gamma(concentration_param, beta_param)
-        gamma_samps = Gamma_obj.rsample()
-        Sstack = gamma_samps / torch.sum(gamma_samps, 0)
-        avg_S = torch.mean(Sstack, 1)
-        posterior_mean_switch = avg_S.detach().numpy()
-        print('estimated posterior mean of feature importance is', posterior_mean_switch)
-
     print('Finished feature importance Training')
+
+    """ checking the results """
+    estimated_params = list(importance.parameters())
+    phi_est = F.softplus(torch.Tensor(estimated_params[0]))
+    concentration_param = phi_est.view(-1, 1).repeat(1, 5000)
+    beta_param = torch.ones(concentration_param.size())
+    Gamma_obj = Gamma(concentration_param, beta_param)
+    gamma_samps = Gamma_obj.rsample()
+    Sstack = gamma_samps / torch.sum(gamma_samps, 0)
+    avg_S = torch.mean(Sstack, 1)
+    posterior_mean_switch = avg_S.detach().numpy()
+    print('estimated posterior mean of feature importance is', posterior_mean_switch)
+
+    order_by_importance = np.argsort(posterior_mean_switch)[::-1]
+    print('order by importance: ', order_by_importance)
+    # [ 7  4 10  0 12 11  6  1  5  3  2  9 13  8]
+    # [0:'age', 1:'workclass', 2:'fnlwgt', 3:'education', 4:'education_num',
+    #  5:'marital_status', 6:'occupation', 7:'relationship', 8:'race', 9:'sex',
+    #  10:'capital_gain', 11:'capital_loss', 12:'hours_per_week', 13:'country'
+
+    # store the result
+
+    filename = 'pri_' + str(ar.dp_sigma) + 'seed_' + str(ar.seed) + 'importance.npy'
+    np.save(filename, posterior_mean_switch)
+
+    filename = 'pri_' + str(ar.dp_sigma) + 'seed_' + str(ar.seed) + 'phi_est.npy'
+    np.save(filename, phi_est.detach().numpy())
+
+    filename = 'pri_' + str(ar.dp_sigma) + 'seed_' + str(ar.seed) + 'roc.npy'
+    np.save(filename, ROC)
 
 
 def parse():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--no-cuda', action='store_true', default=True)
-    parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-2)
     parser.add_argument('--clf-epochs', type=int, default=20)
     parser.add_argument('--clf-batch-size', type=int, default=1000)
+
     parser.add_argument('--switch-epochs', type=int, default=100)
     parser.add_argument('--switch-batch-size', type=int, default=2000)
     parser.add_argument('--save-model', action='store_true', default=True)
+    # parser.add_argument('--switch-epochs', type=int, default= 400)
+    # parser.add_argument('--switch-batch-size', type=int, default=20000)
+
+    parser.add_argument('--dp-clip', type=float, default=0.01)
+
+
     # sig = 1.35 -> eps 8.07 ~= 8
     # sig = 2.3 -> eps 4.01  ~= 4
     # sig = 4.4 -> eps 1.94  ~= 2
     # sig = 8.4 -> eps 0.984 ~= 1
     # sig = 17. -> eps 0.48  ~= 0.5
+
     parser.add_argument('--dp-sigma', type=float, default=0.)
     parser.add_argument('--dp-clip', type=float, default=0.01)
-
+    parser.add_argument('--seed', type=int, default=0)
+    # parser.add_argument('--dp-sigma', type=float, default=1.35)
+    # parser.add_argument('--dp-sigma', type=float, default=2.3)
+    # parser.add_argument('--dp-sigma', type=float, default=4.4)
+    # parser.add_argument('--dp-sigma', type=float, default=8.4)
+    # parser.add_argument('--dp-sigma', type=float, default=17.)
     return parser.parse_args()
 
 

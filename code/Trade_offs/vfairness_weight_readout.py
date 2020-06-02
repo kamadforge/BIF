@@ -395,12 +395,11 @@ def train_fair(x_train, x_test, y_train, y_test, z_train, z_test, T_iter):
   fair_clf.fit(x_train, y_train, z_train, validation_data=(x_test, y_test, z_test), T_iter=T_iter, save_figs=False)
 
   # To save fairness metrics and accuracy
-  fairness_metrics = fair_clf._fairness_metrics
-  fairness_metrics.to_pickle("fairness_metrics.pkl")
-
-  eval_metrics = fair_clf._val_metrics
-  eval_metrics.to_pickle("eval_metrics.pkl")
-
+  # fairness_metrics = fair_clf._fairness_metrics
+  # fairness_metrics.to_pickle("fairness_metrics.pkl")
+  #
+  # eval_metrics = fair_clf._val_metrics
+  # eval_metrics.to_pickle("eval_metrics.pkl")
 
   # pred_on_0 = fair_clf._clf.predict(np.zeros(shape=(1, 94)))
   # pred_on_1 = fair_clf._clf.predict(np.ones(shape=(1, 94)))
@@ -432,13 +431,10 @@ def main():
   data = load_data()
   
   # train_baseline(*data)
-
-  train_fair(*data, T_iter=250)
-
+  # train_fair(*data, T_iter=60)
   # train_fair(*data, T_iter=125)
-
-  # train_fair(*data, T_iter=1)
-
+  train_fair(*data, T_iter=185)
+  # train_fair(*data, T_iter=250)
 
 if __name__ == '__main__':
   main()
