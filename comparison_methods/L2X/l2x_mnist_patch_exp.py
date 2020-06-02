@@ -43,16 +43,16 @@ def l2x_select_data(l2x_model, loader, device):
 
 
 class L2XModel(nn.Module):
-  def __init__(self, d_in, d_out, datatype, n_key_features, device, tau=0.1):
+  def __init__(self, d_in, d_out, datatype, n_key_features, device, d_hid_sel=100, d_hid_clf=200, tau=0.1):
     super(L2XModel, self).__init__()
 
     self.act = nn.ReLU() if datatype in ['orange_skin', 'XOR'] else nn.SELU()
     self.d_out = d_out
 
     # q(S|X)
-    self.fc1 = nn.Linear(d_in, 100)
-    self.fc2 = nn.Linear(100, 100)
-    self.fc3 = nn.Linear(100, 49)
+    self.fc1 = nn.Linear(d_in, d_hid_sel)
+    self.fc2 = nn.Linear(d_hid_sel, d_hid_sel)
+    self.fc3 = nn.Linear(d_hid_sel, 49)
 
     # concrete sampling
     self.tau = tau
@@ -60,11 +60,11 @@ class L2XModel(nn.Module):
     self.device = device
 
     # q(X_S)
-    self.fc4 = nn.Linear(d_in, 200)
-    self.bn4 = nn.BatchNorm1d(200)
-    self.fc5 = nn.Linear(200, 200)
-    self.bn5 = nn.BatchNorm1d(200)
-    self.fc6 = nn.Linear(200, d_out)
+    self.fc4 = nn.Linear(d_in, d_hid_clf)
+    self.bn4 = nn.BatchNorm1d(d_hid_clf)
+    self.fc5 = nn.Linear(d_hid_clf, d_hid_clf)
+    self.bn5 = nn.BatchNorm1d(d_hid_clf)
+    self.fc6 = nn.Linear(d_hid_clf, d_out)
 
   def forward(self, x_in):
     x_select, _ = self.get_selection(x_in)
@@ -75,8 +75,10 @@ class L2XModel(nn.Module):
     return pred
 
   def get_selection(self, x_in):
-    x = self.act(self.fc1(x_in))
-    x = self.act(self.fc2(x))
+    x = self.fc1(x_in)
+    x = self.act(x)
+    x = self.fc2(x)
+    x = self.act(x)
     x = self.fc3(x)
 
     low_res_selection = self._sample_concrete(x)
@@ -194,27 +196,16 @@ def train_classifier(classifier, train_loader, test_loader, epochs, lr, device):
 
 def parse_args():
   parser = argparse.ArgumentParser()
-  parser.add_argument('--batch-size', type=int, default=200)
+  parser.add_argument('--batch-size', type=int, default=64)
   parser.add_argument('--test-batch-size', type=int, default=1000)
-  parser.add_argument('--epochs', type=int, default=10)
+  parser.add_argument('--epochs', type=int, default=20)
   parser.add_argument('--lr', type=float, default=1e-3)
   parser.add_argument('--no-cuda', action='store_true', default=False)
   parser.add_argument('--seed', type=int, default=2)
-  parser.add_argument('--dataset', type=str, default='mnist')
-  # parser.add_argument('--selected-label', type=int, default=3)  # label for 1-v-rest training
-  # parser.add_argument('--log-interval', type=int, default=500)
-  parser.add_argument('--n-switch-samples', type=int, default=10)
 
-  parser.add_argument('--save-model', action='store_true', default=False)
-  parser.add_argument("--point_estimate", default=True)
-  # parser.add_argument("--KL_reg", default=False)
-  # parser.add_argument('--alpha_0', type=float, default=50000.)
-  parser.add_argument('--label-a', type=int, default=4)
-  parser.add_argument('--label-b', type=int, default=9)
-  parser.add_argument('--select-k', type=int, default=1)
-
-  # parser.add_argument("--freeze-classifier", default=True)
-  # parser.add_argument("--patch-selection", default=True)
+  parser.add_argument('--label-a', type=int, default=3)
+  parser.add_argument('--label-b', type=int, default=8)
+  parser.add_argument('--select-k', type=int, default=5)
 
   return parser.parse_args()
 

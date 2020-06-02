@@ -29,7 +29,7 @@ from torch.optim.lr_scheduler import StepLR
 
 
 class BinarizedMnistDataset(Dataset):
-  def __init__(self, train, label_a=3, label_b=8, data_path='../data', download=False):
+  def __init__(self, train, label_a=3, label_b=8, data_path='../data', download=False, tgt_type=np.float32):
     super(BinarizedMnistDataset, self).__init__()
     self.train = train
     base_data = datasets.MNIST(data_path, train=train, download=download)
@@ -37,14 +37,14 @@ class BinarizedMnistDataset(Dataset):
     ids_a, ids_b = base_data.targets == label_a, base_data.targets == label_b
     smp_a, smp_b = base_data.data[ids_a], base_data.data[ids_b]
     n_a, n_b = smp_a.shape[0], smp_b.shape[0]
-    print(n_a, n_b)
+    # print(n_a, n_b)
     tgt_a, tgt_b = base_data.targets[ids_a], base_data.targets[ids_b]
     pert = np.random.permutation(n_a + n_b)
     tgt = np.concatenate([np.zeros(tgt_a.shape), np.ones(tgt_b.shape)])[pert]
     smp = np.concatenate([smp_a, smp_b])[pert]
 
     smp = np.reshape(smp, (-1, 784))
-    self.tgt = tgt.astype(np.float32)
+    self.tgt = tgt.astype(tgt_type)
     self.smp = smp.astype(np.float32) / 255
 
   def __len__(self):
@@ -63,13 +63,14 @@ def load_mnist_data(use_cuda, batch_size, test_batch_size, data_path='../data', 
   return train_loader, test_loader
 
 
-def load_two_label_mnist_data(use_cuda, batch_size, test_batch_size, data_path='../data', label_a=3, label_b=8):
+def load_two_label_mnist_data(use_cuda, batch_size, test_batch_size, data_path='../data', label_a=3, label_b=8,
+                              tgt_type=np.float32):
   # select only samples of labels a and b, then binarize labels as a=0 and b=1
 
   kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
 
-  train_data = BinarizedMnistDataset(train=True, label_a=label_a, label_b=label_b, data_path=data_path)
-  test_data = BinarizedMnistDataset(train=False, label_a=label_a, label_b=label_b, data_path=data_path)
+  train_data = BinarizedMnistDataset(train=True, label_a=label_a, label_b=label_b, data_path=data_path, tgt_type=tgt_type)
+  test_data = BinarizedMnistDataset(train=False, label_a=label_a, label_b=label_b, data_path=data_path, tgt_type=tgt_type)
 
   train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, **kwargs)
   test_loader = DataLoader(test_data, batch_size=test_batch_size, shuffle=True, **kwargs)
@@ -107,7 +108,7 @@ def hard_select_data(data, selection, k=1, baseline_val=0):
 
 def make_select_loader(x_select, y_select, train, batch_size, use_cuda, data_path='../data'):
   train_data = BinarizedMnistDataset(train=train, data_path=data_path)
-  train_data.smp, train_data.tgt = x_select, y_select
+  train_data.smp, train_data.tgt = x_select, y_select.astype(np.float32)
   kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
   data_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, **kwargs)
   return data_loader
@@ -134,7 +135,7 @@ def train_classifier(classifier, train_loader, test_loader, epochs, lr, device, 
   optimizer = optim.Adam(classifier.parameters(), lr=lr)
 
   scheduler = StepLR(optimizer, step_size=1, gamma=lr_decay) if lr_decay is not None else None
-
+  accuracy = 0
   for epoch in range(epochs):  # loop over the dataset multiple times
     classifier.train()
     for x_batch, y_batch in train_loader:
