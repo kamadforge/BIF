@@ -69,10 +69,10 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="xor") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6
+    parser.add_argument("--dataset", default="syn4") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=110, type=int)
-    parser.add_argument("--epochs", default=10, type=int)
+    parser.add_argument("--epochs", default=5, type=int)
     parser.add_argument("--lr", default=0.1, type=float)
 
     # for switch training
@@ -644,7 +644,7 @@ def main():
 
 
 if __name__ == '__main__':
-    runs = 1
+    runs = 5
 
     tprs, fdrs, Ss = [], [], []
     for i in range(runs):
