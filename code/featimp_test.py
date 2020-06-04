@@ -26,7 +26,7 @@ from torch.nn.parameter import Parameter
 from torch.distributions import Gamma
 import pickle
 import argparse
-import Test_Adult_data
+
 
 from pathlib import Path
 import sys
