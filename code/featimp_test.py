@@ -542,7 +542,8 @@ def main():
                 else: #if switch_nn is true testing a single instance
 
                     torch.save(model.state_dict(),
-                               os.path.join(path_code, f"models/switches_{args.dataset}_switch_nn_{args.switch_nn}_local_{args.training_local}.pt"))
+                               os.path.join(path_code,
+                                            f"models/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt"))
 
         ########################
 
