@@ -1,2 +1,2 @@
-credit 0.01 100 200
+adult_short 0.01 5 10
 credit 0.1 200 10
