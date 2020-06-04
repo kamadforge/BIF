@@ -1,6 +1,6 @@
 
 
-from data.tab_dataloader import load_cervical, load_adult, load_credit
+from data.tab_dataloader import load_cervical, load_adult, load_credit, load_census, load_isolet, load_adult_short
 import numpy as np
 import os
 from pathlib import Path
@@ -19,9 +19,21 @@ def synthetic_data_loader(dataset):
         x_tot = np.concatenate([X_train, X_test])
         y_tot = np.concatenate([y_train, y_test])
 
+    elif dataset == "census":
+
+        X_train, y_train, X_test, y_test = load_census()
+        x_tot = np.concatenate([X_train, X_test])
+        y_tot = np.concatenate([y_train, y_test])
+
     elif dataset == "credit":
 
         X_train, y_train, X_test, y_test = load_credit()
+        x_tot = np.concatenate([X_train, X_test])
+        y_tot = np.concatenate([y_train, y_test])
+
+    elif dataset == "isolet":
+
+        X_train, y_train, X_test, y_test = load_isolet()
         x_tot = np.concatenate([X_train, X_test])
         y_tot = np.concatenate([y_train, y_test])
 
@@ -40,6 +52,11 @@ def synthetic_data_loader(dataset):
             u.encoding = 'latin1'
             data = u.load()
             y_tot, x_tot = data
+
+    elif dataset == "adult_short":
+        X_train, y_train, X_test, y_test = load_adult_short()
+        x_tot = np.concatenate([X_train, X_test])
+        y_tot = np.concatenate([y_train, y_test])
 
     elif dataset == "xor":
 
