@@ -218,6 +218,7 @@ def load_isolet():
 def load_credit():
 
     seed_number=0
+    np.random.seed(seed_number)
 
 
     print("Creditcard fraud detection dataset") # this is homogeneous
@@ -475,6 +476,9 @@ def load_adult():
     return X_train, y_train, X_test, y_test
 
 def load_adult_short():
+
+    seed_number=0
+    np.random.seed(seed_number)
 
     #if 'g0' not in socket.gethostname() and 'p0' not in socket.gethostname():
 
