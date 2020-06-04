@@ -85,7 +85,7 @@ def get_args():
     parser.add_argument("--alpha", default=5, type=float)
     parser.add_argument("--point_estimate", default=True)
 
-    parser.add_argument("--train", default=False)
+    parser.add_argument("--train", default=True)
     parser.add_argument("--test", default=True)
 
     # for instance wise training
@@ -534,7 +534,7 @@ def main():
 
                     torch.save(model.state_dict(),
                                os.path.join(path_code,
-                                            f"models/switches_{args.dataset}_switch_nn_{args.switch_nn}_local_{args.training_local}.pt"))
+                                            f"models/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt"))
 
                     ###########3
 
@@ -563,7 +563,7 @@ def main():
 
                 print(f"dataset: {dataset}")
 
-                path = os.path.join(path_code, f"models/switches_{args.dataset}_switch_nn_{args.switch_nn}_local_{args.training_local}.pt")
+                path = os.path.join(path_code, f"models/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt")
 
                 i = 0  # choose a sample
                 mini_batch_size = 10000
