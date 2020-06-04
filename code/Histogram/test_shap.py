@@ -14,9 +14,9 @@ for seed_idx in range(max_seed):
 
     """ generate data """
     N_tot = 10000
-    dataset = 'XOR'
+    # dataset = 'XOR'
     # dataset = 'orange_skin'
-    # dataset = 'nonlinear_additive'
+    dataset = 'nonlinear_additive'
     x_tot, y_tot, datatypes = generate_data(N_tot, dataset)
     y_tot = np.argmax(y_tot, axis=1)
 
