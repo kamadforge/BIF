@@ -223,10 +223,15 @@ def load_credit():
 
     print("Creditcard fraud detection dataset") # this is homogeneous
 
-    if 'g0' not in socket.gethostname() and 'p0' not in socket.gethostname():
-        data = pd.read_csv("/home/kamil/Desktop/Dropbox/Current_research/privacy/DPDR/data/Kaggle_Credit/creditcard.csv")
-        #data = pd.read_csv(
+    if 'kamil' in socket.gethostname():
+
+        data = pd.read_csv(
+            "/home/kamil/Desktop/Dropbox/Current_research/privacy/DPDR/data/Kaggle_Credit/creditcard.csv")
+        # data = pd.read_csv(
         #    "../data/Kaggle_Credit/creditcard.csv")
+
+
+    #if 'g0' not in socket.gethostname() and 'p0' not in socket.gethostname():
     else:
         # (1) load data
         data = pd.read_csv(
