@@ -61,7 +61,9 @@ elif socket.gethostname()=='kamil':
 else:
     sys.path.append(os.path.join(cwd_parent, "data"))
     pathmain=cwd
-    path_code = os.path.join(pathmain, "code")
+    #path_code = os.path.join(pathmain, "code")
+    path_code = os.path.join(pathmain)
+
 
 ##################################################3
 # ARGUMENTS
