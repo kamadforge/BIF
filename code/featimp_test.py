@@ -615,7 +615,7 @@ def main():
                 #local samples results:
                 instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
                 instance_unimportant_features = instance_best_features_ascending[:, :-k]
-                np.save(os.path.join(path_code, f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy", instance_unimportant_features))
+                #np.save(os.path.join(path_code, str(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy"), instance_unimportant_features))
 
 
                 #########################
