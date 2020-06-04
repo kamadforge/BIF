@@ -615,7 +615,7 @@ def main():
                 #local samples results:
                 instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
                 instance_unimportant_features = instance_best_features_ascending[:, :-k]
-                np.save(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy", instance_unimportant_features)
+                np.save(os.path.join(path_code, f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy", instance_unimportant_features))
 
 
                 #########################
@@ -636,7 +636,7 @@ def main():
 
                 model = FC(input_num, output_num)
 
-                LR_model = np.load('models/%s_%s_LR_model0.npy' % (dataset,method), allow_pickle=True)
+                LR_model = np.load(os.path.join(path_code, 'models/%s_%s_LR_model0.npy' % (dataset,method), allow_pickle=True))
 
                 model.load_state_dict(LR_model[()][0], strict=False)
 
@@ -662,7 +662,7 @@ def main():
                 #local samples results:
                 instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
                 instance_unimportant_features = instance_best_features_ascending[:, :-k]
-                np.save(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy", instance_unimportant_features)
+                np.save(os.path.join(path_code, f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy", instance_unimportant_features))
 
 
                 #########################
@@ -683,7 +683,7 @@ def main():
 
                 model = FC(input_num, output_num)
 
-                LR_model = np.load('models/%s_%s_LR_model0.npy' % (dataset,method), allow_pickle=True)
+                LR_model = np.load(os.path.join(path_code, 'models/%s_%s_LR_model0.npy' % (dataset,method), allow_pickle=True))
 
                 model.load_state_dict(LR_model[()][0], strict=False)
 
@@ -705,7 +705,7 @@ def main():
                 #local samples results:
                 instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
                 instance_unimportant_features = instance_best_features_ascending[:, :-k]
-                np.save(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy", instance_unimportant_features)
+                np.save(os.path.join(path_code, f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy", instance_unimportant_features))
 
 
                 #########################
@@ -726,7 +726,7 @@ def main():
 
                 model = FC(input_num, output_num)
 
-                LR_model = np.load('models/%s_%s_LR_model0.npy' % (dataset,method), allow_pickle=True)
+                LR_model = np.load(os.path.join(path_code, 'models/%s_%s_LR_model0.npy' % (dataset,method), allow_pickle=True))
 
                 model.load_state_dict(LR_model[()][0], strict=False)
 
