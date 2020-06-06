@@ -2,7 +2,7 @@
 Test learning feature importance under DP and non-DP models
 """
 
-__author__ = 'mijung&frederik'
+__author__ = 'anon_m&anon_f'
 
 import torch as pt
 import torch.nn as nn

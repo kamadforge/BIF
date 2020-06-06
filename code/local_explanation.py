@@ -11,7 +11,7 @@ Note that before running this code, run Test_Adult_data.py with alternating data
 """
 
 
-__author__ = 'mijung'
+__author__ = 'anon_m'
 
 import numpy as np
 import matplotlib.pyplot as plt

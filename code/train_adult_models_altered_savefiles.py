@@ -2,7 +2,7 @@
 This script is written based on what I wrote back on July 2, 2019 for testing VIPS on Adult data
 """
 
-__author__ = 'mijung'
+__author__ = 'anon_m'
 
 import Bayesian_Logistic_Regression as VIPS_BLR_MA # this has all core functions
 # import os

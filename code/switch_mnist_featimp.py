@@ -2,7 +2,7 @@
 Test learning feature importance under DP and non-DP models
 """
 
-__author__ = 'mijung'
+__author__ = 'anon_m'
 
 import argparse
 import numpy as np

@@ -2,7 +2,7 @@
 Define functions to evaluate the feature importance under DP and non-DP models
 """
 
-__author__ = 'mijung'
+__author__ = 'anon_m'
 
 import numpy as np
 import scipy.special.digamma as digamma

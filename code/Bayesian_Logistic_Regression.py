@@ -2,7 +2,7 @@
 This script is written based on what I wrote back in 2016 for VIPS paper
 """
 
-__author__ = 'mijung'
+__author__ = 'anon_m'
 
 import numpy as np
 import numpy.random as rn

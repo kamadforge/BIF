@@ -3,7 +3,7 @@ Study trade-off between global feature importance and fairness
 
 """
 
-__author__ = 'mijung'
+__author__ = 'anon_m'
 
 # 29 May 2020
 """ Fairness part came from https://github.com/equialgo/fairness-in-ml/blob/master/fairness-in-ml.ipynb """

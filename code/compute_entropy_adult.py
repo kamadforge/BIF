@@ -2,7 +2,7 @@
 This script is written for computing the entropy of switch distribution learned on Adult data
 """
 
-__author__ = 'mijung'
+__author__ = 'anon_m'
 
 import matplotlib.pyplot as plt
 import numpy as np
