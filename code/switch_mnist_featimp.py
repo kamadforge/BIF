@@ -25,37 +25,37 @@ from mnist_utils import plot_switches, load_two_label_mnist_data, switch_select_
 from mnist_posthoc_accuracy_eval import test_posthoc_acc
 
 
-def global_switch_eval(model, point_estimate, ar):
-  estimated_params = list(model.selector_params())
-  phi_est = nnf.softplus(pt.Tensor(estimated_params[0]))
-
-  if point_estimate:
-    posterior_mean_switch = phi_est / pt.sum(phi_est)
-    posterior_mean_switch = posterior_mean_switch.detach().numpy()
-
-  else:
-    switch_parameter_mat = phi_est.detach().numpy()
-
-    concentration_param = phi_est.view(-1, 1).repeat(1, 5000)
-    # beta_param = pt.ones(self.hidden_dim,1).repeat(1,num_samps)
-    beta_param = pt.ones(concentration_param.size())
-    gamma_obj = Gamma(concentration_param, beta_param)
-    gamma_samps = gamma_obj.rsample()
-    s_stack = gamma_samps / pt.sum(gamma_samps, 0)
-    avg_s = pt.mean(s_stack, 1)
-    # std_s = pt.std(s_stack, 1)
-    posterior_mean_switch = avg_s.detach().numpy()
-
-    save_file_phi = f'weights/{ar.dataset}_switch_parameter '
-    np.save(save_file_phi, switch_parameter_mat)
-
-  kl_str = '' if not ar.KL_reg else f'_alpha{ar.alpha_0}'
-  vis_save_file = f'weights/{ar.dataset}_switch_vis_label{ar.selected_label}_lr{ar.lr}{kl_str}'
-  plot_switches(posterior_mean_switch, posterior_mean_switch.shape[0], 1, vis_save_file)
-
-  # save_file = 'weights/%s_switch_posterior_mean' % dataset + str(int(iter_sigmas[k]))
-  # save_file_phi = 'weights/%s_switch_parameter' % dataset + str(int(iter_sigmas[k]))
-  # save_file = f'weights/{ar.dataset}_switch_posterior_mean'
+# def global_switch_eval(model, point_estimate, ar):
+#   estimated_params = list(model.selector_params())
+#   phi_est = nnf.softplus(pt.Tensor(estimated_params[0]))
+#
+#   if point_estimate:
+#     posterior_mean_switch = phi_est / pt.sum(phi_est)
+#     posterior_mean_switch = posterior_mean_switch.detach().numpy()
+#
+#   else:
+#     switch_parameter_mat = phi_est.detach().numpy()
+#
+#     concentration_param = phi_est.view(-1, 1).repeat(1, 5000)
+#     # beta_param = pt.ones(self.hidden_dim,1).repeat(1,num_samps)
+#     beta_param = pt.ones(concentration_param.size())
+#     gamma_obj = Gamma(concentration_param, beta_param)
+#     gamma_samps = gamma_obj.rsample()
+#     s_stack = gamma_samps / pt.sum(gamma_samps, 0)
+#     avg_s = pt.mean(s_stack, 1)
+#     # std_s = pt.std(s_stack, 1)
+#     posterior_mean_switch = avg_s.detach().numpy()
+#
+#     save_file_phi = f'weights/{ar.dataset}_switch_parameter '
+#     np.save(save_file_phi, switch_parameter_mat)
+#
+#   kl_str = '' if not ar.KL_reg else f'_alpha{ar.alpha_0}'
+#   vis_save_file = f'weights/{ar.dataset}_switch_vis_label{ar.selected_label}_lr{ar.lr}{kl_str}'
+#   plot_switches(posterior_mean_switch, posterior_mean_switch.shape[0], 1, vis_save_file)
+#
+#   # save_file = 'weights/%s_switch_posterior_mean' % dataset + str(int(iter_sigmas[k]))
+#   # save_file_phi = 'weights/%s_switch_parameter' % dataset + str(int(iter_sigmas[k]))
+#   # save_file = f'weights/{ar.dataset}_switch_posterior_mean'
 
 
 def train_selector(model, train_loader, epochs, lr, device):
@@ -94,16 +94,27 @@ def train_selector(model, train_loader, epochs, lr, device):
 
 
 def local_switch_eval(selector, test_loader, label_a, label_b, select_k, device, use_cuda, test_batch_size):
-  x_ts, y_ts, ts_selection = switch_select_data(selector, test_loader, device)
+  x_ts, y_ts, ts_selection, phis = switch_select_data(selector, test_loader, device)
   accs = []
-  selected_ks = [int(k) for k in select_k.split(',')]
-  for k in selected_ks:
-    print(f'eval at k = {k}')
-    x_ts_select = hard_select_data(x_ts, ts_selection, k=k)
-    select_test_loader = make_select_loader(x_ts_select, y_ts, False, test_batch_size, use_cuda)
-    acc = test_posthoc_acc(label_a, label_b, select_test_loader, device, model_path_prefix='')
-    accs.append(acc)
-  print('accuracies:', accs)
+
+  if ',' in select_k:
+    selected_ks = [int(k) for k in select_k.split(',')]
+    for k in selected_ks:
+      print(f'eval at k = {k}')
+      x_ts_select = hard_select_data(x_ts, ts_selection, k=k)
+      select_test_loader = make_select_loader(x_ts_select, y_ts, False, test_batch_size, use_cuda)
+      acc = test_posthoc_acc(label_a, label_b, select_test_loader, device, model_path_prefix='')
+      accs.append(acc)
+    print('accuracies:', accs)
+  elif select_k == 'mode':
+    pass
+    # modes =
+    # # x_ts_select = hard_select_data(x_ts, ts_selection, k=k)
+    # select_test_loader = make_select_loader(x_ts_select, y_ts, False, test_batch_size, use_cuda)
+    # acc = test_posthoc_acc(label_a, label_b, select_test_loader, device, model_path_prefix='')
+    # accs.append(acc)
+  else:
+    raise ValueError
 
 
 
@@ -119,8 +130,8 @@ def parse_args():
   parser.add_argument('--dataset', type=str, default='mnist')
   parser.add_argument('--label-a', type=int, default=3)
   parser.add_argument('--label-b', type=int, default=8)
-  parser.add_argument('--select-k', type=str, default='1,2,3,4,5,10')
-  parser.add_argument('--seed', type=int, default=1)
+  parser.add_argument('--select-k', type=str, default='1,2,3,4,5')
+  parser.add_argument('--seed', type=int, default=5)
   parser.add_argument('--big-classifier', action='store_true', default=True)
   parser.add_argument('--big-selector', action='store_true', default=True)
   # parser.add_argument("--freeze-classifier", default=True)
@@ -161,3 +172,41 @@ def main():
 
 if __name__ == '__main__':
   main()
+
+  # S1: [0.7278225806451613, 0.9667338709677419, 0.9798387096774194, 0.9838709677419355, 0.9803427419354839]
+  # S2: [0.7928427419354839, 0.9430443548387096, 0.9692540322580645, 0.9742943548387096, 0.9813508064516129]
+  # S3: [0.8321572580645161, 0.9808467741935484, 0.9838709677419355, 0.9868951612903226, 0.9879032258064516]
+  # S4: [0.7918346774193549, 0.9027217741935484, 0.9637096774193549, 0.9788306451612904, 0.9768145161290323]
+  # S5: [0.7963709677419355, 0.8921370967741935, 0.9707661290322581, 0.9788306451612904, 0.9828629032258065]
+
+  # k1_res = [0.7278225806451613, 0.7928427419354839, 0.8321572580645161, 0.7918346774193549, 0.7963709677419355]
+  # k2_res = [0.9667338709677419, 0.9430443548387096, 0.9808467741935484, 0.9027217741935484, 0.8921370967741935]
+  # k3_res = [0.9798387096774194, 0.9692540322580645, 0.9838709677419355, 0.9637096774193549, 0.9707661290322581]
+  # k4_res = [0.9838709677419355, 0.9742943548387096, 0.9868951612903226, 0.9788306451612904, 0.9788306451612904]
+  # k5_res = [0.9803427419354839, 0.9813508064516129, 0.9879032258064516, 0.9768145161290323, 0.9828629032258065]
+  #
+  # print('k1_avg =', sum(k1_res) / 5)
+  # print('k2_avg =', sum(k2_res) / 5)
+  # print('k3_avg =', sum(k3_res) / 5)
+  # print('k4_avg =', sum(k4_res) / 5)
+  # print('k5_avg =', sum(k5_res) / 5)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

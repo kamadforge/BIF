@@ -329,16 +329,14 @@ def parse_args():
   parser = argparse.ArgumentParser()
   parser.add_argument('--batch-size', type=int, default=64)
   parser.add_argument('--test-batch-size', type=int, default=1000)
-  parser.add_argument('--epochs', type=int, default=10)
+  parser.add_argument('--epochs', type=int, default=20)
   parser.add_argument('--lr', type=float, default=1e-3)
   parser.add_argument('--no-cuda', action='store_true', default=False)
-  parser.add_argument('--seed', type=int, default=2)
   parser.add_argument('--dataset', type=str, default='mnist')
   # parser.add_argument('--selected-label', type=int, default=3)  # label for 1-v-rest training
   # parser.add_argument('--log-interval', type=int, default=500)
   # parser.add_argument('--n-switch-samples', type=int, default=3)
 
-  parser.add_argument('--lamda', help='inavse hyper-parameter lambda', default=25.5, type=float)
   parser.add_argument('--actor_h_dim', help='hidden state dimensions for actor', default=100, type=int)
   parser.add_argument('--critic_h_dim', help='hidden state dimensions for critic', default=200, type=int)
   parser.add_argument('--activation', help='activation function of the networks',
@@ -347,13 +345,14 @@ def parse_args():
   parser.add_argument('--model_type', help='inavse or invase- (without baseline)',
                       choices=['invase', 'invase_minus'], default='invase', type=str)
 
-
-  parser.add_argument('--label-a', type=int, default=4)
-  parser.add_argument('--label-b', type=int, default=9)
-  parser.add_argument('--select-k', type=int, default=4)
-
-  # parser.add_argument("--freeze-classifier", default=True)
-  # parser.add_argument("--patch-selection", default=True)
+  parser.add_argument('--label-a', type=int, default=3)
+  parser.add_argument('--label-b', type=int, default=8)
+  #  lamda = 15.5 --> 5 feats
+  #  lamda = 18.5 --> 4 feats
+  #  lamda = 22.5 --> 3 feats
+  #  lamda = 105.5 --> 1 feats
+  parser.add_argument('--lamda', help='inavse hyper-parameter lambda', default=100., type=float)
+  parser.add_argument('--seed', type=int, default=6)
 
   return parser.parse_args()
 
@@ -402,4 +401,42 @@ def main():
 
 
 if __name__ == '__main__':
-  main()
+  # main()
+
+  # K=5, S=2: 92.3
+  # K=5, S=3: 92.4
+  # K=5, S10: 85.6
+  # K=5, S13: 91.9
+  # K=5, S15: 90.3
+  # K=4, S12: 91.7  15.5
+  # K=4, S=1: 90.8
+  # K=4, S=8: 91.6
+  # K=4, S=4: 91.7
+  # K=4, S10: 91.7
+  # K=3, S14: 91.5 15.5
+  # K=3, S=2: 89.1 18.5
+  # K=3, S=1: 91.7 23
+  # K=3, S=2: 89.2 23
+  # K=3, S=3: 89.2 23
+  # K=2, S=2: 76.3 50
+  # K=2, S=3: 76.3 50
+  # K=2, S=4: 76.3 50
+  # K=2, S=7: 84.7 50
+  # K=2, S=8: 76.4 50
+  # K=1, S=1: 55.3 100
+  # K=1, S=3: 55.3 100
+  # K=1, S=4: 75.2
+  # K=1, S=5: 55.5
+  # K=1, S=6: 50.9
+
+  k1_res = [92.3, 92.4, 85.6, 91.9, 90.3]
+  k2_res = [91.7, 90.8, 91.6, 91.7, 91.7]
+  k3_res = [91.5, 89.1, 91.7, 89.2, 89.2]
+  k4_res = [76.3, 76.3, 76.3, 84.7, 76.4]
+  k5_res = [55.3, 55.3, 75.2, 55.5, 50.9]
+
+  print('k1_avg =', sum(k1_res) / 5)
+  print('k2_avg =', sum(k2_res) / 5)
+  print('k3_avg =', sum(k3_res) / 5)
+  print('k4_avg =', sum(k4_res) / 5)
+  print('k5_avg =', sum(k5_res) / 5)

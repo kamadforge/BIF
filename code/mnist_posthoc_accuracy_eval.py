@@ -91,13 +91,14 @@ def test_posthoc_acc(label_a, label_b, test_loader, device, model_path_prefix):
 
 
 def train_models():
-  for l_b in range(1, 6):
-    for l_a in range(l_b):
-      if l_a == 0 and l_b == 6:
-        print(f'skipping 0,6 because batchnorm breaks due to train set size')
-        continue
-      print(f'running a{l_a}, b{l_b}')
-      train_test_classifier(label_a=l_a, label_b=l_b, epochs=30, lr=3e-4, lr_decay=0.9)
+  # for l_b in range(1, 10):
+  #   for l_a in range(l_b):
+  #     if l_a == 0 and l_b == 6:
+  #       print(f'skipping 0,6 because batchnorm breaks due to train set size')
+  #       continue
+  #     print(f'running a{l_a}, b{l_b}')
+  #     train_test_classifier(label_a=l_a, label_b=l_b, epochs=30, lr=3e-4, lr_decay=0.9)
+  train_test_classifier(label_a=3, label_b=8, epochs=30, lr=3e-4, lr_decay=0.9)
 
 
 if __name__ == '__main__':

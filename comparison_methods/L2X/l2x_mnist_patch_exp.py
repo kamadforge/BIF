@@ -199,14 +199,14 @@ def parse_args():
   parser.add_argument('--batch-size', type=int, default=64)
   parser.add_argument('--test-batch-size', type=int, default=1000)
   parser.add_argument('--epochs', type=int, default=20)
-  parser.add_argument('--lr', type=float, default=1e-3)
+  parser.add_argument('--lr', type=float, default=3e-5)
   parser.add_argument('--no-cuda', action='store_true', default=False)
-  parser.add_argument('--seed', type=int, default=2)
 
   parser.add_argument('--label-a', type=int, default=3)
   parser.add_argument('--label-b', type=int, default=8)
-  parser.add_argument('--select-k', type=int, default=5)
+  parser.add_argument('--select-k', type=int, default=4)
 
+  parser.add_argument('--seed', type=int, default=5)
   return parser.parse_args()
 
 
@@ -218,13 +218,17 @@ def do_featimp_exp(ar):
                                                         data_path='../../data',
                                                         label_a=ar.label_a, label_b=ar.label_b)
 
-  model = L2XModel(d_in=784, d_out=1, datatype=None, n_key_features=ar.select_k, device=device).to(device)
+  model = L2XModel(d_in=784, d_out=1,
+                   datatype='XOR', n_key_features=ar.select_k,
+                   d_hid_sel=250, d_hid_clf=500,
+                   device=device).to(device)
   train_model(model, ar.lr, ar.epochs, train_loader, test_loader, device)
   # , ar.point_estimate, ar.n_switch_samples, ar.alpha_0, n_features, n_data, ar.KL_reg)
 
   print('Finished Training Selector')
   x_ts, y_ts, ts_selection = l2x_select_data(model, test_loader, device)
-  x_ts_select = hard_select_data(x_ts, ts_selection, k=ar.select_k)
+  x_ts_select = x_ts * ts_selection
+  # x_ts_select = hard_select_data(x_ts, ts_selection, k=ar.select_k)
   select_test_loader = make_select_loader(x_ts_select, y_ts, train=False, batch_size=ar.test_batch_size,
                                           use_cuda=use_cuda, data_path='../../data')
   print('testing classifier')
@@ -242,3 +246,45 @@ def main():
 
 if __name__ == '__main__':
   main()
+
+  # K=5, S=1: 92.0
+  # K=5, S=2: 79.1
+  # K=5, S=3: 89.4
+  # K=5, S=4: 87.1
+  # K=5, S=5: 84.6
+
+  # K=4, S=1: 93.5
+  # K=4, S=2: 78.8
+  # K=4, S=3: 92.0
+  # K=4, S=4: 82.6
+  # K=4, S=5: 91.6
+
+  # K=3, S=1: 85.3
+  # K=3, S=2: 76.2
+  # K=3, S=3: 91.5
+  # K=3, S=4: 75.3
+  # K=3, S=5: 91.5
+
+  # K=2, S=1: 84.7
+  # K=2, S=2: 76.3
+  # K=2, S=3: 76.3
+  # K=2, S=4: 76.3
+  # K=2, S=5: 67.0
+
+  # K=1, S=1: 75.2
+  # K=1, S=2: 75.2
+  # K=1, S=3: 55.3
+  # K=1, S=4: 55.3
+  # K=1, S=5: 55.3
+
+  # k5_res = [92.0, 79.1, 89.4, 87.1, 84.6]
+  # k4_res = [93.5, 78.8, 92.0, 82.6, 91.6]
+  # k3_res = [85.3, 76.2, 91.5, 75.3, 91.5]
+  # k2_res = [84.7, 76.3, 76.3, 76.3, 67.0]
+  # k1_res = [75.2, 75.2, 55.3, 55.3, 55.3]
+  #
+  # print('k1_avg =', sum(k1_res) / 5)
+  # print('k2_avg =', sum(k2_res) / 5)
+  # print('k3_avg =', sum(k3_res) / 5)
+  # print('k4_avg =', sum(k4_res) / 5)
+  # print('k5_avg =', sum(k5_res) / 5)

@@ -78,15 +78,16 @@ def load_two_label_mnist_data(use_cuda, batch_size, test_batch_size, data_path='
 
 
 def switch_select_data(selector, loader, device):
-    x_data, y_data, selection = [], [], []
+    x_data, y_data, selection, phis = [], [], [], []
     with pt.no_grad():
       for x_tr, y_tr in loader:
         x_data.append(x_tr.numpy())
         y_data.append(y_tr.numpy())
-        x_sel = nnf.softplus(selector(x_tr.to(device)))
-        x_sel = x_sel / pt.sum(x_sel, dim=1)[:, None] * 16  # multiply by patch size
+        phi = nnf.softplus(selector(x_tr.to(device)))
+        x_sel = phi / pt.sum(phi, dim=1)[:, None] * 16  # multiply by patch size
+        phis.append(phi.cpu().numpy())
         selection.append(x_sel.cpu().numpy())
-    return np.concatenate(x_data), np.concatenate(y_data), np.concatenate(selection)
+    return np.concatenate(x_data), np.concatenate(y_data), np.concatenate(selection), np.concatenate(phis)
 
 
 def hard_select_data(data, selection, k=1, baseline_val=0):
