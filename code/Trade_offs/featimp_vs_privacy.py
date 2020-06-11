@@ -1,7 +1,7 @@
 """
 Test learning feature importance under DP and non-DP models
 """
-__author__ = 'mijung'
+__author__ = 'anon_m'
 import numpy as np
 import matplotlib.pyplot as plt
 import torch

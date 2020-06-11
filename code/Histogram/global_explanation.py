@@ -3,7 +3,7 @@ Test learning global feature importance with/without switch net for Syn1-3 datas
 
 """
 
-__author__ = 'mijung'
+__author__ = 'anon_m'
 # 28 May 2020
 
 """ import packages """

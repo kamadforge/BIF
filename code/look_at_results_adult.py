@@ -2,7 +2,7 @@
 This script is written for visualizing the results of Adult data
 """
 
-__author__ = 'mijung'
+__author__ = 'anon_m'
 
 import matplotlib.pyplot as plt
 import numpy as np

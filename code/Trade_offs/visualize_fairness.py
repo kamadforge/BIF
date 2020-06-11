@@ -2,7 +2,7 @@
 This script is written for visualizing the results of Adult data for fairness
 """
 
-__author__ = 'mijung'
+__author__ = 'anon_m'
 
 import numpy as np
 import pandas as pd
