@@ -74,11 +74,11 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="adult_short") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6
+    parser.add_argument("--dataset", default="credit") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
-    parser.add_argument("--mini_batch_size", default=110, type=int)
-    parser.add_argument("--epochs", default=10, type=int)
-    parser.add_argument("--lr", default=0.1, type=float)
+    parser.add_argument("--mini_batch_size", default=200, type=int)
+    parser.add_argument("--epochs", default=5, type=int)
+    parser.add_argument("--lr", default=0.05, type=float)
 
     # for switch training
     parser.add_argument("--num_Dir_samples", default=50, type=int)
