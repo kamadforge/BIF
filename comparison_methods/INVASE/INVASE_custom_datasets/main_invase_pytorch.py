@@ -23,7 +23,7 @@ import numpy as np
 import torch as pt
 try:
   from comparison_methods.INVASE.data_generation import generate_dataset
-  from comparison_methods.INVASE.invase_pytorch import Invase
+  from comparison_methods.INVASE.INVASE_custom_datasets.invase_pytorch import Invase
   from comparison_methods.INVASE.utils import feature_performance_metric, prediction_performance_metric
 except ImportError:
   # noinspection PyUnresolvedReferences
@@ -32,6 +32,8 @@ except ImportError:
   from invase_pytorch import Invase
   # noinspection PyUnresolvedReferences
   from utils import feature_performance_metric, prediction_performance_metric
+
+from data.tab_dataloader import load_adult_short, load_credit, load_cervical
 
 
 
@@ -66,9 +68,11 @@ def main(args):
   """
   print('#################### generating data')
   # Generate dataset
-  x_train, y_train, g_train = generate_dataset(n=args.train_no, dim=args.dim, data_type=args.data_type, seed=0)
+  #x_train, y_train, g_train = generate_dataset(n=args.train_no, dim=args.dim, data_type=args.data_type, seed=0)
 
-  x_test, y_test, g_test = generate_dataset(n=args.test_no, dim=args.dim, data_type=args.data_type, seed=0)
+  #x_test, y_test, g_test = generate_dataset(n=args.test_no, dim=args.dim, data_type=args.data_type, seed=0)
+
+  x_train, y_train, x_test, y_test = load_credit()
 
   model_parameters = {'lamda': args.lamda,
                       'actor_h_dim': args.actor_h_dim,
@@ -92,16 +96,38 @@ def main(args):
   # # Evaluation
   # Compute importance score
   g_hat = model.importance_score(x_test)
+
+  feature_mean=g_hat.mean(axis=0)
+  features_sorted=np.argsort(feature_mean)[::-1]
+  features_sorted_string=",".join([str(a) for a in features_sorted])
+
+  with np.printoptions(precision=3, suppress=True):
+    print(feature_mean)
+  print(features_sorted_string) #features, averaged over samples
+
+  print()
   importance_score = 1. * (g_hat > 0.5)
 
   # Evaluate the performance of feature importance
-  mean_tpr, std_tpr, mean_fdr, std_fdr = feature_performance_metric(g_test, importance_score)
+  #mean_tpr, std_tpr, mean_fdr, std_fdr = feature_performance_metric(g_test, importance_score)
 
   # Print the performance of feature importance
-  print('TPR mean: ' + str(np.round(mean_tpr, 1)) + '%, ' + 'TPR std: ' + str(np.round(std_tpr, 1)) + '%, ')
-  print('FDR mean: ' + str(np.round(mean_fdr, 1)) + '%, ' + 'FDR std: ' + str(np.round(std_fdr, 1)) + '%, ')
+  #print('TPR mean: ' + str(np.round(mean_tpr, 1)) + '%, ' + 'TPR std: ' + str(np.round(std_tpr, 1)) + '%, ')
+  #print('FDR mean: ' + str(np.round(mean_fdr, 1)) + '%, ' + 'FDR std: ' + str(np.round(std_fdr, 1)) + '%, ')
 
   # Predict labels
+
+  #pruning here
+  #ascending
+  instance_best_features_ascending = np.argsort(importance_score, axis=1)
+  instance_unimportant_features=instance_best_features_ascending[:, :-5]
+  np.save("instance_featureranks_test_invase_credit_k_5.npy", instance_unimportant_features)
+
+  #
+  # for i, data in enumerate(x_test):
+  #   x_test[i, instance_unimportant_features[i]]=0
+
+
   y_hat = model.predict(x_test)
 
   # Evaluate the performance of feature importance
@@ -120,7 +146,7 @@ def main(args):
 if __name__ == '__main__':
   # Inputs for the main function
   parser = argparse.ArgumentParser()
-  parser.add_argument('--data_type', choices=['syn1', 'syn2', 'syn3', 'syn4', 'syn5', 'syn6'], default='syn6', type=str)
+  parser.add_argument('--data_type', choices=['syn1', 'syn2', 'syn3', 'syn4', 'syn5', 'syn6'], default='syn1', type=str)
   parser.add_argument('--train_no', help='the number of training data', default=10000, type=int)
   parser.add_argument('--test_no', help='the number of testing data', default=10000, type=int)
   parser.add_argument('--dim', help='the number of features', choices=[11, 100], default=11, type=int)
@@ -129,7 +155,7 @@ if __name__ == '__main__':
   parser.add_argument('--critic_h_dim', help='hidden state dimensions for critic', default=200, type=int)
   parser.add_argument('--n_layer', help='the number of layers', default=3, type=int)
   parser.add_argument('--batch_size', help='the number of samples in mini batch', default=1000, type=int)
-  parser.add_argument('--iteration', help='the number of iteration', default=1000, type=int)
+  parser.add_argument('--iteration', help='the number of iteration', default=10000, type=int)
   parser.add_argument('--activation', help='activation function of the networks',
                       choices=['selu', 'relu'], default='relu', type=str)
   parser.add_argument('--learning_rate', help='learning rate of model training', default=0.0001, type=float)
