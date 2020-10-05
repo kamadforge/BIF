@@ -1,5 +1,5 @@
 """
-This script contains functions for generating synthetic data. 
+This script contains functions for generating synthetic data.
 Copied from https://github.com/Jianbo-Lab/L2X/blob/master/synthetic/make_data.py
 """ 
 

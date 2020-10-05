@@ -1,6 +1,6 @@
 
 
-from data.tab_dataloader import load_cervical, load_adult, load_credit, load_census, load_isolet, load_adult_short
+from data.tab_dataloader import load_adult, load_credit, load_adult_short
 import numpy as np
 import os
 from pathlib import Path
@@ -13,29 +13,14 @@ def synthetic_data_loader(dataset):
     pathmain = Path(__file__).parent.parent
     datatypes = None
 
-    if dataset == "cervical":
 
-        X_train, y_train, X_test, y_test = load_cervical()
-        x_tot = np.concatenate([X_train, X_test])
-        y_tot = np.concatenate([y_train, y_test])
 
-    elif dataset == "census":
-
-        X_train, y_train, X_test, y_test = load_census()
-        x_tot = np.concatenate([X_train, X_test])
-        y_tot = np.concatenate([y_train, y_test])
-
-    elif dataset == "credit":
+    if dataset == "credit":
 
         X_train, y_train, X_test, y_test = load_credit()
         x_tot = np.concatenate([X_train, X_test])
         y_tot = np.concatenate([y_train, y_test])
 
-    elif dataset == "isolet":
-
-        X_train, y_train, X_test, y_test = load_isolet()
-        x_tot = np.concatenate([X_train, X_test])
-        y_tot = np.concatenate([y_train, y_test])
 
     elif dataset == "adult":
 

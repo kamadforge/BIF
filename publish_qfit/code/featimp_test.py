@@ -1,3 +1,38 @@
+# """
+# 1. removed vips data
+# """
+#
+# __author__ = 'mijung'
+#
+# import os
+# import sys
+# import scipy
+# import scipy.io
+# import numpy as np
+# import numpy.random as rn
+# from sklearn.metrics import roc_curve,auc
+# from sklearn import preprocessing
+# import matplotlib.pyplot as plt
+# import pickle
+# import autodp
+from autodp import privacy_calibrator
+#from models.nn_3hidden import FC, FC_net
+# from itertools import combinations, chain
+# import argparse
+#
+# import torch.nn as nn
+# import torch.optim as optim
+# import torch
+
+#mvnrnd = rn.multivariate_normal
+#
+# import sys
+# from data.tab_dataloader import load_adult, load_credit, load_adult_short
+# from data.make_synthetic_datasets import generate_data
+# from data.make_synthetic_datasets import generate_invase
+# #from data.synthetic_data_loader import synthetic_data_loader
+#
+
 """
 Test learning feature importance under DP and non-DP models
 """
@@ -14,7 +49,7 @@ Test learning feature importance under DP and non-DP models
 # set training_local to False
 
 
-__author__ = 'mijung'
+__author__ = 'anom_m'
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -33,11 +68,8 @@ import sys
 import os
 import socket
 import sys
-sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp")
-sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp/data")
-sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp/code")
-sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp/code/models")
 
+from data.tab_dataloader import load_adult, load_credit, load_adult_short
 
 from data.synthetic_data_loader import synthetic_data_loader
 from evaluation_metrics import compute_median_rank, binary_classification_metrics
@@ -54,15 +86,15 @@ cwd_parent = Path(__file__).parent.parent
 if socket.gethostname()=='worona.local':
     pathmain = cwd
     path_code = os.path.join(pathmain, "code")
-elif socket.gethostname()=='kamil':
-    pathmain=cwd_parent
-    path_code=cwd
-#if 'g0' in socket.gethostname() or 'p0' in socket.gethostname():
-else:
+
+elif 'g0' in socket.gethostname() or 'p0' in socket.gethostname():
     sys.path.append(os.path.join(cwd_parent, "data"))
     pathmain=cwd
     path_code = os.path.join(pathmain, "code")
     #path_code = os.path.join(pathmain)
+else:
+    pathmain = cwd_parent
+    path_code = cwd
 
 
 ##################################################3
@@ -318,6 +350,9 @@ def main():
 
             #load pretrained model
             LR_model = np.load(os.path.join(path_code, 'models/%s_%s_LR_model' % (dataset, method) + str(int(iter_sigmas[k])) + '.npy'), allow_pickle=True)
+
+            if not os.path.isdir("weights"):
+                os.mkdir("weights")
 
             filename = os.path.join(path_code, 'weights/%s_%d_%.1f_%d_switch_posterior_mean' % (dataset, args.num_Dir_samples, args.alpha, args.epochs)+str(int(iter_sigmas[k])))
             filename_last = os.path.join(path_code, 'weights/%s_switch_posterior_mean' % (dataset)+str(int(iter_sigmas[k])))
@@ -609,13 +644,15 @@ def main():
                 #######################
                 ##########################
 
+                if not os.path.isdir("rankings"):
+                    os.mkdir("rankings")
 
 
                 k=1
                 #local samples results:
                 instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
                 instance_unimportant_features = instance_best_features_ascending[:, :-k]
-                #np.save(os.path.join(path_code, str(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy"), instance_unimportant_features))
+                np.save(os.path.join(path_code, str(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy")), instance_unimportant_features)
 
 
                 #########################
@@ -662,7 +699,7 @@ def main():
                 #local samples results:
                 instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
                 instance_unimportant_features = instance_best_features_ascending[:, :-k]
-                #np.save(os.path.join(path_code, f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy", instance_unimportant_features))
+                np.save(os.path.join(path_code, f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy"), instance_unimportant_features)
 
 
                 #########################
@@ -705,7 +742,7 @@ def main():
                 #local samples results:
                 instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
                 instance_unimportant_features = instance_best_features_ascending[:, :-k]
-                #np.save(os.path.join(path_code, f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy", instance_unimportant_features))
+                np.save(os.path.join(path_code, f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy"), instance_unimportant_features)
 
 
                 #########################
