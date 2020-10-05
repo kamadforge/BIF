@@ -12,3 +12,4 @@ data/__pycache__/*
 *.npy
 *.pyc
 publish_qfit/data/synthetic/invase/*.npy
+publish_qfit/code/models/*.npy
