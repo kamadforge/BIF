@@ -7,4 +7,5 @@ code/models
 
 comparison_methods/INVASE/INVASE_custom_datasets/instance_featureranks*
 comparison_methods/L2X/instance_featureranks_test_l2x*
-data/__pycache__/
+data/__pycache__/*
+
