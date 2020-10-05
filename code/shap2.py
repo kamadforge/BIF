@@ -6,7 +6,7 @@ import os
 import pickle
 from sklearn import svm
 
-from data_basic.tab_dataloader import load_adult_short, load_credit, load_cervical, load_isolet
+from data.tab_dataloader import load_adult_short, load_credit, load_cervical, load_isolet
 import numpy as np
 
 

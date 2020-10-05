@@ -66,8 +66,8 @@ def train_test_classifier(label_a, label_b, epochs, lr, lr_decay, data_path='../
   np.random.seed(seed)
   pt.manual_seed(seed)
 
-  train_data = BinarizedMnistDataset(train=True, label_a=label_a, label_b=label_b, data_path=data_path)
-  test_data = BinarizedMnistDataset(train=False, label_a=label_a, label_b=label_b, data_path=data_path)
+  train_data = BinarizedMnistDataset(train=True, label_a=label_a, label_b=label_b, data_path=data_path, download=True)
+  test_data = BinarizedMnistDataset(train=False, label_a=label_a, label_b=label_b, data_path=data_path, download=True)
 
   use_cuda = pt.cuda.is_available()
   device = pt.device("cuda" if use_cuda else "cpu")
@@ -81,7 +81,7 @@ def train_test_classifier(label_a, label_b, epochs, lr, lr_decay, data_path='../
 
   print('training done - saving model')
   os.makedirs(classifier.model_dir, exist_ok=True)
-  pt.save(classifier.state_dict(), f'bin_classifier_a{label_a}_b{label_b}.pt')
+  pt.save(classifier.state_dict(), os.path.join(classifier.model_dir,f'bin_classifier_a{label_a}_b{label_b}.pt'))
 
 
 def test_posthoc_acc(label_a, label_b, test_loader, device, model_path_prefix):
