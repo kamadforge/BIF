@@ -29,7 +29,7 @@ from torch.optim.lr_scheduler import StepLR
 
 
 class BinarizedMnistDataset(Dataset):
-  def __init__(self, train, label_a=3, label_b=8, data_path='../data', download=False, tgt_type=np.float32):
+  def __init__(self, train, label_a=3, label_b=8, data_path='../data', download=True, tgt_type=np.float32):
     super(BinarizedMnistDataset, self).__init__()
     self.train = train
     base_data = datasets.MNIST(data_path, train=train, download=download)

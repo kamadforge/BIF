@@ -1,5 +1,5 @@
 """
-This script contains functions for generating synthetic data. 
+This script contains functions for generating synthetic data.
 
 Part of the code is based on https://github.com/Jianbo-Lab/CCM
 """ 
@@ -46,7 +46,7 @@ def generate_data(n=100, datatype='', seed=0, val = False):
     Generate data (X,y)
     Args:
         n(int): number of samples 
-        datatype(string): The type of data 
+        datatype(string): The type of data
         choices: 'orange_skin', 'XOR', 'regression'.
         seed: random seed used
     Return: 
@@ -63,7 +63,7 @@ def generate_data(n=100, datatype='', seed=0, val = False):
     if datatype == 'orange_skin': 
         y = generate_orange_labels(X) 
 
-    elif datatype == 'XOR':
+    elif datatype == 'XOR' or datatype =='xor':
         y = generate_XOR_labels(X)    
 
     elif datatype == 'nonlinear_additive':  
