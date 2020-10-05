@@ -21,12 +21,8 @@
  
 ### Table 1: Synthetic datasets (also used for fig 2.)
  
-Q-fit: ` ` \
 L2X: `comparison_methods/L2X/explain_invase_data.py` \
 INVASE: `comparison_methods/INVASE/invase_synth_runs.sh` (calls `main_invase.py`)
-
-### Table 2: Adult & Credit with k selected features
-
 
 
 ### Table 3: MNIST data
@@ -39,12 +35,10 @@ INVASE: `comparison_methods/INVASE/invase_mnist_patch_exp.py`
 ### Figure 3: Fairness trade-off
 
 Classifier: `code/Trade_offs/vfairness_weight_readout.py` \
-Q-FIT: ` ` \
 INVASE: `comparison_methods/INVASE/invase_fair_adult.py`
 
 ### Figure 4: Privacy trade-off
 
 Classifier: `code/Trade_offs/fairness_vs_privacy.py` \
-Q-FIT: ` ` \
 INVASE: `comparison_methods/INVASE/invase_private_adult.py`
 
