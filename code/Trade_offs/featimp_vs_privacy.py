@@ -19,6 +19,8 @@ from Losses import loss_function
 
 from dp_sgd import dp_sgd_backward
 from backpack import extend
+import shap
+import xgboost
 
 
 def main():
@@ -109,21 +111,32 @@ def main():
 #############################################################
     """ learn feature importance """
 #############################################################
-    seedmax = 6
+
+    # we initialize the parameters based on SHAP estimation.
+    model = xgboost.train({"learning_rate": 0.01}, xgboost.DMatrix(X, label=y), 100)
+    explainer = shap.TreeExplainer(model)
+    shap_values = explainer.shap_values(X)
+    mean_sv = np.abs(shap_values).mean(axis=0)
+    print('importance by SHAP: ', mean_sv)
+
+    init_phi = 100 * mean_sv
+    print('phi init: ', init_phi)
+
+    seedmax = 1
 
     mean_importance = np.zeros((seedmax, input_dim))
     phi_est_mat = np.zeros((seedmax, input_dim))
 
-    for seednum in range(1,seedmax):
+    for seednum in range(0,seedmax):
 
         rn.seed(seednum)
 
         """ learn feature importance """
         # input_dim, classifier,
         num_Dir_samps = 1
-        importance = Feature_Importance_Model(input_dim, classifier, num_Dir_samps)
-        # optimizer = optim.Adam(importance.parameters(), lr=0.075)
-        optimizer = optim.Adam(importance.parameters(), lr=0.1)
+        importance = Feature_Importance_Model(input_dim, classifier, num_Dir_samps, init_phi)
+        # optimizer = optim.SGD(importance.parameters(), lr=0.01)
+        optimizer = optim.Adam(importance.parameters(), lr=0.001)
 
         # We freeze the classifier
         ct = 0
@@ -164,12 +177,16 @@ def main():
 
             if np.remainder(epoch,50)==0:
                 print('Epoch {}: running_loss : {}'.format(epoch, running_loss/how_many_iter))
+                estimated_params = list(importance.parameters())
+                phi_est = F.softplus(torch.Tensor(estimated_params[0]))
+                print('phi_est', phi_est.detach().numpy())
 
         print('Finished feature importance Training')
 
         """ checking the results """
         estimated_params = list(importance.parameters())
         phi_est = F.softplus(torch.Tensor(estimated_params[0]))
+
         concentration_param = phi_est.view(-1, 1).repeat(1, 5000)
         beta_param = torch.ones(concentration_param.size())
         Gamma_obj = Gamma(concentration_param, beta_param)
@@ -183,6 +200,7 @@ def main():
         phi_est_mat[seednum,:] = phi_est.detach().numpy()
 
         order_by_importance = np.argsort(posterior_mean_switch)[::-1]
+        print('seed number: ', seednum)
         print('order by importance: ', order_by_importance)
 
     # [ 7  4 10  0 12 11  6  1  5  3  2  9 13  8]
@@ -216,7 +234,7 @@ def parse():
     parser.add_argument('--clf-epochs', type=int, default=20)
     parser.add_argument('--clf-batch-size', type=int, default=1000)
 
-    parser.add_argument('--switch-epochs', type=int, default=400)
+    parser.add_argument('--switch-epochs', type=int, default=10000)
     parser.add_argument('--switch-batch-size', type=int, default=20000)
     parser.add_argument('--save-model', action='store_true', default=False)
     # parser.add_argument('--switch-epochs', type=int, default= 400)
@@ -231,7 +249,7 @@ def parse():
     # sig = 8.4 -> eps 0.984 ~= 1
     # sig = 17. -> eps 0.48  ~= 0.5
 
-    parser.add_argument('--dp-sigma', type=float, default=0.)
+    parser.add_argument('--dp-sigma', type=float, default=0.0)
     # parser.add_argument('--dp-clip', type=float, default=0.01)
     parser.add_argument('--seed', type=int, default=0)
     # parser.add_argument('--dp-sigma', type=float, default=1.35)

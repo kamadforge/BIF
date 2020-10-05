@@ -17,7 +17,7 @@ sns.set(font_scale=1.35)
 # https://seaborn.pydata.org/examples/color_palettes.html
 plt.figure(1)
 # plt.title('Shapely Value')
-f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(7, 5), sharex=True)
+f, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(7, 5), sharex=True)
 x = np.arange(0,10)
 #
 # dataset = 'XOR'
@@ -48,7 +48,7 @@ ax1.axhline(0, color="k", clip_on=False)
 ax1.set_xlabel("Features")
 
 # ax1.set_title("importance by Q-FIT")
-plt.savefig('qfit.pdf')
+# plt.savefig('qfit.pdf')
 
 
 
@@ -76,8 +76,9 @@ plt.savefig('qfit.pdf')
 # # ax2.set_ylabel("OS")
 
 dataset = 'nonlinear_additive'
-filename = dataset+'shap.npy'
-sv = mean_then_normalize(np.load(filename))
+filename = dataset + 'shap.npy'
+sv = np.load(filename)
+# sv = mean_then_normalize(np.load(filename))
 
 sns.barplot(x=x, y=sv, palette="rocket", ax=ax2)
 ax2.axhline(0, color="k", clip_on=False)

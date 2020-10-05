@@ -31,11 +31,13 @@ class Feedforward(torch.nn.Module):
 
 class Feature_Importance_Model(nn.Module):
     #I'm going to define my own Model here following how I generated this dataset
-    def __init__(self, input_dim, classifier, num_samps_for_switch):
+    def __init__(self, input_dim, classifier, num_samps_for_switch, init_phi):
     # def __init__(self, input_dim, hidden_dim):
         super(Feature_Importance_Model, self).__init__()
         self.classifier = classifier
-        self.parameter = Parameter(-1e-10*torch.ones(input_dim),requires_grad=True) # this parameter lies
+        #
+        self.parameter = Parameter(torch.Tensor(init_phi), requires_grad=True)
+        # self.parameter = Parameter(-1e-10*torch.ones(input_dim),requires_grad=True) # this parameter lies
         self.num_samps_for_switch = num_samps_for_switch
     def forward(self, x): # x is mini_batch_size by input_dim
         phi = F.softplus(self.parameter)
