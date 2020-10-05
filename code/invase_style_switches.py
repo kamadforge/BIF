@@ -359,7 +359,7 @@ def prediction_performance_metric(y_test, y_hat):
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument('--data_type', choices=['syn1', 'syn2', 'syn3', 'syn4', 'syn5', 'syn6'], default='syn6', type=str)
+  parser.add_argument('--data_type', choices=['syn1', 'syn2', 'syn3', 'syn4', 'syn5', 'syn6'], default='syn1', type=str)
   parser.add_argument('--train_no', help='the number of training data', default=10000, type=int)
   parser.add_argument('--test_no', help='the number of testing data', default=10000, type=int)
   parser.add_argument('--dim', help='the number of features', choices=[11, 100], default=11, type=int)
@@ -368,7 +368,7 @@ def main():
   parser.add_argument('--critic_h_dim', help='hidden state dimensions for critic', default=200, type=int)
   parser.add_argument('--n_layer', help='the number of layers', default=3, type=int)
   parser.add_argument('--batch_size', help='the number of samples in mini batch', default=1000, type=int)
-  parser.add_argument('--iteration', help='the number of iteration', default=10000, type=int)
+  parser.add_argument('--iteration', help='the number of iteration', default=10000, type=int) # 10000
   parser.add_argument('--activation', help='activation function of the networks',
                       choices=['selu', 'relu'], default='relu', type=str)
   parser.add_argument('--learning_rate', help='learning rate of model training', default=1e-4, type=float)

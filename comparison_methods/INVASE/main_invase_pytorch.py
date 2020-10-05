@@ -43,7 +43,7 @@ def main(args):
   """Main function for INVASE.
 
   Args:
-    - data_type: synthetic data_basic type (syn1 to syn6)
+    - data_type: synthetic data type (syn1 to syn6)
     - train_no: the number of samples for training set
     - train_no: the number of samples for testing set
     - dim: the number of features
@@ -68,7 +68,7 @@ def main(args):
       - apr: average precision score
       - acc: accuracy
   """
-  print('#################### generating data_basic')
+  print('#################### generating data')
   # Generate dataset
   # x_train, y_train, g_train = generate_dataset(n=args.train_no, dim=args.dim, data_type=args.data_type, seed=0)
   # x_test, y_test, g_test = generate_dataset(n=args.test_no, dim=args.dim, data_type=args.data_type, seed=0)
@@ -129,8 +129,8 @@ if __name__ == '__main__':
   # Inputs for the main function
   parser = argparse.ArgumentParser()
   parser.add_argument('--data_type', choices=['syn1', 'syn2', 'syn3', 'syn4', 'syn5', 'syn6'], default='syn3', type=str)
-  parser.add_argument('--train_no', help='the number of training data_basic', default=10000, type=int)
-  parser.add_argument('--test_no', help='the number of testing data_basic', default=10000, type=int)
+  parser.add_argument('--train_no', help='the number of training data', default=10000, type=int)
+  parser.add_argument('--test_no', help='the number of testing data', default=10000, type=int)
   parser.add_argument('--dim', help='the number of features', choices=[11, 100], default=10, type=int)
   parser.add_argument('--lamda', help='inavse hyper-parameter lambda', default=0.1, type=float)
   parser.add_argument('--actor_h_dim', help='hidden state dimensions for actor', default=100, type=int)
