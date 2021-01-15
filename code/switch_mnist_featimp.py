@@ -21,7 +21,7 @@ from switch_model_wrapper import SwitchNetWrapper, BinarizedMnistNet, MnistPatch
 import matplotlib
 matplotlib.use('Agg')  # to plot without Xserver
 from mnist_utils import plot_switches, load_two_label_mnist_data, switch_select_data, hard_select_data, \
-  make_select_loader, train_classifier
+  make_select_loader, train_classifier, plot_patch_selection
 from mnist_posthoc_accuracy_eval import test_posthoc_acc
 
 
@@ -93,15 +93,20 @@ def train_selector(model, train_loader, epochs, lr, device):
     print(f'Epoch {epoch} Loss {running_loss}')
 
 
-def local_switch_eval(selector, test_loader, label_a, label_b, select_k, device, use_cuda, test_batch_size):
-  x_ts, y_ts, ts_selection, phis = switch_select_data(selector, test_loader, device)
+def local_switch_eval(selector, test_loader, label_a, label_b, select_k, device, use_cuda, test_batch_size, seed):
+  x_ts, y_ts, ts_selection, _ = switch_select_data(selector, test_loader, device)
   accs = []
 
   if ',' in select_k:
     selected_ks = [int(k) for k in select_k.split(',')]
     for k in selected_ks:
       print(f'eval at k = {k}')
-      x_ts_select = hard_select_data(x_ts, ts_selection, k=k)
+      x_ts_select, selection_mask = hard_select_data(x_ts, ts_selection, k=k)
+
+      print('saving test selection:')
+      plot_patch_selection(x_ts, selection_mask, n_plots=10, save_dir='plots/patch_plots',
+                           save_name=f'switch_labels_{label_a}{label_b}_k{k}_seed{seed}')
+
       select_test_loader = make_select_loader(x_ts_select, y_ts, False, test_batch_size, use_cuda)
       acc = test_posthoc_acc(label_a, label_b, select_test_loader, device, model_path_prefix='')
       accs.append(acc)
@@ -159,7 +164,8 @@ def do_featimp_exp(ar):
 
   train_selector(model, train_loader, ar.switch_epochs, ar.switch_lr, device)
   print('Finished Training Selector')
-  local_switch_eval(selector, test_loader, ar.label_a, ar.label_b, ar.select_k, device, use_cuda, ar.test_batch_size)
+  local_switch_eval(selector, test_loader, ar.label_a, ar.label_b, ar.select_k, device, use_cuda, ar.test_batch_size,
+                    ar.seed)
 
 
 def main():

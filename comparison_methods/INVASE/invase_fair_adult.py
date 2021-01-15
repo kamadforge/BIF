@@ -152,12 +152,10 @@ class Invase(nn.Module):
     self.dim = 12
     self.label_dim = 2
 
-
     # Build and compile critic
     # self.critic_net = Net(self.dim, self.critic_h_dim, self.label_dim, act=self.activation,
     #                       act_out='logsoftmax').to(self.device)
     self.critic_net = ImportedClassifier(d_in=12, weights_file=clf_weights_file).to(self.device)
-
 
     # Build and compile the actor
     self._actor_net = Net(self.dim, self.actor_h_dim, self.dim, act=self.activation,

@@ -20,14 +20,21 @@ import torch.optim as optim
 # from torchvision import datasets, transforms
 # from torch.utils.data import Dataset, DataLoader
 # from switch_model_wrapper import SwitchWrapper, loss_function, MnistNet
-from switch_model_wrapper import BinarizedMnistNet
+# from switch_model_wrapper import BinarizedMnistNet
 import matplotlib
 matplotlib.use('Agg')  # to plot without Xserver
 # import matplotlib.pyplot as plt
 # import matplotlib.cm as cm
 
-from switch_mnist_featimp import load_two_label_mnist_data, hard_select_data, make_select_loader
-from mnist_posthoc_accuracy_eval import test_posthoc_acc
+# from switch_mnist_featimp import load_two_label_mnist_data, hard_select_data, make_select_loader
+try:
+  from mnist_posthoc_accuracy_eval import test_posthoc_acc
+  from mnist_utils import load_two_label_mnist_data, make_select_loader, plot_patch_selection
+except ImportError:
+  import sys
+  sys.path.insert(0, '/home/frederik/PycharmProjects/featimp_dp/code/')
+  from mnist_posthoc_accuracy_eval import test_posthoc_acc
+  from mnist_utils import load_two_label_mnist_data, make_select_loader, plot_patch_selection
 
 def l2x_select_data(l2x_model, loader, device):
   x_data, y_data, selection = [], [], []
@@ -115,7 +122,6 @@ class L2XModel(nn.Module):
     return x
 
 
-
 def train_model(model, learning_rate, n_epochs, train_loader, test_loader, device):
   adam = pt.optim.Adam(params=model.parameters(), lr=learning_rate, weight_decay=1e-3)
 
@@ -194,22 +200,6 @@ def train_classifier(classifier, train_loader, test_loader, epochs, lr, device):
     test_classifier_epoch(classifier, test_loader, device)
 
 
-def parse_args():
-  parser = argparse.ArgumentParser()
-  parser.add_argument('--batch-size', type=int, default=64)
-  parser.add_argument('--test-batch-size', type=int, default=1000)
-  parser.add_argument('--epochs', type=int, default=20)
-  parser.add_argument('--lr', type=float, default=3e-5)
-  parser.add_argument('--no-cuda', action='store_true', default=False)
-
-  parser.add_argument('--label-a', type=int, default=3)
-  parser.add_argument('--label-b', type=int, default=8)
-  parser.add_argument('--select-k', type=int, default=4)
-
-  parser.add_argument('--seed', type=int, default=5)
-  return parser.parse_args()
-
-
 def do_featimp_exp(ar):
   use_cuda = not ar.no_cuda and pt.cuda.is_available()
   device = pt.device("cuda" if use_cuda else "cpu")
@@ -228,12 +218,32 @@ def do_featimp_exp(ar):
   print('Finished Training Selector')
   x_ts, y_ts, ts_selection = l2x_select_data(model, test_loader, device)
   x_ts_select = x_ts * ts_selection
+
+  print('saving test selection:')
+  plot_patch_selection(x_ts, ts_selection, n_plots=10, save_dir='../../code/plots/patch_plots',
+                       save_name=f'l2x_labels_{ar.label_a}{ar.label_b}_k{ar.select_k}_seed{ar.seed}')
+
   # x_ts_select = hard_select_data(x_ts, ts_selection, k=ar.select_k)
   select_test_loader = make_select_loader(x_ts_select, y_ts, train=False, batch_size=ar.test_batch_size,
                                           use_cuda=use_cuda, data_path='../../data')
   print('testing classifier')
-
   test_posthoc_acc(ar.label_a, ar.label_b, select_test_loader, device, model_path_prefix='../../code/')
+
+
+def parse_args():
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--batch-size', type=int, default=64)
+  parser.add_argument('--test-batch-size', type=int, default=1000)
+  parser.add_argument('--epochs', type=int, default=20)
+  parser.add_argument('--lr', type=float, default=3e-5)
+  parser.add_argument('--no-cuda', action='store_true', default=False)
+
+  parser.add_argument('--label-a', type=int, default=3)
+  parser.add_argument('--label-b', type=int, default=8)
+  parser.add_argument('--select-k', type=int, default=4)
+
+  parser.add_argument('--seed', type=int, default=5)
+  return parser.parse_args()
 
 
 def main():
