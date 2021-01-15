@@ -47,9 +47,22 @@ def create_rank(scores, k):
         permutated_rank = (-permutated_weights).argsort().argsort() + 1
         rank = permutated_rank[np.argsort(idx)]
 
-        ranks.append(rank.numpy())
+
+        if type(rank).__module__=='torch':
+            ranks.append(rank.numpy())
+        else:
+            ranks.append(rank)
 
     return np.array(ranks)
+
+##sklearn.metrics.matthews_corrcoef(y_true, y_pred, *, sample_weight=None)[source]¶
+from sklearn.metrics import matthews_corrcoef
+
+def get_mmc(arr1, arr2):
+    mcc = matthews_corrcoef(np.sort(arr1).flatten(), np.sort(arr2).flatten()) #2000,2 - 4000,
+    #arr1 is [1,2], [1,2] [1,2], etc.
+    #arr2 is [1,2], [1,2] [1,2]
+    return mcc
 
 
 def get_tpr(arr1, arr2):
@@ -94,6 +107,7 @@ def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_
 
         gtfeatures_positions = np.tile(np.arange(k) + 1, (mini_batch_size, 1))
 
+        print(ranks)
         switch_gtfeatures_positions = ranks[:, :k]  # (mini_batch_size, k)
 
 
@@ -125,7 +139,24 @@ def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_
 
     tpr, fdr = get_tpr(gtfeatures_positions, switch_gtfeatures_positions)
 
-    return tpr, fdr
+    gtfeatures_positions_arr=[]
+    for ind, dat in enumerate(gtfeatures_positions):
+        gtfeatures_positions_arr.append(onehot(dat, 11))
+
+    switch_gtfeatures_positions_arr=[]
+    for ind, dat in enumerate(switch_gtfeatures_positions):
+        switch_gtfeatures_positions_arr.append(onehot(dat, 11))
+
+    mcc = matthews_corrcoef(np.array(gtfeatures_positions_arr).flatten(), np.array(switch_gtfeatures_positions_arr).flatten())
+
+    return tpr, fdr, mcc
+
+def onehot(inds, n):
+    print(n)
+    a=np.zeros(n)
+    print(inds)
+    a[inds]=1
+    return a
 
 
 def compute_median_rank(scores, k, dataset, datatype_val=None):

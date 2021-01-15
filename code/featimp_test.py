@@ -2,6 +2,14 @@
 Test learning feature importance under DP and non-DP models
 """
 
+# searching through:
+# - switch_nn (more instance) / more global
+# - point estimate/sampling
+# - kl-term/no kl-term
+
+
+
+
 # For instancewise training one can do two things:
 
 # 1. train the switch vector by backpropagation (the original way) and then finetune on one example (local training)
@@ -12,6 +20,8 @@ Test learning feature importance under DP and non-DP models
 # set switch_nn to True
 # possibly set_hooks to False
 # set training_local to False
+
+
 
 
 __author__ = 'anon_m'
@@ -33,6 +43,9 @@ import sys
 import os
 import socket
 import sys
+
+
+
 sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp")
 sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp/data")
 sys.path.append("/home/kadamczewski/Dropbox_from/Current_research/featimp_dp/code")
@@ -54,7 +67,7 @@ cwd_parent = Path(__file__).parent.parent
 if socket.gethostname()=='worona.local':
     pathmain = cwd
     path_code = os.path.join(pathmain, "code")
-elif socket.gethostname()=='kamil':
+elif socket.gethostname()=='kamilblade':
     pathmain=cwd_parent
     path_code=cwd
 #if 'g0' in socket.gethostname() or 'p0' in socket.gethostname():
@@ -74,16 +87,16 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # general
-    parser.add_argument("--dataset", default="adult_short") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6
+    parser.add_argument("--dataset", default="nonlinear_additive") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
-    parser.add_argument("--mini_batch_size", default=110, type=int)
-    parser.add_argument("--epochs", default=10, type=int)
-    parser.add_argument("--lr", default=0.1, type=float)
+    parser.add_argument("--mini_batch_size", default=200, type=int)
+    parser.add_argument("--epochs", default=5, type=int)
+    parser.add_argument("--lr", default=0.05, type=float)
 
     # for switch training
-    parser.add_argument("--num_Dir_samples", default=50, type=int)
+    parser.add_argument("--num_Dir_samples", default=20, type=int)
     parser.add_argument("--alpha", default=5, type=float)
-    parser.add_argument("--point_estimate", default=True)
+    parser.add_argument("--point_estimate", default=False)
 
     parser.add_argument("--train", default=True)
     parser.add_argument("--test", default=True)
@@ -130,12 +143,14 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
 
             else: #sampling
 
-                BCE_mat = torch.zeros(prediction.shape[1])
-                for ind in torch.arange(0, prediction.shape[1]):
-                    y_pred = prediction[:, ind, :]
-                    BCE_mat[ind] = loss(y_pred, true_y)
+                # computing the crossnetropy term of the elbo
 
-                BCE = torch.mean(BCE_mat)
+                BCE_mat = torch.zeros(prediction.shape[1]) # contains losses for each sample
+                for ind in torch.arange(0, prediction.shape[1]): # for each sample
+                    y_pred = prediction[:, ind, :] # get the prediction
+                    BCE_mat[ind] = loss(y_pred, true_y) # compute the loss for that sample
+
+                BCE = torch.mean(BCE_mat) # average the losses
 
 
             if kl_term:
@@ -151,7 +166,7 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
 
                     KLD = trm1 + trm2 + trm3
 
-                    return BCE + + annealing_rate*KLD/how_many_samps
+                    return BCE + annealing_rate*KLD/how_many_samps
 
                 else: # sampling with kl
 
@@ -318,6 +333,9 @@ def main():
 
             #load pretrained model
             LR_model = np.load(os.path.join(path_code, 'models/%s_%s_LR_model' % (dataset, method) + str(int(iter_sigmas[k])) + '.npy'), allow_pickle=True)
+
+            if not os.path.isdir("weights"):
+                os.mkdir("weights")
 
             filename = os.path.join(path_code, 'weights/%s_%d_%.1f_%d_switch_posterior_mean' % (dataset, args.num_Dir_samples, args.alpha, args.epochs)+str(int(iter_sigmas[k])))
             filename_last = os.path.join(path_code, 'weights/%s_switch_posterior_mean' % (dataset)+str(int(iter_sigmas[k])))
@@ -571,6 +589,9 @@ def main():
                 datatypes_test_samp=None
 
 
+                ####################
+                # loading the model
+
                 if switch_nn:
                     model = Model_switchlearning(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
                 else:
@@ -580,10 +601,15 @@ def main():
                 model.load_state_dict(torch.load(path), strict=False)
 
 
-                inputs_test_samp = X_test[i * mini_batch_size:(i + 1) * mini_batch_size, :] #(mini_batch_size* feat_num)
+                ##################3
+                # dataset
+
+                inputs_test_samp = X_test[i * mini_batch_size:(i + 1) * mini_batch_size, :] # (mini_batch_size* feat_num)
                 labels_test_samp = y_test[i * mini_batch_size:(i + 1) * mini_batch_size]
                 if dataset == "alternating" or "syn" in dataset:
                     datatypes_test_samp = datatypes_test[i * mini_batch_size:(i + 1) * mini_batch_size]
+
+                # changes the one-hpt vector to the indices, e.g. 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 1. to 0,1,10
 
                 if "syn" in dataset:
                     relevant_features=[]
@@ -593,6 +619,10 @@ def main():
 
 
                 inputs_test_samp = torch.Tensor(inputs_test_samp)
+
+
+                ##################
+                # running the test
 
                 model.eval()
 
@@ -608,137 +638,138 @@ def main():
 
                 #######################
                 ##########################
-
-
-
-                k=1
-                #local samples results:
-                instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
-                instance_unimportant_features = instance_best_features_ascending[:, :-k]
-                #np.save(os.path.join(path_code, str(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy"), instance_unimportant_features))
-
-
-                #########################
-
-                #unimportant_features_instance = np.load(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy")
-
-                for i, data in enumerate(inputs_test_samp1):
-                    inputs_test_samp1[i, instance_unimportant_features[i]] = 0
-
-
-                ###################################
-                i = 0  # choose a sample
-                mini_batch_size = 2000
-                datatypes_test_samp = None
-
-                input_num= d
-                output_num = 2
-
-                model = FC(input_num, output_num)
-
-                LR_model = np.load(os.path.join(path_code, 'models/%s_%s_LR_model0.npy' % (dataset,method)), allow_pickle=True)
-
-                model.load_state_dict(LR_model[()][0], strict=False)
-
-
-
-
-
-                y_pred = model(torch.Tensor(inputs_test_samp1))
-                y_pred = torch.argmax(y_pred, dim=1)
-
-                accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == y_test) / len(y_test))
-                print("test accuracy 1: ", accuracy)
-
+                #
+                # if not os.path.isdir("rankings"):
+                #     os.mkdir("rankings")
+                #
+                # k=1
+                # #local samples results:
+                # instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
+                # instance_unimportant_features = instance_best_features_ascending[:, :-k]
+                # #np.save(os.path.join(path_code, str(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy"), instance_unimportant_features))
+                #
+                #
+                # #########################
+                #
+                # #unimportant_features_instance = np.load(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy")
+                #
+                # for i, data in enumerate(inputs_test_samp1):
+                #     inputs_test_samp1[i, instance_unimportant_features[i]] = 0
+                #
+                #
+                # ###################################
+                # i = 0  # choose a sample
+                # mini_batch_size = 2000
+                # datatypes_test_samp = None
+                #
+                # input_num= d
+                # output_num = 2
+                #
+                # model = FC(input_num, output_num)
+                #
+                # LR_model = np.load(os.path.join(path_code, 'models/%s_%s_LR_model0.npy' % (dataset,method)), allow_pickle=True)
+                #
+                # model.load_state_dict(LR_model[()][0], strict=False)
+                #
+                #
+                #
+                #
+                #
+                # y_pred = model(torch.Tensor(inputs_test_samp1))
+                # y_pred = torch.argmax(y_pred, dim=1)
+                #
+                # accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == y_test) / len(y_test))
+                # print("test accuracy 1: ", accuracy)
+                #
 
 
                 ##############################3
                 ################################3
 
 
-
-
-                k=3
-                #local samples results:
-                instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
-                instance_unimportant_features = instance_best_features_ascending[:, :-k]
-                #np.save(os.path.join(path_code, f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy", instance_unimportant_features))
-
-
-                #########################
-
-                #unimportant_features_instance = np.load(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy")
-
-                for i, data in enumerate(inputs_test_samp3):
-                    inputs_test_samp3[i, instance_unimportant_features[i]] = 0
-
-
-                ###################################
-                i = 0  # choose a sample
-                mini_batch_size = 2000
-                datatypes_test_samp = None
-
-                input_num= d
-                output_num = 2
-
-                model = FC(input_num, output_num)
-
-                LR_model = np.load(os.path.join(path_code, 'models/%s_%s_LR_model0.npy' % (dataset,method)), allow_pickle=True)
-
-                model.load_state_dict(LR_model[()][0], strict=False)
-
-
-
-
-
-                y_pred = model(torch.Tensor(inputs_test_samp3))
-                y_pred = torch.argmax(y_pred, dim=1)
-
-                accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == y_test) / len(y_test))
-                print("test accuracy 3: ", accuracy)
-
-                ##############################3
-                ##################################
-
-
-                k=5
-                #local samples results:
-                instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
-                instance_unimportant_features = instance_best_features_ascending[:, :-k]
-                #np.save(os.path.join(path_code, f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy", instance_unimportant_features))
-
-
-                #########################
-
-                #unimportant_features_instance = np.load(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy")
-
-                for i, data in enumerate(inputs_test_samp5):
-                    inputs_test_samp5[i, instance_unimportant_features[i]] = 0
-
-
-                ###################################
-                i = 0  # choose a sample
-                mini_batch_size = 2000
-                datatypes_test_samp = None
-
-                input_num= d
-                output_num = 2
-
-                model = FC(input_num, output_num)
-
-                LR_model = np.load(os.path.join(path_code, 'models/%s_%s_LR_model0.npy' % (dataset,method)), allow_pickle=True)
-
-                model.load_state_dict(LR_model[()][0], strict=False)
-
-
-
-
-
-                y_pred = model(torch.Tensor(inputs_test_samp5))
-                y_pred = torch.argmax(y_pred, dim=1)
-
-                accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == y_test) / len(y_test))
-                print("test accuracy 5: ", accuracy)
+                #
+                #
+                # k=3
+                # #local samples results:
+                # instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
+                # instance_unimportant_features = instance_best_features_ascending[:, :-k]
+                # #np.save(os.path.join(path_code, f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy", instance_unimportant_features))
+                #
+                #
+                # #########################
+                #
+                # #unimportant_features_instance = np.load(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy")
+                #
+                # for i, data in enumerate(inputs_test_samp3):
+                #     inputs_test_samp3[i, instance_unimportant_features[i]] = 0
+                #
+                #
+                # ###################################
+                # i = 0  # choose a sample
+                # mini_batch_size = 2000
+                # datatypes_test_samp = None
+                #
+                # input_num= d
+                # output_num = 2
+                #
+                # model = FC(input_num, output_num)
+                #
+                # LR_model = np.load(os.path.join(path_code, 'models/%s_%s_LR_model0.npy' % (dataset,method)), allow_pickle=True)
+                #
+                # model.load_state_dict(LR_model[()][0], strict=False)
+                #
+                #
+                #
+                #
+                #
+                # y_pred = model(torch.Tensor(inputs_test_samp3))
+                # y_pred = torch.argmax(y_pred, dim=1)
+                #
+                # accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == y_test) / len(y_test))
+                # print("test accuracy 3: ", accuracy)
+                #
+                # ##############################3
+                # ##################################
+                #
+                #
+                # k=5
+                # #local samples results:
+                # instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
+                # instance_unimportant_features = instance_best_features_ascending[:, :-k]
+                # #np.save(os.path.join(path_code, f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy", instance_unimportant_features))
+                #
+                #
+                # #########################
+                #
+                # #unimportant_features_instance = np.load(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy")
+                #
+                # for i, data in enumerate(inputs_test_samp5):
+                #     inputs_test_samp5[i, instance_unimportant_features[i]] = 0
+                #
+                #
+                # ###################################
+                # i = 0  # choose a sample
+                # mini_batch_size = 2000
+                # datatypes_test_samp = None
+                #
+                # input_num= d
+                # output_num = 2
+                #
+                # model = FC(input_num, output_num)
+                #
+                # LR_model = np.load(os.path.join(path_code, 'models/%s_%s_LR_model0.npy' % (dataset,method)), allow_pickle=True)
+                #
+                # model.load_state_dict(LR_model[()][0], strict=False)
+                #
+                #
+                #
+                #
+                #
+                # y_pred = model(torch.Tensor(inputs_test_samp5))
+                # y_pred = torch.argmax(y_pred, dim=1)
+                #
+                # accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == y_test) / len(y_test))
+                # print("test accuracy 5: ", accuracy)
                 ##############################
                 ######################3
                 #####################
@@ -778,12 +809,15 @@ def main():
                 mean_median_ranks=np.mean(median_ranks)
                 #if not args.point_estimate:
                 #    S=S.mean(dim=1)
-                tpr, fdr = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp)
+                mini_batch_size=2000
+                tpr, fdr, mcc = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp)
                 print("mean median rank", mean_median_ranks)
                 print(f"tpr: {tpr}, fdr: {fdr}")
+                print(f"mcc: {mcc}")
 
             else:
                 tpr, fdr = -1,-1
+
 
 
     return tpr, fdr, S

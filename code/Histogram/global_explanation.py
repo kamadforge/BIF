@@ -28,8 +28,11 @@ from data.make_synthetic_datasets import generate_data
 from Models import Feedforward, Feature_Importance_Model
 from Losses import loss_function
 from sklearn.metrics import roc_auc_score
+import shap
+import xgboost
 
-max_seed = 5
+
+max_seed = 1
 input_dim = 10
 posterior_mean = np.zeros((max_seed,input_dim))
 
@@ -39,9 +42,9 @@ for seed_idx in range(max_seed):
 
     """ generate data """
     N_tot = 10000
-    dataset = 'XOR'
+    # dataset = 'XOR'
     # dataset = 'orange_skin'
-    # dataset = 'nonlinear_additive'
+    dataset = 'nonlinear_additive'
     x_tot, y_tot, datatypes = generate_data(N_tot, dataset)
     y_tot = np.argmax(y_tot, axis=1)
 
@@ -96,9 +99,26 @@ for seed_idx in range(max_seed):
 
     """ learn feature importance """
 
+
+    # we initialize the parameters based on SHAP estimation.
+    model = xgboost.train({"learning_rate": 0.01}, xgboost.DMatrix(X, label=y), 100)
+    explainer = shap.TreeExplainer(model)
+    shap_values = explainer.shap_values(X)
+    mean_sv = np.abs(shap_values).mean(axis=0)
+    print('importance by SHAP: ', mean_sv)
+
+    filename = dataset + 'shap.npy'
+    np.save(filename, mean_sv)
+
+    # importance by SHAP:  [3.01049769e-01 2.16896809e-03 8.27491842e-03 1.28855770e-02
+    #  1.08360124e-04 3.88371904e-04 9.35922362e-05 1.77524707e-04
+    #  1.42073390e-04 2.23139068e-04]
+
     # input_dim, classifier,
-    num_Dir_samps = 1
-    importance = Feature_Importance_Model(input_dim, classifier, num_Dir_samps)
+    init_phi = 100*mean_sv # Initializing with SHAP estimate, and start with very small concentration
+
+    num_Dir_samps = 10
+    importance = Feature_Importance_Model(input_dim, classifier, num_Dir_samps, init_phi)
     optimizer = optim.Adam(importance.parameters(), lr=0.075)
 
     # We freeze the classifier
@@ -112,14 +132,16 @@ for seed_idx in range(max_seed):
     # print(list(importance.parameters())) # make sure I only update the gradients of feature importance
 
     importance.train()
-    how_many_epochs = 400
+    how_many_epochs = 200
     mini_batch_size = N_tot  # generally larger mini batch size is more helpful for switch learning
     how_many_iter = np.int(N / mini_batch_size)
+
     if mini_batch_size==N_tot:
         how_many_iter = 1
 
+
     if dataset=='nonlinear_additive':
-        alpha_0 = 0.05
+        alpha_0 = 0.2
     else:
         alpha_0 = 0.01
 
@@ -142,6 +164,10 @@ for seed_idx in range(max_seed):
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
+
+            estimated_params = list(importance.parameters())
+            phi_est = F.softplus(torch.Tensor(estimated_params[0]))
+            print('phi_est', phi_est.detach().numpy())
 
         print('Epoch {}: running_loss : {}'.format(epoch, running_loss))
         #
@@ -173,14 +199,17 @@ for seed_idx in range(max_seed):
     posterior_mean_switch = avg_S.detach().numpy()
     print('estimated posterior mean of feature importance is', posterior_mean_switch)
     posterior_mean[seed_idx,:] = posterior_mean_switch
+    print('importance by Q-FIT: ', posterior_mean_switch)
 
-
-# store results
-filename = dataset+'posterior_mean.npy'
-np.save(filename, posterior_mean)
+    # store results
+    filename = dataset+'posterior_mean.npy'
+    np.save(filename, posterior_mean)
 
 """ results """
 # after 600 epochs, alpha_0=0.1, mini_batch_size = 2000
 # XOR
 # [0.47375083 0.47985318 0.00515973 0.00586924 0.00556373 0.00553243
 #  0.00638367 0.00603228 0.0059589  0.0058961 ]
+
+# importance by Q-FIT (with alpha_0=0.05) for nonlinear_additive:  [0.30591163 0.08427644 0.06862613 0.09782147 0.08367525 0.0875598
+#  0.07724797 0.06898335 0.07020948 0.05568846]

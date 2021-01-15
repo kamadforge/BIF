@@ -15,7 +15,7 @@ from sklearn import preprocessing
 import matplotlib.pyplot as plt
 import pickle
 import autodp
-from autodp import privacy_calibrator
+#from autodp import privacy_calibrator
 from models.nn_3hidden import FC, FC_net
 from itertools import combinations, chain
 import argparse
@@ -27,10 +27,10 @@ import torch
 mvnrnd = rn.multivariate_normal
 
 import sys
-from data.tab_dataloader import load_cervical, load_adult, load_credit, load_census, load_isolet, load_adult_short
+from data.tab_dataloader import load_adult, load_credit, load_adult_short
 from data.make_synthetic_datasets import generate_data
 from data.make_synthetic_datasets import generate_invase
-from data.synthetic_data_loader import synthetic_data_loader
+#from data.synthetic_data_loader import synthetic_data_loader
 
 
 
@@ -43,6 +43,7 @@ if  __name__ =='__main__':
     parser.add_argument("--dataset", default="xor") # "xor, orange_skin, or nonlinear_additive"
     parser.add_argument("--mode", default="training") # test, training
     parser.add_argument("--prune", default=False)
+    parser.add_argument("--k", default=3, type=int)
 
     args=parser.parse_args()
 
@@ -55,11 +56,6 @@ if  __name__ =='__main__':
 
     rn.seed(rnd_num)
 
-    # try:
-    #     x_tot, y_tot, datatypes_tot = synthetic_data_loader(dataset)
-    #
-    # except:
-
     def save_dataset(path, dataset):
         if not os.path.isdir(os.path.split(path)[0]):
             os.makedirs(os.path.split(path)[0])
@@ -67,22 +63,12 @@ if  __name__ =='__main__':
 
     if 1:
 
-        if dataset == "cervical":
-            X_train, y_train, X_test, y_test = load_cervical()
-            x_tot = np.concatenate([X_train, X_test])
-            y_tot = np.concatenate([y_train, y_test])
-        elif dataset == "census":
-            X_train, y_train, X_test, y_test = load_census()
-            x_tot = np.concatenate([X_train, X_test])
-            y_tot = np.concatenate([y_train, y_test])
-        elif dataset == "credit":
+
+        if dataset == "credit":
             X_train, y_train, X_test, y_test = load_credit()
             x_tot = np.concatenate([X_train, X_test])
             y_tot = np.concatenate([y_train, y_test])
-        elif dataset == "isolet":
-            X_train, y_train, X_test, y_test = load_isolet()
-            x_tot = np.concatenate([X_train, X_test])
-            y_tot = np.concatenate([y_train, y_test])
+
 
         elif dataset == "adult":
             filename = 'adult.p'
@@ -281,6 +267,11 @@ if  __name__ =='__main__':
 
             testtype="local"
 
+            # if args.rank!="None":
+            #
+            #
+            #
+            # else:
             if 1:
                 if testtype=="global":
 
@@ -339,7 +330,7 @@ if  __name__ =='__main__':
 
 
                 else: # local test
-                    k = 3
+                    k = args.k
                     met = 1  # 2-shap, 3-invase 4-l2x
 
                     if dataset=="adult_short" and met!=1:

@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from torch.distributions import Gamma
 import numpy as np
 
+####################################################################################################
 
 class Modelnn(nn.Module):
 
@@ -120,8 +121,8 @@ class Modelnn(nn.Module):
     #         [[17, 18, 19, 20],
     #          [21, 22, 23, 24]]])
 
-
-# network to learn switch through the forward pass
+############################################################################################
+# network to learn switch through the forward pass of a switch network
 
 class Model_switchlearning(nn.Module):
 
@@ -129,15 +130,16 @@ class Model_switchlearning(nn.Module):
     # def __init__(self, input_dim, hidden_dim):
         super(Model_switchlearning, self).__init__()
 
+        num=20
 
-        self.phi_fc1 = nn.Linear(input_num, 200)
-        self.phi_fc2 = nn.Linear(200,200)
+        self.phi_fc1 = nn.Linear(input_num, num)
+        self.phi_fc2 = nn.Linear(num,num)
         #self.phi_fc2b = nn.Linear(200, 200)
-        self.phi_fc3 = nn.Linear(200, input_num) #outputs switch values
+        self.phi_fc3 = nn.Linear(num, input_num) #outputs switch values
 
-        self.fc1_bn1 = nn.BatchNorm1d(200)
+        self.fc1_bn1 = nn.BatchNorm1d(num)
         #self.fc2_bn2b = nn.BatchNorm1d(200)
-        self.fc2_bn2 = nn.BatchNorm1d(200)
+        self.fc2_bn2 = nn.BatchNorm1d(num)
 
         #self.parameters = -1e-10*torch.ones(input_num) #just an output
 
@@ -203,7 +205,7 @@ class Model_switchlearning(nn.Module):
             num_samps = self.num_samps_for_switch
             feat_dim = phi.shape[1]
 
-            # sanity check: we draw samples for each data sample in a for loop first and see if this statistic matches full one
+            # sanity check: we draw samples for each data_basic sample in a for loop first and see if this statistic matches full one
 
             compute_loop = False
             if compute_loop:
@@ -275,7 +277,7 @@ class Model_switchlearning(nn.Module):
         # S: [batch x feat]
         return output, phi, S, pre_phi
 
-
+##############################################################################################
 
 class ThreeNet(nn.Module):
 

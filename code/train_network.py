@@ -1,10 +1,9 @@
 """
-This script is written based on what I wrote back on July 2, 2019 for testing VIPS on Adult data
+1. removed vips data
 """
 
 __author__ = 'mijung'
 
-import Bayesian_Logistic_Regression as VIPS_BLR_MA # this has all core functions
 import os
 import sys
 import scipy
@@ -13,6 +12,7 @@ import numpy as np
 import numpy.random as rn
 from sklearn.metrics import roc_curve,auc
 from sklearn import preprocessing
+from sklearn.metrics import matthews_corrcoef
 import matplotlib.pyplot as plt
 import pickle
 import autodp
@@ -24,11 +24,15 @@ import torch.nn as nn
 import torch.optim as optim
 import torch
 
+import argparse
+
 mvnrnd = rn.multivariate_normal
 
 import sys
-# sys.path.append("/home/kamil/Desktop/Dropbox/Current_research/privacy/DPDR/data")
-from data.tab_dataloader import load_cervical, load_adult, load_credit, load_census, load_isolet, load_adult_short
+#sys.path.append("/home/kamil/Dropbox/Current_research/privacy/DPDR/data")
+#from data.tab_dataloader import load_credit
+
+from data.tab_dataloader import load_cervical, load_adult, load_census, load_isolet, load_adult_short
 from data.make_synthetic_datasets import generate_data
 from data.make_synthetic_datasets import generate_invase
 from data.synthetic_data_loader import synthetic_data_loader
@@ -39,15 +43,31 @@ from data.synthetic_data_loader import synthetic_data_loader
 
 if  __name__ =='__main__':
 
-    """ inputs """
-    dataset = "credit" # "xor, orange_skin, or nonlinear_additive"
+
+
+    parser=argparse.ArgumentParser()
+    parser.add_argument("--dataset", default="syn4") # "xor, orange_skin, or nonlinear_additive"
+    parser.add_argument("--mode", default="training") # test, training
+    parser.add_argument("--prune", default=False)
+    parser.add_argument("--k", default=3, type=int)
+
+    args=parser.parse_args()
+
+    dataset = args.dataset
     method = "nn"
     which_net = 'FC' # FC_net or 'FC'
     rnd_num = 0
-    mode = 'training' #training, test&
-    prune = True
+    mode = args.mode
+    prune = args.prune
 
     rn.seed(rnd_num)
+
+    def save_dataset(path, dataset):
+        if not os.path.isdir(os.path.split(path)[0]):
+            os.makedirs(os.path.split(path)[0])
+        np.save(path, dataset)
+
+
 
     # try:
     #     x_tot, y_tot, datatypes_tot = synthetic_data_loader(dataset)
@@ -88,47 +108,47 @@ if  __name__ =='__main__':
             x_tot, y_tot, datatypes = generate_data(10000, 'XOR')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_XOR={'x': x_tot, 'y':y_tot}
-            np.save('../data/synthetic/XOR/dataset_XOR.npy', dataset_XOR)
+            save_dataset('../data/synthetic/XOR/dataset_XOR.npy', dataset_XOR)
         elif dataset == "orange_skin":
             x_tot, y_tot, datatypes = generate_data(10000, 'orange_skin')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot}
-            np.save('../data/synthetic/orange_skin/dataset_orange_skin.npy', dataset_tosave)
+            save_dataset('../data/synthetic/orange_skin/dataset_orange_skin.npy', dataset_tosave)
 
         elif dataset == "nonlinear_additive":
             x_tot, y_tot, datatypes = generate_data(10000, 'nonlinear_additive')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot}
-            np.save('../data/synthetic/nonlinear_additive/dataset_nonlinear_additive.npy', dataset_tosave)
+            save_dataset('../data/synthetic/nonlinear_additive/dataset_nonlinear_additive.npy', dataset_tosave)
 
         #the instance depends on 5 features
         elif dataset == "alternating":
             x_tot, y_tot, datatypes = generate_data(10000, 'alternating')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
-            np.save('../data/synthetic/alternating/dataset_alternating.npy', dataset_tosave)
+            save_dataset('../data/synthetic/alternating/dataset_alternating.npy', dataset_tosave)
 
         #the instant depends only on 1 feature, all other features for all the instances in the dataset are either 1 or 0
         elif dataset == "syn4":
             x_tot, y_tot, datatypes = generate_invase(10000, 'syn4')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
-            np.save('../data/synthetic/invase/dataset_syn4.npy', dataset_tosave)
+            save_dataset('../data/synthetic/invase/dataset_syn4.npy', dataset_tosave)
         elif dataset == "syn5":
             x_tot, y_tot, datatypes = generate_invase(10000, 'syn5')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
-            np.save('../data/synthetic/invase/dataset_syn5.npy', dataset_tosave)
+            save_dataset('../data/synthetic/invase/dataset_syn5.npy', dataset_tosave)
         elif dataset == "syn6":
             x_tot, y_tot, datatypes = generate_invase(10000, 'syn6')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
-            np.save('../data/synthetic/invase/dataset_syn6.npy', dataset_tosave)
+            save_dataset('../data/synthetic/invase/dataset_syn6.npy', dataset_tosave)
         elif dataset == "total":
             x_tot, y_tot, datatypes = generate_invase(10000, 'total')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
-            np.save('../data/synthetic/qtip/dataset_total.npy', dataset_tosave)
+            save_dataset('../data/synthetic/qtip/dataset_total.npy', dataset_tosave)
 
 
 
@@ -145,24 +165,8 @@ if  __name__ =='__main__':
     N = int(training_data_por * N_tot)
     N_test = N_tot - N
 
-    if method == "vips":
-        """ hyper-params for the prior over the parameters """
-        alpha = 0.02
-        a0 = 1.
-        b0 = 1.
 
-        """ stochastic version """
-        tau0 = 1024
-        kappa = 0.7
-        MaxIter = 200 # EM iteration
-        nu = 0.04
-        S = np.int(nu*N)
-        print('mini batch size is ', S)
-
-        exp_nat_params_prv = np.ones([d,d])
-        mean_alpha_prv = a0/b0
-
-    elif method == "nn":
+    if method == "nn":
         if which_net == 'FC_net':
             hidden_dim = 400
             which_norm = 'weight_norm'
@@ -210,14 +214,7 @@ if  __name__ =='__main__':
         # iter_sigmas = np.array([0., 1., 10., 50., 100.]) # use this one when we have different levels of noise.
         iter_sigmas = np.array([0.])
 
-        if method == "vips":
-            auc_private_stoch_ours = np.empty([iter_sigmas.shape[0], num_repeat])
-            LR_model0 = np.empty([num_repeat, d])
-            LR_model1 = np.empty([num_repeat, d])
-            LR_model10 = np.empty([num_repeat, d])
-            LR_model50 = np.empty([num_repeat, d])
-            LR_model100 = np.empty([num_repeat, d])
-        elif method == "nn":
+        if method == "nn":
             LR_model0 = {}
 
         for k in range(iter_sigmas.shape[0]):
@@ -225,31 +222,9 @@ if  __name__ =='__main__':
 
             for repeat_idx in range(num_repeat):
 
-                if method=="vips":
-                    for iter in range(MaxIter):
 
-                        # VI iterations start here
-                        rhot = (tau0+iter)**(-kappa)
 
-                        exp_suff_stats1, exp_suff_stats2 = VIPS_BLR_MA.VBEstep_private(sigma, X, y, exp_nat_params_prv)
-
-                        if iter==0:
-                            nu_old = []
-                            ab_old = []
-                        nu_new, ab_new, exp_nat_params, mean_alpha, Mu_theta = VIPS_BLR_MA.VBMstep_stochastic(rhot, nu_old, ab_old, N, a0, b0, exp_suff_stats1, exp_suff_stats2, mean_alpha_prv, iter)
-
-                        mean_alpha_prv = mean_alpha
-                        exp_nat_params_prv = exp_nat_params
-                        nu_old = nu_new
-                        ab_old = ab_new
-
-                        """ compute roc_curve and auc """
-                        ypred = VIPS_BLR_MA.computeOdds(Xtst, Mu_theta)
-                        accuracy = (np.sum(np.round(ypred) == ytst) / len(ytst))
-                        print("iter number: ", iter)
-                        print("test accuracy: ", accuracy)
-
-                elif method=="nn":
+                if method=="nn":
 
                     for epoch in range(num_epochs):
 
@@ -273,31 +248,14 @@ if  __name__ =='__main__':
                         print("test accuracy: ", accuracy)
 
 
-                if method=="vips":
-                    # last model is saved in every sigma value
-                    if k==0:
-                        LR_model0[repeat_idx,:] = Mu_theta
-                    elif k==1:
-                        LR_model1[repeat_idx,:] = Mu_theta
-                    elif k==2:
-                        LR_model10[repeat_idx,:] = Mu_theta
-                    elif k==3:
-                        LR_model50[repeat_idx, :] = Mu_theta
-                    else: #k==4
-                        LR_model100[repeat_idx,:] = Mu_theta
-
-                elif method=="nn":
+                if method=="nn":
                     LR_model0[repeat_idx] = model.state_dict()
 
-        if method == "vips":
-            # np.save('models/%s_accuracy_ours' % (dataset, method), auc_private_stoch_ours)
+        if method == "nn":
+            if not os.path.isdir("models"):
+                os.mkdir("models")
             np.save('models/%s_%s_LR_model0' % (dataset, method), LR_model0)
-            np.save('models/%s_%s_LR_model1' % (dataset, method), LR_model1)
-            np.save('models/%s_%s_LR_model10' % (dataset, method), LR_model10)
-            np.save('models/%s_%s_LR_model50' % (dataset, method), LR_model50)
-            np.save('models/%s_%s_LR_model100' % (dataset, method), LR_model100)
-        elif method == "nn":
-            np.save('models/%s_%s_LR_model0' % (dataset, method), LR_model0)
+
 
 
     elif mode == "test":
@@ -383,7 +341,7 @@ if  __name__ =='__main__':
 
 
                 else: # local test
-                    k = 3
+                    k = args.k
                     met = 1  # 2-shap, 3-invase 4-l2x
 
                     if dataset=="adult_short" and met!=1:

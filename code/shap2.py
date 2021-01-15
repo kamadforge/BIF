@@ -6,11 +6,11 @@ import os
 import pickle
 from sklearn import svm
 
-from data.tab_dataloader import load_adult_short, load_credit, load_cervical
+from data.tab_dataloader import load_adult_short, load_credit, load_cervical, load_isolet
 import numpy as np
 
 
-X, y, X_test, y_test = load_cervical()
+X, y, X_test, y_test = load_isolet()
 
 model = xgboost.train({"learning_rate": 0.01}, xgboost.DMatrix(X, label=y), 100)
 

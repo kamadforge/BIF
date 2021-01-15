@@ -15,8 +15,8 @@ Contact: jsyoon0823@gmail.com
 
 # Necessary packages
 import numpy as np
-from sklearn.metrics import roc_auc_score, average_precision_score, accuracy_score
-       
+from sklearn.metrics import roc_auc_score, average_precision_score, accuracy_score, matthews_corrcoef
+
 
 def feature_performance_metric (ground_truth, importance_score):
   """Performance metrics for feature importance (TPR and FDR).
@@ -52,9 +52,11 @@ def feature_performance_metric (ground_truth, importance_score):
   mean_tpr = np.mean(tpr)
   std_tpr = np.std(tpr)
   mean_fdr = np.mean(fdr)
-  std_fdr = np.std(fdr)  
+  std_fdr = np.std(fdr)
+
+  mcc = matthews_corrcoef(importance_score.flatten(), ground_truth.flatten())
   
-  return mean_tpr, std_tpr, mean_fdr, std_fdr
+  return mean_tpr, std_tpr, mean_fdr, std_fdr, mcc
 
 
 def prediction_performance_metric(y_test, y_hat):
@@ -70,9 +72,14 @@ def prediction_performance_metric(y_test, y_hat):
     - acc: accuracy
   """
   
-  auc = roc_auc_score (y_test[:, 1], y_hat[:, 1])
-  apr = average_precision_score (y_test[:, 1], y_hat[:, 1])
-  acc = accuracy_score (y_test[:, 1], 1.*(y_hat[:, 1] > 0.5))
+  # auc = roc_auc_score (y_test[:, 1], y_hat[:, 1])
+  # apr = average_precision_score (y_test[:, 1], y_hat[:, 1])
+  # acc = accuracy_score (y_test[:, 1], 1.*(y_hat[:, 1] > 0.5))
+
+
+  auc = roc_auc_score (y_test, y_hat[:, 1])
+  apr = average_precision_score (y_test, y_hat[:, 1])
+  acc = accuracy_score (y_test, 1.*(y_hat[:, 1] > 0.5))
   
   return auc, apr, acc
   
