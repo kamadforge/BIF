@@ -94,14 +94,22 @@ def do_featimp_exp(ar):
   # print(test_image)
   test_image = test_image.astype(np.float64)
   explainer = lime_image.LimeImageExplainer()
-  segmenter = SegmentationAlgorithm('quickshift', kernel_size=1, max_dist=200, ratio=0.2)
+
+  # segmenter = SegmentationAlgorithm('quickshift', kernel_size=1, max_dist=200, ratio=0.2)
+
+  def patch_segmenter(img):
+    assert img.shape[0] == 28 and img.shape[1] == 28
+    patches = np.arange(49).reshape((7, 7))
+    patches = np.repeat(np.repeat(patches, 4, axis=0), 4, axis=1)
+    return patches
 
   explanation = explainer.explain_instance(test_image,
                                            batch_predict,  # classification function
                                            top_labels=2,
                                            hide_color=0,
                                            num_samples=1000,
-                                           segmentation_fn=segmenter)
+                                           # segmentation_fn=segmenter,
+                                           segmentation_fn=patch_segmenter)
 
   print(explanation.top_labels[0])
   temp, mask = explanation.get_image_and_mask(explanation.top_labels[0], positive_only=True, num_features=10,
