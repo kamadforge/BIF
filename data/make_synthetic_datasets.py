@@ -34,6 +34,10 @@ def generate_XOR_labels(X):
 
     y = np.concatenate((prob_0,prob_1), axis = 1)
 
+    # y = np.zeros([len(X), 2])
+    # y[:, 0] = np.reshape(np.random.binomial(1, prob_0), [len(X), ])
+    # y[:, 1] = 1 - y[:, 0]
+
     return y
 
 def generate_orange_labels(X):
@@ -176,26 +180,39 @@ def generate_data(n=100, datatype='', seed = 0, val = False):
     return X, y, datatypes
 
 def generate_data_forinvasecode(n, datatype):
-    X, y, _ = generate_data(n, datatype)
+
+    if datatype == "xor" or datatype == "orange_skin" or datatype == "nonlinear_additive":
+        X, y, datatypes = generate_data(n, datatype)
+    else:
+        X, y, datatypes = generate_invase(n, datatype)
 
     y_lab=np.zeros((n,2))
     y_tot = np.argmax(y, axis=1)
-    y_lab[y_tot]=1
+    y_lab[np.arange(n), y_tot]=1
 
     gt=np.zeros((n,10))
 
-    if datatype == 'orange_skin' or datatype == 'syn2':
-        indices=np.array([0,1])
 
-    elif datatype == 'XOR' or datatype == 'syn1':
-        indices = np.array([0, 1,2,3])
+    # if datatype == 'orange_skin' or datatype == 'syn2':
+    #     indices=np.array([0,1])
+    #
+    # elif datatype == 'XOR' or datatype == 'syn1':
+    #     indices = np.array([0, 1,2,3])
+    #
+    # elif datatype == 'nonlinear_additive' or datatype == 'syn3':
+    #     indices = np.array([0, 1, 2, 3])
 
-    elif datatype == 'nonlinear_additive' or datatype == 'syn3':
-        indices = np.array([0, 1, 2, 3])
 
-    gt[indices]=1
+    # elif datatype == 'syn4':
+    #
+    #
+    # elif datatype == 'syn5':
+    #
+    # elif datatype == 'syn6':
 
-    return X, y_lab, indices
+    # gt[indices]=1
+
+    return X, y_lab, datatypes
 
 
 
