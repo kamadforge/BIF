@@ -19,57 +19,51 @@ import autodp
 from models.nn_3hidden import FC, FC_net
 from itertools import combinations, chain
 import argparse
-
+from sklearn.metrics import matthews_corrcoef
 import torch.nn as nn
 import torch.optim as optim
 import torch
-
 mvnrnd = rn.multivariate_normal
-
 import sys
-from data.tab_dataloader import load_adult, load_credit, load_adult_short
-from data.make_synthetic_datasets import generate_data
-from data.make_synthetic_datasets import generate_invase
+from pathlib import Path
+sys.path.append(str(Path(sys.path[0]).resolve().parent / "data"))
+import sys
+from tab_dataloader import load_adult, load_credit, load_adult_short
+from tab_dataloader import load_intrusion, load_covtype
+from make_synthetic_datasets import generate_data
+from make_synthetic_datasets import generate_invase
 #from data.synthetic_data_loader import synthetic_data_loader
 
 
-
-
-
 if  __name__ =='__main__':
-
-
     parser=argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="xor") # "xor, orange_skin, or nonlinear_additive"
-    parser.add_argument("--mode", default="training") # test, training
-    parser.add_argument("--prune", default=False)
-    parser.add_argument("--k", default=3, type=int)
-
+    parser.add_argument("--dataset", default="intrusion") # "xor, orange_skin, or nonlinear_additive"
+    parser.add_argument("--mode", default="test") # test, training
+    parser.add_argument("--testtype", default="global") #global, local
+    parser.add_argument("--prune", default=True) #tests the subset of features
+    parser.add_argument("--k", default=1, type=int)
     args=parser.parse_args()
-
     dataset = args.dataset
     method = "nn"
     which_net = 'FC' # FC_net or 'FC'
     rnd_num = 0
     mode = args.mode
     prune = args.prune
-
     rn.seed(rnd_num)
 
     def save_dataset(path, dataset):
         if not os.path.isdir(os.path.split(path)[0]):
             os.makedirs(os.path.split(path)[0])
         np.save(path, dataset)
-
     if 1:
-
-
         if dataset == "credit":
             X_train, y_train, X_test, y_test = load_credit()
             x_tot = np.concatenate([X_train, X_test])
             y_tot = np.concatenate([y_train, y_test])
-
-
+        if dataset == "intrusion":
+            X_train, y_train, X_test, y_test = load_intrusion()
+            x_tot = np.concatenate([X_train, X_test])
+            y_tot = np.concatenate([y_train, y_test])
         elif dataset == "adult":
             filename = 'adult.p'
             with open(filename, 'rb') as f:
@@ -81,7 +75,6 @@ if  __name__ =='__main__':
             X_train, y_train, X_test, y_test = load_adult_short()
             x_tot = np.concatenate([X_train, X_test])
             y_tot = np.concatenate([y_train, y_test])
-
         elif dataset=="xor":
             x_tot, y_tot, datatypes = generate_data(10000, 'XOR')
             y_tot = np.argmax(y_tot, axis=1)
@@ -92,61 +85,48 @@ if  __name__ =='__main__':
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot}
             save_dataset('../data/synthetic/orange_skin/dataset_orange_skin.npy', dataset_tosave)
-
         elif dataset == "nonlinear_additive":
             x_tot, y_tot, datatypes = generate_data(10000, 'nonlinear_additive')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot}
             save_dataset('../data/synthetic/nonlinear_additive/dataset_nonlinear_additive.npy', dataset_tosave)
-
         #the instance depends on 5 features
         elif dataset == "alternating":
             x_tot, y_tot, datatypes = generate_data(10000, 'alternating')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
             save_dataset('../data/synthetic/alternating/dataset_alternating.npy', dataset_tosave)
-
         #the instant depends only on 1 feature, all other features for all the instances in the dataset are either 1 or 0
         elif dataset == "syn4":
             x_tot, y_tot, datatypes = generate_invase(10000, 'syn4')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
             save_dataset('../data/synthetic/invase/dataset_syn4.npy', dataset_tosave)
-
         elif dataset == "syn5":
             x_tot, y_tot, datatypes = generate_invase(10000, 'syn5')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
             save_dataset('../data/synthetic/invase/dataset_syn5.npy', dataset_tosave)
-
-
         elif dataset == "syn6":
             x_tot, y_tot, datatypes = generate_invase(10000, 'syn6')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
             save_dataset('../data/synthetic/invase/dataset_syn6.npy', dataset_tosave)
-
-
         elif dataset == "total":
             x_tot, y_tot, datatypes = generate_invase(10000, 'total')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
             save_dataset('../data/synthetic/qtip/dataset_total.npy', dataset_tosave)
 
-
-
-
-
-
     ####################################
     # define essential quantities
-    output_num = 2
+    if dataset=="intrusion":
+        output_num = 4
+    else:
+        output_num = 2
     sample_num, input_num = x_tot.shape
-
     N_tot, d = x_tot.shape
-
     training_data_por = 0.8
-
     N = int(training_data_por * N_tot)
     N_test = N_tot - N
 
@@ -159,11 +139,9 @@ if  __name__ =='__main__':
         else:
             model = FC(input_num, output_num)
         criterion = nn.CrossEntropyLoss()
-
-
         # optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
         optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
-        num_epochs = 500
+        num_epochs = 100
 
     """ set the privacy parameter """
     # dp_epsilon = 1
@@ -186,98 +164,73 @@ if  __name__ =='__main__':
     Xtst = x_tot[rand_perm_nums[N:], :]
     ytst = y_tot[rand_perm_nums[N:]]
 
-    if dataset=="adult_short" or dataset=="credit":
+
+    if dataset=="adult_short" or dataset=="credit" or dataset=="intrusion":
         Xtst=X_test
         X=X_train
         ytst=y_test
         y = y_train
 
-    if mode=='training':
+
+    if mode=='train':
 
         num_repeat = 1
-
         # iter_sigmas = np.array([0., 1., 10., 50., 100.]) # use this one when we have different levels of noise.
         iter_sigmas = np.array([0.])
-
         if method == "nn":
             LR_model0 = {}
-
         for k in range(iter_sigmas.shape[0]):
             sigma = iter_sigmas[k]
 
             for repeat_idx in range(num_repeat):
 
-
-
                 if method=="nn":
 
                     for epoch in range(num_epochs):
-
                         print("epoch number: ", epoch)
-
                         optimizer.zero_grad()
                         ypred_tr = model(torch.Tensor(X))
                         loss = criterion(ypred_tr, torch.LongTensor(y))
                         loss.backward()
                         optimizer.step()
 
-                        # print(loss)
-
                         ###########
                         # TEST per epoch
 
                         y_pred = model(torch.Tensor(Xtst))
                         y_pred = torch.argmax(y_pred, dim=1)
-
                         accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == ytst) / len(ytst))
                         print("test accuracy: ", accuracy)
-
 
                 if method=="nn":
                     LR_model0[repeat_idx] = model.state_dict()
 
         if method == "nn":
-            if not os.path.isdir("models"):
-                os.mkdir("models")
-            np.save('models/%s_%s_LR_model0' % (dataset, method), LR_model0)
+            if not os.path.isdir("checkpoints"):
+                os.mkdir("checkpoints")
+            np.save('checkpoints/%s_%s_LR_model0_epochs_%d_acc_%.2f' % (dataset, method, num_epochs, accuracy), LR_model0)
 
+    ###########################################
 
     elif mode == "test":
 
         print(f"dataset: {dataset}")
 
+        # pruning
         if prune:
             print("testing a subset of features")
-
             features_num=np.arange(Xtst.shape[1])
-
+            #experimental feature
             def powerset(iterable):
                 "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
                 s = list(iterable)
                 return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
-
             test=Xtst.copy()
 
-            # for result in powerset(features_num):
-            #     print(result)
-            #
-            #     test = Xtst.copy()
-            #
-            #     if len(result)==4:
-
-            testtype="local"
-
-            # if args.rank!="None":
-            #
-            #
-            #
-            # else:
             if 1:
-                if testtype=="global":
-
-                    k = 1
-
-                    met = 2 #2-shap, 3-invase 4-l2x
+                if args.testtype=="global":
+                    k = 1 #number of important features to keep
+                    met = 4 #2-shap, 3-invase 4-l2x
                     if dataset=="adult":
                         if met==1:
                             important_features=[10,5,0,12,4,7,9,3,8,11,6,1,2,13]#qfit
@@ -287,7 +240,6 @@ if  __name__ =='__main__':
                             important_features=[5,4,10,0,12,11,9,13,8,3,7,2,1,6]#invase
                         elif met==4:
                             important_features=[5,4,0,9,2,10,11,3,12,1,7,13,6,8]#l2x global
-                            important_features=[5,7,10,13,8]#l2x local
 
                     elif dataset=="credit":
                         if met == 1:
@@ -309,6 +261,16 @@ if  __name__ =='__main__':
                         elif met==4:
                             important_features = [31,32,25,30,26,3,7,33,11,10,9,8,4,6,5,13,2,1,12,16,14,15,17,18,19,20,21,22,23,24,27,28,29,0]
 
+                    elif dataset=="intrusion": #dummy rankings
+                        if met==1:
+                            important_features = [26, 17, 27, 18,  5,  0, 36,  2,  8, 29, 35,  3, 21,  1,  6, 30,  9, 15, 16, 32, 20, 28, 22, 11, 39, 19, 24, 31,  7, 13, 10, 25, 23, 14, 12, 37, 34, 38, 33,  4]
+                        elif met==2:
+                            important_features = [32,0,4,5,33,2,3,28,20,10,1,6,31,7,13,30,8,9,11,12,14,27,15,29,17,18,19,21,22,23,24,25,26,16]
+                        elif met==3:
+                            important_features = [33,17,30,2,27,13,9,15,7,35,16,3,25,12,21,28,39,8,18,29,14,20,38,24,10,23,6,31,0,1,19,11,36,34,4,32,5,37,22,26]
+                        elif met==4:
+                            important_features = [24, 29, 31, 34, 18, 16, 11, 35, 32,  1, 39, 38, 36,  6, 23,  5, 19, 15, 27,  0, 37, 12, 13  ,2,14, 10, 22, 20 ,33 ,26,  9,  8, 25, 17, 21,  7, 30,  4,  3, 28] #l2x
+
                     elif dataset=="census":
                         if met== 1:
                             important_features = [17,39,14,5,21,30,10,0,24,16,6,36,18,25,13,26,4,38,9,31,29,7,11,20,27,28,35,19,33,32,12,34,8,22,37,23,3,2,1,15]
@@ -323,45 +285,58 @@ if  __name__ =='__main__':
                     important_features = important_features[:k]
                     unimportant_features = np.delete(features_num, important_features)
                     print("important features: ", important_features, "for met", met)
-
+                    #pruning global
+                    print("pruning global")
                     test[:, unimportant_features] = 0
 
-
-
-
-                else: # local test
-                    k = args.k
-                    met = 1  # 2-shap, 3-invase 4-l2x
+                ###################
+                # local test
+                else:
+                    k = 5#args.k
+                    met = 4  #1-qfit,  2-shap, 3-invase 4-l2x
+                    met_names = {1 : "qfit", 2: "shap", 3: "invase", 4: "l2x"}
 
                     if dataset=="adult_short" and met!=1:
                         dataset="adult"
 
-                    if met == 3:
-                        unimportant_features_instance=np.load(f"../comparison_methods/INVASE/INVASE_custom_datasets/instance_featureranks_test_invase_{dataset}_k_{k}.npy")
+                    if met == 1:
+                        dir_ranks = "publish_qfit/code/rankings"
+                    elif met == 2:
+                        dir_ranks = "dummy"
+                    elif met == 3:
+                        dir_ranks  = "comparison_methods/INVASE/INVASE_custom_datasets/ranks"
                     elif met == 4:
-                        unimportant_features_instance=np.load(f"../comparison_methods/L2X/instance_featureranks_test_l2x_{dataset}_k_{k}.npy")
-                    elif met == 1:
-                        unimportant_features_instance = np.load(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy")
+                        dir_ranks = "comparison_methods/L2X/ranks"
 
+                    for file in os.listdir(os.path.join("../../", dir_ranks)):
+                        if dataset in file and f"k_{k}" in file:
+                            unimportant_features_instance = np.load(os.path.join("../../", dir_ranks, file))
+                            print(f"loaded dataset '{met_names[met]}' in '{file}' from '{dir_ranks}'")
 
-                for i, data in enumerate(test):
-                   test[i, unimportant_features_instance[i]]=0
+                    #pruning local
+                    print(f"unimportant features shape: {unimportant_features_instance.shape}")
+                    print("pruning local")
+                    for i, data in enumerate(test):
+                        test[i, unimportant_features_instance[i]] = 0
 
-
-
-                # no pruning here, just a regular test with all the features present
+                ###########################
+                # pruning (both local and global)
+                # zeroing values in the input dataset
+                print(f"the shape of test dataset is: {test.shape}")
 
 
                 i = 0  # choose a sample
                 mini_batch_size = 2000
                 datatypes_test_samp = None
 
-                LR_model = np.load('models/%s_%s_LR_model0.npy' % (dataset,method), allow_pickle=True)
-
+                # loading the trained model on a dataset (credit, adult, intrusion, etc.)
+                for file in os.listdir("checkpoints"):
+                    if dataset in file:
+                        LR_model = np.load(os.path.join("checkpoints", file), allow_pickle=True)
+                        print("Loaded: ", file)
                 model.load_state_dict(LR_model[()][0], strict=False)
 
-
-
+                # testing the subset of features on a trained model
                 y_pred = model(torch.Tensor(test))
                 y_pred = torch.argmax(y_pred, dim=1)
 
