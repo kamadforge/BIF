@@ -1,6 +1,9 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path(sys.path[0]).resolve().parent / "data"))
 
 
-from data.tab_dataloader import load_cervical, load_adult, load_credit, load_census, load_isolet, load_adult_short
+from tab_dataloader import load_cervical, load_adult, load_credit, load_census, load_isolet, load_adult_short
 import numpy as np
 import os
 from pathlib import Path
