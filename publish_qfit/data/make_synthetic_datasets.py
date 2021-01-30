@@ -1,7 +1,7 @@
 """
 This script contains functions for generating synthetic data.
 Copied from https://github.com/Jianbo-Lab/L2X/blob/master/synthetic/make_data.py
-""" 
+"""
 
 
 from __future__ import print_function
@@ -33,6 +33,10 @@ def generate_XOR_labels(X):
     prob_0 = np.expand_dims(y / (1+y) ,1)
 
     y = np.concatenate((prob_0,prob_1), axis = 1)
+
+    # y = np.zeros([len(X), 2])
+    # y[:, 0] = np.reshape(np.random.binomial(1, prob_0), [len(X), ])
+    # y[:, 1] = 1 - y[:, 0]
 
     return y
 
@@ -72,18 +76,30 @@ def generate_data(n=100, datatype='', seed = 0, val = False):
 
     np.random.seed(seed)
 
-    X = np.random.randn(n, 10)
+    features_num=11
+
+    X = np.random.randn(n, features_num)
 
     datatypes = None
 
-    if datatype == 'orange_skin':
+    if datatype == 'orange_skin' or datatype == 'syn2':
         y = generate_orange_labels(X)
+        datatypes = np.zeros((n, features_num))
+        indices = np.array([0, 1, 2, 3])
+        datatypes[:, indices] = 1
 
-    elif datatype == 'XOR':
+
+    elif datatype == 'XOR' or datatype == 'syn1':
         y = generate_XOR_labels(X)
+        datatypes = np.zeros((n, features_num))
+        indices = np.array([0, 1])
+        datatypes[:, indices] = 1
 
-    elif datatype == 'nonlinear_additive':
+    elif datatype == 'nonlinear_additive' or datatype == 'syn3':
         y = generate_additive_labels(X)
+        datatypes = np.zeros((n, features_num))
+        indices = np.array([0, 1, 2, 3])
+        datatypes[:, indices] = 1
 
     elif datatype == 'alternating':
 
@@ -109,7 +125,7 @@ def generate_data(n=100, datatype='', seed = 0, val = False):
         X,y = X[perm_inds],y[perm_inds]
         datatypes = datatypes[perm_inds]
 
-    elif datatype == 'alternating_xor_orange':
+    elif datatype == 'alternating_xor_orange' or datatype == 'syn4':
 
         # Construct X as a mixture of two Gaussians.
         X[:n // 2, -1] += 3
@@ -162,6 +178,43 @@ def generate_data(n=100, datatype='', seed = 0, val = False):
 
 
     return X, y, datatypes
+
+def generate_data_forinvasecode(n, datatype):
+
+    if datatype == "xor" or datatype == "orange_skin" or datatype == "nonlinear_additive":
+        X, y, datatypes = generate_data(n, datatype)
+    else:
+        X, y, datatypes = generate_invase(n, datatype)
+
+    y_lab=np.zeros((n,2))
+    y_tot = np.argmax(y, axis=1)
+    y_lab[np.arange(n), y_tot]=1
+
+    gt=np.zeros((n,10))
+
+
+    # if datatype == 'orange_skin' or datatype == 'syn2':
+    #     indices=np.array([0,1])
+    #
+    # elif datatype == 'XOR' or datatype == 'syn1':
+    #     indices = np.array([0, 1,2,3])
+    #
+    # elif datatype == 'nonlinear_additive' or datatype == 'syn3':
+    #     indices = np.array([0, 1, 2, 3])
+
+
+    # elif datatype == 'syn4':
+    #
+    #
+    # elif datatype == 'syn5':
+    #
+    # elif datatype == 'syn6':
+
+    # gt[indices]=1
+
+    return X, y_lab, datatypes
+
+
 
 
 def generate_ground_truth(x, data_type, rand_vector):
@@ -319,4 +372,5 @@ def generate_invase(n=100, data_type='', seed = 0):
 
 
 if __name__=="__main__":
-    generate_invase(100, "total", 0)
+    generate_invase(100, "syn4", 0)
+    # generate_data(100, 'XOR', 0)
