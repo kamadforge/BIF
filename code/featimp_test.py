@@ -90,19 +90,19 @@ def get_args():
     parser.add_argument("--dataset", default="nonlinear_additive") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=200, type=int)
-    parser.add_argument("--epochs", default=5, type=int)
-    parser.add_argument("--lr", default=0.05, type=float)
+    parser.add_argument("--epochs", default=3, type=int)
+    parser.add_argument("--lr", default=0.1, type=float)
 
     # for switch training
-    parser.add_argument("--num_Dir_samples", default=20, type=int)
+    parser.add_argument("--num_Dir_samples", default=50, type=int)
     parser.add_argument("--alpha", default=5, type=float)
-    parser.add_argument("--point_estimate", default=False)
+    parser.add_argument("--point_estimate", default=True)
 
     parser.add_argument("--train", default=True)
     parser.add_argument("--test", default=True)
 
     # for instance wise training
-    parser.add_argument("--switch_nn", default=True)
+    parser.add_argument("--switch_nn", default=False)
 
     parser.add_argument("--training_local", default=False)
     parser.add_argument("--local_training_iter", default=200, type=int)
@@ -548,6 +548,7 @@ def main():
 
                     posterior_mean_switch_mat[repeat_idx,:] = posterior_mean_switch
                     print('estimated posterior mean of Switch is', posterior_mean_switch)
+                    print(f"features globally sorted {np.argsort(posterior_std_switch)[::-1]}")
                     mean_of_means+=posterior_mean_switch
 
                     torch.save(model.state_dict(),
@@ -585,7 +586,7 @@ def main():
                 path = os.path.join(path_code, f"models/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt")
 
                 i = 0  # choose a sample
-                mini_batch_size = 10000
+
                 datatypes_test_samp=None
 
 
@@ -593,8 +594,10 @@ def main():
                 # loading the model
 
                 if switch_nn:
+                    mini_batch_size = 10000
                     model = Model_switchlearning(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
                 else:
+                    mini_batch_size = 2000
                     model = Modelnn(d,2, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
 
 
@@ -632,9 +635,9 @@ def main():
                 #####################
                 #########################3
                 ##############################
-                inputs_test_samp1=inputs_test_samp.clone()
-                inputs_test_samp3=inputs_test_samp.clone()
-                inputs_test_samp5=inputs_test_samp.clone()
+                # inputs_test_samp1=inputs_test_samp.clone()
+                # inputs_test_samp3=inputs_test_samp.clone()
+                # inputs_test_samp5=inputs_test_samp.clone()
 
                 #######################
                 ##########################
@@ -775,11 +778,11 @@ def main():
                 #####################
 
 
-                samples_to_see=5
-                if mini_batch_size>samples_to_see and datatypes_test_samp is not None:
-                    print(datatypes_test_samp[:samples_to_see])
-                    print("outputs", outputs[:samples_to_see])
-                    print("phi", phi[:samples_to_see])
+                # samples_to_see=5
+                # if mini_batch_size>samples_to_see and datatypes_test_samp is not None:
+                #     print(datatypes_test_samp[:samples_to_see])
+                #     print("outputs", outputs[:samples_to_see])
+                #     print("phi", phi[:samples_to_see])
                 return S, datatypes_test_samp
 
 
@@ -810,13 +813,19 @@ def main():
                 #if not args.point_estimate:
                 #    S=S.mean(dim=1)
                 mini_batch_size=2000
-                tpr, fdr, mcc = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp)
+                tpr, fdr, mcc = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp, args.switch_nn)
                 print("mean median rank", mean_median_ranks)
                 print(f"tpr: {tpr}, fdr: {fdr}")
                 print(f"mcc: {mcc}")
 
-            else:
-                tpr, fdr = -1,-1
+            elif (args.dataset in synthetic):
+                mini_batch_size=2000
+                if not args.point_estimate:
+                    S=S.mean(dim=0)
+                tpr, fdr, mcc = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp, args.switch_nn)
+
+
+                #tpr, fdr = -1,-1
 
 
 
