@@ -21,19 +21,27 @@ Contact: jsyoon0823@gmail.com
 import argparse
 import numpy as np
 import torch as pt
-try:
-  from comparison_methods.INVASE.data_generation import generate_dataset
-  from comparison_methods.INVASE.INVASE_custom_datasets.invase_pytorch import Invase
-  from comparison_methods.INVASE.utils import feature_performance_metric, prediction_performance_metric
-except ImportError:
-  # noinspection PyUnresolvedReferences
-  from data_generation import generate_dataset
-  # noinspection PyUnresolvedReferences
-  from invase_pytorch import Invase
-  # noinspection PyUnresolvedReferences
-  from utils import feature_performance_metric, prediction_performance_metric
+import sys
 
-from data.tab_dataloader import load_adult_short, load_credit, load_cervical
+from comparison_methods.INVASE.data_generation import generate_dataset
+from comparison_methods.INVASE.INVASE_custom_datasets.invase_pytorch import Invase
+from comparison_methods.INVASE.utils import feature_performance_metric, prediction_performance_metric
+
+sys.path.append("/home/kamil/Dropbox/Current_research/featimp_dp/publish_qfit")
+from publish_qfit.data.make_synthetic_datasets import generate_data_forinvasecode
+
+
+# try:
+#  a=3
+# except ImportError:
+#   # noinspection PyUnresolvedReferences
+#   from data_generation import generate_dataset
+#   # noinspection PyUnresolvedReferences
+#   from invase_pytorch import Invase
+#   # noinspection PyUnresolvedReferences
+#   from utils import feature_performance_metric, prediction_performance_metric
+
+from publish_qfit.data.tab_dataloader import load_adult_short, load_credit, load_intrusion
 
 
 
@@ -67,12 +75,21 @@ def main(args):
       - acc: accuracy
   """
   print('#################### generating data')
+  if "syn" in args.data_type:
   # Generate dataset
-  #x_train, y_train, g_train = generate_dataset(n=args.train_no, dim=args.dim, data_type=args.data_type, seed=0)
+    x_train, y_train, g_train = generate_dataset(n=args.train_no, dim=args.dim, data_type=args.data_type, seed=0)
 
-  #x_test, y_test, g_test = generate_dataset(n=args.test_no, dim=args.dim, data_type=args.data_type, seed=0)
+    x_test, y_test, g_test = generate_dataset(n=args.test_no, dim=args.dim, data_type=args.data_type, seed=0)
 
-  x_train, y_train, x_test, y_test = load_credit()
+    x_train, y_train, g_train = generate_data_forinvasecode(10000, args.data_type)
+    x_test, y_test, g_test = generate_data_forinvasecode(10000, args.data_type)
+
+    x_train, y_train, g_train = generate_data_forinvasecode(10000, args.data_type)
+    x_test, y_test, g_test = generate_data_forinvasecode(10000, args.data_type)
+  elif args.data_type == "adult_short":
+    x_train, y_train, x_test, y_test = load_adult_short()
+  elif args.data_type == "intrusion":
+    x_train, y_train, x_test, y_test = load_intrusion()
 
   model_parameters = {'lamda': args.lamda,
                       'actor_h_dim': args.actor_h_dim,
@@ -108,36 +125,44 @@ def main(args):
   print()
   importance_score = 1. * (g_hat > 0.5)
 
-  # Evaluate the performance of feature importance
-  #mean_tpr, std_tpr, mean_fdr, std_fdr = feature_performance_metric(g_test, importance_score)
+  if "syn" in args.data_type:
+    # Evaluate the performance of feature importance
+    # mean_tpr, std_tpr, mean_fdr, std_fdr = feature_performance_metric(g_test, importance_score)
+    mean_tpr, std_tpr, mean_fdr, std_fdr, mcc = feature_performance_metric(g_test, importance_score)
 
-  # Print the performance of feature importance
-  #print('TPR mean: ' + str(np.round(mean_tpr, 1)) + '%, ' + 'TPR std: ' + str(np.round(std_tpr, 1)) + '%, ')
-  #print('FDR mean: ' + str(np.round(mean_fdr, 1)) + '%, ' + 'FDR std: ' + str(np.round(std_fdr, 1)) + '%, ')
+
+    # Print the performance of feature importance
+    print('TPR mean: ' + str(np.round(mean_tpr, 1)) + '%, ' + 'TPR std: ' + str(np.round(std_tpr, 1)) + '%, ')
+    print('FDR mean: ' + str(np.round(mean_fdr, 1)) + '%, ' + 'FDR std: ' + str(np.round(std_fdr, 1)) + '%, ')
+    print('MCC: ' + str(mcc))
 
   # Predict labels
+  else:
+    #for real orl datasets
 
-  #pruning here
-  #ascending
-  instance_best_features_ascending = np.argsort(importance_score, axis=1)
-  instance_unimportant_features=instance_best_features_ascending[:, :-5]
-  np.save("instance_featureranks_test_invase_credit_k_5.npy", instance_unimportant_features)
+    #pruning here
+    #ascending
+    instance_best_features_ascending = np.argsort(importance_score, axis=1)
+    instance_unimportant_features=instance_best_features_ascending[:, :-args.ktop_features]
+    np.save(f"ranks/instance_featureranks_test_invase_{args.data_type}_k_{args.ktop_features}_iteration_{args.iteration}.npy", instance_unimportant_features)
 
-  #
-  # for i, data in enumerate(x_test):
-  #   x_test[i, instance_unimportant_features[i]]=0
+    #
+    # for i, data in enumerate(x_test):
+    #   x_test[i, instance_unimportant_features[i]]=0
 
 
-  y_hat = model.predict(x_test)
+    y_hat = model.predict(x_test)
 
-  # Evaluate the performance of feature importance
-  auc, apr, acc = prediction_performance_metric(y_test, y_hat)
+    # Evaluate the performance of feature importance
+    auc, apr, acc = prediction_performance_metric(y_test, y_hat)
 
-  # Print the performance of feature importance
-  print('AUC: ' + str(np.round(auc, 3)) + ', APR: ' + str(np.round(apr, 3)) + ', ACC: ' + str(np.round(acc, 3)))
+    # Print the performance of feature importance
+    print('AUC: ' + str(np.round(auc, 3)) + ', APR: ' + str(np.round(apr, 3)) + ', ACC: ' + str(np.round(acc, 3)))
 
-  performance = {'mean_tpr': mean_tpr, 'std_tpr': std_tpr, 'mean_fdr': mean_fdr,
-                 'std_fdr': std_fdr, 'auc': auc, 'apr': apr, 'acc': acc}
+    performance = {'mean_tpr': mean_tpr, 'std_tpr': std_tpr, 'mean_fdr': mean_fdr,
+                   'std_fdr': std_fdr, 'auc': auc, 'apr': apr, 'acc': acc}
+
+
 
   return performance
 
@@ -146,7 +171,7 @@ def main(args):
 if __name__ == '__main__':
   # Inputs for the main function
   parser = argparse.ArgumentParser()
-  parser.add_argument('--data_type', choices=['syn1', 'syn2', 'syn3', 'syn4', 'syn5', 'syn6'], default='syn1', type=str)
+  parser.add_argument('--data_type', choices=['syn1', 'syn2', 'syn3', 'syn4', 'syn5', 'syn6'], default='intrusion', type=str)
   parser.add_argument('--train_no', help='the number of training data', default=10000, type=int)
   parser.add_argument('--test_no', help='the number of testing data', default=10000, type=int)
   parser.add_argument('--dim', help='the number of features', choices=[11, 100], default=11, type=int)
@@ -155,13 +180,14 @@ if __name__ == '__main__':
   parser.add_argument('--critic_h_dim', help='hidden state dimensions for critic', default=200, type=int)
   parser.add_argument('--n_layer', help='the number of layers', default=3, type=int)
   parser.add_argument('--batch_size', help='the number of samples in mini batch', default=1000, type=int)
-  parser.add_argument('--iteration', help='the number of iteration', default=10000, type=int)
+  parser.add_argument('--iteration', help='the number of iteration', default=3000, type=int) #10000
   parser.add_argument('--activation', help='activation function of the networks',
                       choices=['selu', 'relu'], default='relu', type=str)
   parser.add_argument('--learning_rate', help='learning rate of model training', default=0.0001, type=float)
   parser.add_argument('--model_type', help='inavse or invase- (without baseline)',
                       choices=['invase', 'invase_minus'], default='invase_minus', type=str)
   parser.add_argument('--no-cuda', action='store_true', default=False)
+  parser.add_argument("--ktop_features", default=5)
   args_in = parser.parse_args()
 
   # Call main function

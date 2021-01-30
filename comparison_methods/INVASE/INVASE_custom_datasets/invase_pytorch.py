@@ -68,7 +68,7 @@ class Invase(nn.Module):
 
     self.device = device
     self.dim = x_train.shape[1]
-    self.label_dim = 2# y_train.shape[1]
+    self.label_dim = 4# y_train.shape[1]
 
     self.model_type = model_type
 
@@ -152,17 +152,19 @@ class Invase(nn.Module):
       x_batch = pt.tensor(x_train[idx, :], device=self.device)
 
 
-      # four lines for custom datasets
+      #1 four lines for custom datasets
       y_batch_scalar = pt.tensor(y_train[idx], device=self.device).long()
-      y_batch_onehot = pt.zeros(y_batch_scalar.shape[0], 2, device=self.device)
+      y_batch_onehot = pt.zeros(y_batch_scalar.shape[0], 4, device=self.device)
       y_batch_onehot[y_batch_scalar == 0, 0] = 1
       y_batch_onehot[y_batch_scalar == 1, 1] = 1
+      y_batch_onehot[y_batch_scalar == 1, 2] = 1
+      y_batch_onehot[y_batch_scalar == 1, 3] = 1
 
 
 
       #2 lines for synthetic
-      #y_batch_onehot = pt.tensor(y_train[idx, :], device=self.device)
-      #y_batch_scalar = pt.max(y_batch_onehot, dim=1)[1]
+      # y_batch_onehot = pt.tensor(y_train[idx, :], device=self.device)
+      # y_batch_scalar = pt.max(y_batch_onehot, dim=1)[1]
 
       # print(y_batch_scalar)
       # print(y_batch_onehot[0], y_batch_scalar[0])

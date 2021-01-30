@@ -21,12 +21,21 @@ Contact: jsyoon0823@gmail.com
 import argparse
 import numpy as np
 import torch as pt
+import sys
+
+from comparison_methods.INVASE.data_generation import generate_dataset
+from comparison_methods.INVASE.invase_pytorch import Invase
+from comparison_methods.INVASE.utils import feature_performance_metric, prediction_performance_metric
+
+sys.path.append("/home/kamil/Dropbox/Current_research/featimp_dp/publish_qfit")
+from publish_qfit.data.make_synthetic_datasets import generate_data_forinvasecode
+
+
 try:
   from comparison_methods.INVASE.data_generation import generate_dataset
   from comparison_methods.INVASE.invase_pytorch import Invase
   from comparison_methods.INVASE.utils import feature_performance_metric, prediction_performance_metric
 
-  from data.make_synthetic_datasets import generate_data_forinvasecode
 
 except ImportError:
   # noinspection PyUnresolvedReferences
