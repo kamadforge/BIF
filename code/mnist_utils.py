@@ -3,10 +3,10 @@ Test learning feature importance under DP and non-DP models
 """
 
 __author__ = 'anon_m'
-
-import argparse
+import os
+# import argparse
 import numpy as np
-from PIL import Image
+# from PIL import Image
 # import matplotlib.pyplot as plt
 # import torch.nn as nn
 # from torch.nn.parameter import Parameter
@@ -14,12 +14,12 @@ from PIL import Image
 import torch as pt
 import torch.nn.functional as nnf
 import torch.optim as optim
-from torch.distributions import Gamma
+# from torch.distributions import Gamma
 # from data.tab_dataloader import load_cervical, load_adult, load_credit
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader
 # from switch_model_wrapper import SwitchWrapper, loss_function, MnistNet
-from switch_model_wrapper import SwitchNetWrapper, BinarizedMnistNet, MnistPatchSelector
+# from switch_model_wrapper import SwitchNetWrapper, BinarizedMnistNet, MnistPatchSelector
 import matplotlib
 matplotlib.use('Agg')  # to plot without Xserver
 import matplotlib.pyplot as plt
@@ -27,9 +27,9 @@ import matplotlib.cm as cm
 from torch.optim.lr_scheduler import StepLR
 
 
-
 class BinarizedMnistDataset(Dataset):
-  def __init__(self, train, label_a=3, label_b=8, data_path='../data', download=False, tgt_type=np.float32):
+  def __init__(self, train, label_a=3, label_b=8, data_path='../data', download=False, tgt_type=np.float32,
+               shuffle=True):
     super(BinarizedMnistDataset, self).__init__()
     self.train = train
     base_data = datasets.MNIST(data_path, train=train, download=download)
@@ -39,9 +39,13 @@ class BinarizedMnistDataset(Dataset):
     n_a, n_b = smp_a.shape[0], smp_b.shape[0]
     # print(n_a, n_b)
     tgt_a, tgt_b = base_data.targets[ids_a], base_data.targets[ids_b]
-    pert = np.random.permutation(n_a + n_b)
-    tgt = np.concatenate([np.zeros(tgt_a.shape), np.ones(tgt_b.shape)])[pert]
-    smp = np.concatenate([smp_a, smp_b])[pert]
+
+    tgt = np.concatenate([np.zeros(tgt_a.shape), np.ones(tgt_b.shape)])
+    smp = np.concatenate([smp_a, smp_b])
+
+    if shuffle:
+      pert = np.random.permutation(n_a + n_b)
+      tgt, smp = tgt[pert], smp[pert]
 
     smp = np.reshape(smp, (-1, 784))
     self.tgt = tgt.astype(tgt_type)
@@ -52,6 +56,7 @@ class BinarizedMnistDataset(Dataset):
 
   def __getitem__(self, idx):
     return pt.tensor(self.smp[idx]), pt.tensor(self.tgt[idx])
+
 
 def load_mnist_data(use_cuda, batch_size, test_batch_size, data_path='../data', ):
   kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
@@ -69,25 +74,27 @@ def load_two_label_mnist_data(use_cuda, batch_size, test_batch_size, data_path='
 
   kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
 
-  train_data = BinarizedMnistDataset(train=True, label_a=label_a, label_b=label_b, data_path=data_path, tgt_type=tgt_type)
-  test_data = BinarizedMnistDataset(train=False, label_a=label_a, label_b=label_b, data_path=data_path, tgt_type=tgt_type)
+  train_data = BinarizedMnistDataset(train=True, label_a=label_a, label_b=label_b,
+                                     data_path=data_path, tgt_type=tgt_type)
+  test_data = BinarizedMnistDataset(train=False, label_a=label_a, label_b=label_b,
+                                    data_path=data_path, tgt_type=tgt_type, shuffle=False)
 
   train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, **kwargs)
-  test_loader = DataLoader(test_data, batch_size=test_batch_size, shuffle=True, **kwargs)
+  test_loader = DataLoader(test_data, batch_size=test_batch_size, shuffle=False, **kwargs)
   return train_loader, test_loader
 
 
 def switch_select_data(selector, loader, device):
-    x_data, y_data, selection, phis = [], [], [], []
-    with pt.no_grad():
-      for x_tr, y_tr in loader:
-        x_data.append(x_tr.numpy())
-        y_data.append(y_tr.numpy())
-        phi = nnf.softplus(selector(x_tr.to(device)))
-        x_sel = phi / pt.sum(phi, dim=1)[:, None] * 16  # multiply by patch size
-        phis.append(phi.cpu().numpy())
-        selection.append(x_sel.cpu().numpy())
-    return np.concatenate(x_data), np.concatenate(y_data), np.concatenate(selection), np.concatenate(phis)
+  x_data, y_data, selection, phis = [], [], [], []
+  with pt.no_grad():
+    for x_tr, y_tr in loader:
+      x_data.append(x_tr.numpy())
+      y_data.append(y_tr.numpy())
+      phi = nnf.softplus(selector(x_tr.to(device)))
+      x_sel = phi / pt.sum(phi, dim=1)[:, None] * 16  # multiply by patch size
+      phis.append(phi.cpu().numpy())
+      selection.append(x_sel.cpu().numpy())
+  return np.concatenate(x_data), np.concatenate(y_data), np.concatenate(selection), np.concatenate(phis)
 
 
 def hard_select_data(data, selection, k=1, baseline_val=0):
@@ -96,6 +103,7 @@ def hard_select_data(data, selection, k=1, baseline_val=0):
   threshold_by_sample = sorted_selection[:, -effective_k]
 
   below_threshold = selection < threshold_by_sample[:, None]
+  above_threshold = 1 - below_threshold.astype(np.int)
   feats_selected = 784 - np.sum(below_threshold, axis=1)
   assert np.max(feats_selected) == float(effective_k)
   assert np.max(feats_selected) == np.min(feats_selected)
@@ -104,7 +112,7 @@ def hard_select_data(data, selection, k=1, baseline_val=0):
 
   # make sure no sample has more nonzero entries than allowed in the selection
   assert np.max(np.sum(data_to_select != baseline_val, axis=1)) <= float(effective_k)
-  return data_to_select
+  return data_to_select, above_threshold
 
 
 def make_select_loader(x_select, y_select, train, batch_size, use_cuda, data_path='../data'):
@@ -174,3 +182,25 @@ def test_classifier_epoch(classifier, test_loader, device, epoch=-1):
   print('Epoch {} Test Loss: {:.4f}, Accuracy: {}/{} ({:.1f}%)'.format(
     epoch, test_loss, correct, len(test_loader.dataset), 100. * accuracy))
   return accuracy
+
+
+def plot_patch_selection(x_tst, selection, n_plots, save_dir, save_name):
+  # normalize to fit the plot
+  os.makedirs(save_dir, exist_ok=True)
+  print(x_tst.shape, selection.shape)
+  x_plt = np.concatenate([x_tst[:int(np.ceil(n_plots/2))], x_tst[-int(np.floor(n_plots/2)):]])
+  sel_plt = np.concatenate([selection[:int(np.ceil(n_plots / 2))], selection[int(np.floor(n_plots / 2)):]])
+  print(x_tst.shape, selection.shape)
+  x_row = np.concatenate([np.reshape(x_plt[k], (28, 28)) for k in range(n_plots)], axis=1)
+  sel_row = np.concatenate([np.reshape(sel_plt[k], (28, 28)) for k in range(n_plots)], axis=1)
+  x_sel_row = x_row * sel_row
+
+  x_row_color = np.stack([x_row] * 3, axis=2)
+  # sel_row_color = np.stack([sel_row] * 3, axis=2)
+  x_sel_row_color = np.stack([x_sel_row, x_sel_row, sel_row], axis=2)
+
+  plot_mat = np.concatenate([x_row_color, x_sel_row_color], axis=0)
+
+  save_path = os.path.join(save_dir, save_name)
+  np.save(save_path + '.npy', plot_mat)
+  plt.imsave(save_path + '.png', plot_mat, vmin=0., vmax=1.)

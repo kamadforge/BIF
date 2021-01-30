@@ -193,8 +193,8 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   data_options = ['XOR', 'orange_skin', 'nonlinear_additive', 'syn4', 'syn5', 'syn6']
   parser.add_argument('--data_type', choices=data_options, default='syn5', type=str)
-  parser.add_argument('--train_no', help='the number of training data', default=10000, type=int)
-  parser.add_argument('--test_no', help='the number of testing data', default=10000, type=int)
+  # parser.add_argument('--train_no', help='the number of training data', default=10000, type=int)
+  # parser.add_argument('--test_no', help='the number of testing data', default=10000, type=int)
   parser.add_argument('--dim', help='the number of features', choices=[11, 100], default=11, type=int)
   parser.add_argument('--lamda', help='inavse hyper-parameter lambda', default=0.1, type=float)
   parser.add_argument('--actor_h_dim', help='hidden state dimensions for actor', default=100, type=int)

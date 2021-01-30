@@ -19,8 +19,7 @@ import matplotlib
 matplotlib.use('Agg')  # to plot without Xserver
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-from mnist_utils import plot_switches, load_two_label_mnist_data, switch_select_data, hard_select_data, \
-  test_classifier_epoch, make_select_loader, train_classifier, BinarizedMnistDataset
+from mnist_utils import test_classifier_epoch, train_classifier, BinarizedMnistDataset
 import os
 
 

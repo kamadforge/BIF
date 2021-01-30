@@ -26,9 +26,14 @@ matplotlib.use('Agg')  # to plot without Xserver
 # import matplotlib.pyplot as plt
 # import matplotlib.cm as cm
 
-from switch_mnist_featimp import load_two_label_mnist_data, hard_select_data, make_select_loader
-from mnist_posthoc_accuracy_eval import test_posthoc_acc
-
+try:
+  from mnist_posthoc_accuracy_eval import test_posthoc_acc
+  from mnist_utils import load_two_label_mnist_data, make_select_loader, plot_patch_selection
+except ImportError:
+  import sys
+  sys.path.insert(0, '/home/frederik/PycharmProjects/featimp_dp/code/')
+  from mnist_posthoc_accuracy_eval import test_posthoc_acc
+  from mnist_utils import load_two_label_mnist_data, make_select_loader, plot_patch_selection
 
 """Instance-wise Variable Selection (INVASE) module - with baseline
 
@@ -349,8 +354,9 @@ def parse_args():
   parser.add_argument('--label-b', type=int, default=8)
   #  lamda = 15.5 --> 5 feats
   #  lamda = 18.5 --> 4 feats
-  #  lamda = 22.5 --> 3 feats
-  #  lamda = 105.5 --> 1 feats
+  #  lamda = 23 --> 3 feats
+  #  lamda = 50 --> 2 feats
+  #  lamda = 100 --> 1 feats
   parser.add_argument('--lamda', help='inavse hyper-parameter lambda', default=100., type=float)
   parser.add_argument('--seed', type=int, default=6)
 
@@ -381,6 +387,11 @@ def do_featimp_exp(ar):
 
   print('Finished Training Selector')
   x_ts, y_ts, ts_selection = invase_select_data(model, test_loader, device)
+
+  print('saving test selection:')
+  k_avg = np.sum(ts_selection) / (16 * ts_selection.shape[0])
+  plot_patch_selection(x_ts, ts_selection, n_plots=10, save_dir='../../code/plots/patch_plots',
+                       save_name=f'invase_labels_{ar.label_a}{ar.label_b}_lambda{ar.lamda}_seed{ar.seed}_k_avg{k_avg:.2f}')
   # y_ts = y_ts.astype(np.int64)
   x_ts_select = x_ts * ts_selection
   print('average number of selected patches: ', np.mean(np.sum(ts_selection, axis=1))/16)
@@ -401,7 +412,7 @@ def main():
 
 
 if __name__ == '__main__':
-  # main()
+  main()
 
   # K=5, S=2: 92.3
   # K=5, S=3: 92.4
@@ -429,14 +440,14 @@ if __name__ == '__main__':
   # K=1, S=5: 55.5
   # K=1, S=6: 50.9
 
-  k1_res = [92.3, 92.4, 85.6, 91.9, 90.3]
-  k2_res = [91.7, 90.8, 91.6, 91.7, 91.7]
-  k3_res = [91.5, 89.1, 91.7, 89.2, 89.2]
-  k4_res = [76.3, 76.3, 76.3, 84.7, 76.4]
-  k5_res = [55.3, 55.3, 75.2, 55.5, 50.9]
-
-  print('k1_avg =', sum(k1_res) / 5)
-  print('k2_avg =', sum(k2_res) / 5)
-  print('k3_avg =', sum(k3_res) / 5)
-  print('k4_avg =', sum(k4_res) / 5)
-  print('k5_avg =', sum(k5_res) / 5)
+  # k1_res = [92.3, 92.4, 85.6, 91.9, 90.3]
+  # k2_res = [91.7, 90.8, 91.6, 91.7, 91.7]
+  # k3_res = [91.5, 89.1, 91.7, 89.2, 89.2]
+  # k4_res = [76.3, 76.3, 76.3, 84.7, 76.4]
+  # k5_res = [55.3, 55.3, 75.2, 55.5, 50.9]
+  #
+  # print('k1_avg =', sum(k1_res) / 5)
+  # print('k2_avg =', sum(k2_res) / 5)
+  # print('k3_avg =', sum(k3_res) / 5)
+  # print('k4_avg =', sum(k4_res) / 5)
+  # print('k5_avg =', sum(k5_res) / 5)
