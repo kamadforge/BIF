@@ -19,7 +19,7 @@ from evaluation_metrics import compute_median_rank, binary_classification_metric
 from tab_dataloader import load_adult_short, load_credit, load_cervical, load_isolet, load_intrusion
 from synthetic_data_loader import synthetic_data_loader
 import numpy as np
-dataset="orange_skin" #nonlinear_additive, orange_skin, xor
+dataset="adult_short" #nonlinear_additive, orange_skin, xor
 dataset_method = f"load_{dataset}"
 
 print(dataset)
@@ -53,9 +53,9 @@ if "syn" in dataset or dataset=="xor" or "nonlinear" in dataset or "orange" in d
 else:
     X, y, X_test, y_test = globals()[dataset_method]()
 
-input_dim = d
+input_dim = X.shape[1]
 hidden_dim = input_dim
-how_many_samps = N
+#how_many_samps = N
 
 
 # rf = sklearn.ensemble.RandomForestClassifier(n_estimators=500) #500
@@ -70,7 +70,7 @@ print("Score: ", score)
 
 
 
-explainer = lime.lime_tabular.LimeTabularExplainer(X, kernel_width=3)
+explainer = lime.lime_tabular.LimeTabularExplainer(X, kernel_width=4)
 
 weight_sum=np.zeros(X_test.shape[1])
 weights_all_local = []
@@ -78,7 +78,7 @@ argsorted_all_local = []
 
 for i in range(len(X_test)):
     print(i)
-    exp = explainer.explain_instance(data_row=X_test[i],predict_fn=classifier.predict_proba)
+    exp = explainer.explain_instance(data_row=X_test[i],predict_fn=classifier.predict_proba, num_features=input_dim)
     exp_list = exp.as_list()
     exp_map = exp.as_map()
     #print(exp_list)
