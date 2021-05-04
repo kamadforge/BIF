@@ -376,10 +376,10 @@ prc = average_precision_score(y_test, pred)
 print('roc is %f and prc %f' %(roc, prc))
 
 # store all the variables so we can load them in our test script
-X_tr = X_train.values.astype(np.float)
-X_tst = X_test.values.astype(np.float)
-y_tr = y_train.values.astype(np.float)
-y_tst = y_test.values.astype(np.float)
+X_tr = X_train.values.astype(np.float64)
+X_tst = X_test.values.astype(np.float64)
+y_tr = y_train.values.astype(np.float64)
+y_tst = y_test.values.astype(np.float64)
 
 column_names = X_train.columns.values.tolist()
 
