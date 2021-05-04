@@ -14,12 +14,16 @@ sys.path.append(str(Path(sys.path[0]).resolve().parent.parent / "data"))
 sys.path.append(str(Path(sys.path[0]).resolve().parent.parent / "code"))
 import xgboost
 from evaluation_metrics import compute_median_rank, binary_classification_metrics
+import argparse
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--dataset", default="xor")
+args = parser.parse_args()
 
 from tab_dataloader import load_adult_short, load_credit, load_cervical, load_isolet, load_intrusion
 from synthetic_data_loader import synthetic_data_loader
 import numpy as np
-dataset="adult_short" #nonlinear_additive, orange_skin, xor
+dataset=args.dataset #nonlinear_additive, orange_skin, xor
 dataset_method = f"load_{dataset}"
 
 print(dataset)
