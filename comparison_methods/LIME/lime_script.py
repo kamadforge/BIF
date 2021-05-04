@@ -12,16 +12,17 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(sys.path[0]).resolve().parent.parent / "data"))
 sys.path.append(str(Path(sys.path[0]).resolve().parent.parent / "code"))
-
+import xgboost
 from evaluation_metrics import compute_median_rank, binary_classification_metrics
 
 
 from tab_dataloader import load_adult_short, load_credit, load_cervical, load_isolet, load_intrusion
 from synthetic_data_loader import synthetic_data_loader
 import numpy as np
-dataset="xor" #nonlinear_additive, orange_skin, xor
+dataset="orange_skin" #nonlinear_additive, orange_skin, xor
 dataset_method = f"load_{dataset}"
 
+print(dataset)
 
 if "syn" in dataset or dataset=="xor" or "nonlinear" in dataset or "orange" in dataset:
     x_tot, y_tot, datatypes_tot = synthetic_data_loader(dataset)
@@ -57,14 +58,17 @@ hidden_dim = input_dim
 how_many_samps = N
 
 
-rf = sklearn.ensemble.RandomForestClassifier(n_estimators=500) #500
-rf.fit(X, y)
+# rf = sklearn.ensemble.RandomForestClassifier(n_estimators=500) #500
+# rf.fit(X, y)
+
+classifier = xgboost.XGBClassifier(n_estimators=300, max_depth=5)
+classifier.fit(X, y)
+
 #predict_fn = lambda x: rf.predict_proba(X_test)
-score = sklearn.metrics.accuracy_score(y_test, rf.predict(X_test))
+score = sklearn.metrics.accuracy_score(y_test, classifier.predict(X_test))
 print("Score: ", score)
 
-# gbtree = xgboost.XGBClassifier(n_estimators=300, max_depth=5)
-# gbtree.fit(X, y)
+
 
 explainer = lime.lime_tabular.LimeTabularExplainer(X, kernel_width=3)
 
@@ -74,7 +78,7 @@ argsorted_all_local = []
 
 for i in range(len(X_test)):
     print(i)
-    exp = explainer.explain_instance(data_row=X_test[i],predict_fn=rf.predict_proba)
+    exp = explainer.explain_instance(data_row=X_test[i],predict_fn=classifier.predict_proba)
     exp_list = exp.as_list()
     exp_map = exp.as_map()
     #print(exp_list)
@@ -93,8 +97,6 @@ for i in range(len(X_test)):
 
 
 
-
-
     #print(m)
     #print(m_sorted)
     #print(weight_sum)
@@ -103,6 +105,9 @@ sorted_features = np.sort(weight_sum)
 argsorted_features = np.argsort(weight_sum)
 print(sorted_features)
 print(argsorted_features)
+
+np.save(f"ranks/{dataset}_local", weights_all_local)
+np.save(f"ranks/{dataset}_local_ranks", weights_argsorted)
 
 
 

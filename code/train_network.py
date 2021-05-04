@@ -32,18 +32,16 @@ import sys
 #sys.path.append("/home/kamil/Dropbox/Current_research/privacy/DPDR/data")
 #from data.tab_dataloader import load_credit
 
-from data.tab_dataloader import load_cervical, load_adult, load_census, load_isolet, load_adult_short
+sys.path.append(("/home/kamil/Dropbox/Current_research/featimp_dp/publish_qfit/data"))
+
+from tab_dataloader import load_cervical, load_adult, load_census, load_isolet, load_adult_short
 from data.make_synthetic_datasets import generate_data
 from data.make_synthetic_datasets import generate_invase
 from data.synthetic_data_loader import synthetic_data_loader
 
 
 
-
-
 if  __name__ =='__main__':
-
-
 
     parser=argparse.ArgumentParser()
     parser.add_argument("--dataset", default="syn4") # "xor, orange_skin, or nonlinear_additive"
@@ -59,15 +57,12 @@ if  __name__ =='__main__':
     rnd_num = 0
     mode = args.mode
     prune = args.prune
-
     rn.seed(rnd_num)
 
     def save_dataset(path, dataset):
         if not os.path.isdir(os.path.split(path)[0]):
             os.makedirs(os.path.split(path)[0])
         np.save(path, dataset)
-
-
 
     # try:
     #     x_tot, y_tot, datatypes_tot = synthetic_data_loader(dataset)
@@ -222,8 +217,6 @@ if  __name__ =='__main__':
 
             for repeat_idx in range(num_repeat):
 
-
-
                 if method=="nn":
 
                     for epoch in range(num_epochs):
@@ -255,8 +248,6 @@ if  __name__ =='__main__':
             if not os.path.isdir("models"):
                 os.mkdir("models")
             np.save('models/%s_%s_LR_model0' % (dataset, method), LR_model0)
-
-
 
     elif mode == "test":
 

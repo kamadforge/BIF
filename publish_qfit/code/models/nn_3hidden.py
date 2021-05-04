@@ -35,7 +35,6 @@ class FC_net(nn.Module):
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
         self.fc3 = nn.Linear(hidden_dim, output_num)
         self.relu = nn.ReLU()
-
         if which_norm=='batch_norm':
             self.which_norm = 'batch_norm'
             self.bn1 = nn.BatchNorm1d(hidden_dim)
@@ -48,7 +47,6 @@ class FC_net(nn.Module):
             self.which_norm = 'spectral_norm'
             self.fc1 = nn.utils.spectral_norm(nn.Linear(input_num, hidden_dim), name='weight')
             self.fc2 = nn.utils.spectral_norm(nn.Linear(hidden_dim, hidden_dim), name='weight')
-
 
     def forward(self, x):
 

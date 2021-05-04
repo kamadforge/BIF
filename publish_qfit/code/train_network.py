@@ -37,11 +37,12 @@ from make_synthetic_datasets import generate_invase
 
 if  __name__ =='__main__':
     parser=argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="intrusion") # "xor, orange_skin, or nonlinear_additive"
+    parser.add_argument("--dataset", default="xor") # "xor, orange_skin, or nonlinear_additive"
     parser.add_argument("--mode", default="test") # test, training
-    parser.add_argument("--testtype", default="global") #global, local
+    parser.add_argument("--testtype", default="local") #global, local
     parser.add_argument("--prune", default=True) #tests the subset of features
     parser.add_argument("--k", default=1, type=int)
+    parser.add_argument("--met", default=1, type=int) #1-qfit,  2-shap, 3-invase 4-l2x
     args=parser.parse_args()
     dataset = args.dataset
     method = "nn"
@@ -141,7 +142,7 @@ if  __name__ =='__main__':
         criterion = nn.CrossEntropyLoss()
         # optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
         optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
-        num_epochs = 100
+        num_epochs = 500
 
     """ set the privacy parameter """
     # dp_epsilon = 1
@@ -230,7 +231,7 @@ if  __name__ =='__main__':
             if 1:
                 if args.testtype=="global":
                     k = 1 #number of important features to keep
-                    met = 4 #2-shap, 3-invase 4-l2x
+                    met = 1 #2-shap, 3-invase 4-l2x
                     if dataset=="adult":
                         if met==1:
                             important_features=[10,5,0,12,4,7,9,3,8,11,6,1,2,13]#qfit
@@ -264,8 +265,12 @@ if  __name__ =='__main__':
                     elif dataset=="intrusion": #dummy rankings
                         if met==1:
                             important_features = [26, 17, 27, 18,  5,  0, 36,  2,  8, 29, 35,  3, 21,  1,  6, 30,  9, 15, 16, 32, 20, 28, 22, 11, 39, 19, 24, 31,  7, 13, 10, 25, 23, 14, 12, 37, 34, 38, 33,  4]
+                            important_features = [17, 27, 26, 18,  5,  0, 14, 12, 23, 33, 32,  2,  1, 11, 38,  8, 29, 37, 3, 21, 16, 39, 20,  9, 19, 25, 10, 13, 15, 24, 35, 31, 34, 22, 28,  7, 30,  6, 36,  4]
+                            important_features = [17, 27, 18,  5, 26,  0,  4, 28,  8, 39, 25, 11, 33,  2,  6,  9, 13, 21,
+        10, 36, 19, 12, 24,  1, 16, 35, 32, 31, 23, 38, 22, 15, 29, 30, 20,  7,
+         3, 37, 14, 34]
                         elif met==2:
-                            important_features = [32,0,4,5,33,2,3,28,20,10,1,6,31,7,13,30,8,9,11,12,14,27,15,29,17,18,19,21,22,23,24,25,26,16]
+                            important_features = [17,5,32,24,30,2,4,3,28,8,1,10,29,27,6,33,37,26,0,23,18,21,9,13,35,15,31,36,7,39,11,12,14,16,38,20,22,25,34,19]
                         elif met==3:
                             important_features = [33,17,30,2,27,13,9,15,7,35,16,3,25,12,21,28,39,8,18,29,14,20,38,24,10,23,6,31,0,1,19,11,36,34,4,32,5,37,22,26]
                         elif met==4:
@@ -292,9 +297,9 @@ if  __name__ =='__main__':
                 ###################
                 # local test
                 else:
-                    k = 5#args.k
-                    met = 4  #1-qfit,  2-shap, 3-invase 4-l2x
-                    met_names = {1 : "qfit", 2: "shap", 3: "invase", 4: "l2x"}
+                    k = args.k
+                    met = args.met  #1-qfit,  2-shap, 3-invase 4-l2x
+                    met_names = {1 : "qfit", 2: "shap", 3: "invase", 4: "l2x", 5: "shap"}
 
                     if dataset=="adult_short" and met!=1:
                         dataset="adult"
@@ -302,16 +307,22 @@ if  __name__ =='__main__':
                     if met == 1:
                         dir_ranks = "publish_qfit/code/rankings"
                     elif met == 2:
-                        dir_ranks = "dummy"
+                        dir_ranks = "comparison_methods/SHAP/ranks"
                     elif met == 3:
                         dir_ranks  = "comparison_methods/INVASE/INVASE_custom_datasets/ranks"
                     elif met == 4:
                         dir_ranks = "comparison_methods/L2X/ranks"
 
+
+
                     for file in os.listdir(os.path.join("../../", dir_ranks)):
                         if dataset in file and f"k_{k}" in file:
                             unimportant_features_instance = np.load(os.path.join("../../", dir_ranks, file))
                             print(f"loaded dataset '{met_names[met]}' in '{file}' from '{dir_ranks}'")
+
+                    if met == 2:
+                        features_rank = np.load(os.path.join("../../", dir_ranks, "shap_"+dataset+".npy"))
+                    unimportant_features_instance = features_rank[:, k:]
 
                     #pruning local
                     print(f"unimportant features shape: {unimportant_features_instance.shape}")

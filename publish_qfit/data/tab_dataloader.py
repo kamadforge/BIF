@@ -206,7 +206,7 @@ def load_credit():
     print("Creditcard fraud detection dataset") # this is homogeneous
 
 
-    credit_path=""
+    credit_path="/home/kamil/Dropbox/Current_research/privacy/DPDR/data/Kaggle_Credit/creditcard.csv"
 
     if len(credit_path)==0:
         print("Please input the creditcard fraud dataset path")
