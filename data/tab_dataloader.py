@@ -226,7 +226,7 @@ def load_credit():
     if 'kamil' in socket.gethostname():
 
         data = pd.read_csv(
-            "/home/kamil/Desktop/Dropbox/Current_research/privacy/DPDR/data/Kaggle_Credit/creditcard.csv")
+            "/home/kamil/Dropbox/Current_research/privacy/DPDR/data/Kaggle_Credit/creditcard.csv")
         # data = pd.read_csv(
         #    "../data/Kaggle_Credit/creditcard.csv")
 
