@@ -32,13 +32,14 @@ class Feedforward(torch.nn.Module):
 
 class Feature_Importance_Model(nn.Module):
     #I'm going to define my own Model here following how I generated this dataset
-    def __init__(self, input_dim, classifier, num_samps_for_switch, init_phi):
+    def __init__(self, input_dim, classifier, num_samps_for_switch, init_phi, device):
     # def __init__(self, input_dim, hidden_dim):
         super(Feature_Importance_Model, self).__init__()
         self.classifier = classifier
         self.parameter = Parameter(torch.Tensor(init_phi), requires_grad=True)
         # self.parameter = Parameter(-1e-10*torch.ones(input_dim),requires_grad=True) # this parameter lies
         self.num_samps_for_switch = num_samps_for_switch
+        self.device = device
     def forward(self, x): # x is mini_batch_size by input_dim
         phi = F.softplus(self.parameter)
         if any(torch.isnan(phi)):
@@ -48,7 +49,7 @@ class Feature_Importance_Model(nn.Module):
         """ draw Gamma RVs using phi and 1 """
         num_samps = self.num_samps_for_switch
         concentration_param = phi.view(-1,1).repeat(1,num_samps)
-        beta_param = torch.ones(concentration_param.size())
+        beta_param = torch.ones(concentration_param.size()).to(self.device)
         #Gamma has two parameters, concentration and beta, all of them are copied to 200,150 matrix
         Gamma_obj = Gamma(concentration_param, beta_param)
         gamma_samps = Gamma_obj.rsample() #200, 150, input_dim x samples_num

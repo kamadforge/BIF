@@ -362,6 +362,29 @@ new_X, new_y = undersample.fit_resample(X, y)
 
 print('undersampled dataset shape {}'.format(Counter(new_y)))
 
+
+def reduction_variable_logit(X_train, y_train, showVarToDel=False):
+    ultime_model = False
+    var_to_del = []
+
+    while (ultime_model == False):
+        log_reg = sm.Logit(y_train, X_train.drop(var_to_del, axis=1).astype(float)).fit(maxiter=100, disp=False)
+
+        max_pvalue = max(log_reg.pvalues)
+
+        if max_pvalue < 0.05:
+            ultime_model = True
+        else:
+            varToDel = log_reg.pvalues.index[log_reg.pvalues == max(log_reg.pvalues)].values[0]
+            if showVarToDel:
+                print(varToDel + ", p-value = " + str(max(log_reg.pvalues)))
+            var_to_del.append(varToDel)
+
+    return log_reg, var_to_del
+
+# remove some input features based on its significance
+log_reg, var_to_del = reduction_variable_logit(new_X, new_y, showVarToDel=True)
+new_X = new_X.drop(var_to_del, axis=1)
 X_train, X_test, y_train, y_test = train_test_split(new_X, new_y, test_size=0.2, random_state=42)
 
 # test logistic regression to make sure the pre-processing is done correctly
