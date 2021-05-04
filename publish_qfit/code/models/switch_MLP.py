@@ -85,7 +85,7 @@ class Modelnn(nn.Module):
         output = self.fc4(output)
 
         if not self.point_estimate:
-            output = output.reshape(self.num_samps_for_switch, mini_batch_size, -1)
+            output = output.reshape(self.num_samps_for_switch, x.shape[0], -1) #changed mini_batch_size to x.shape[0]
             output = output.transpose_(0, 1)
 
 

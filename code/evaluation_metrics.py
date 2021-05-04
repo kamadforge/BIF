@@ -26,6 +26,7 @@
 
 
 import numpy as np
+import torch
 
 
 #######################################
@@ -101,15 +102,21 @@ by 'features' we mean the numbers corresponding to ordered features
 gtfeatures - features that generated the label, e.g. for alternating it is 1,2,3,4,10 or 5,6,7,8, 10 (starting form 1) .
 '''
 
-def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_val=None, instancewise=False):
+def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_val=None, instancewise=False, ranks=None):
+    if torch.is_tensor(scores):
+        scores = scores.detach().cpu().numpy()
+
+    datatype_val = datatype_val.astype(int)
+
     tpr, fdr = 0, 0
-    ranks = create_rank(scores, k)  # ranks start with 1 and end with 10 (not 0 to 9),
+    if ranks is None:
+        ranks = create_rank(scores, k)  # ranks start with 1 and end with 10 (not 0 to 9),
     # [7,6,1,4,3,5,8,11,9,10,2] means feature 7 is the smallest and 2 the biggest
     if dataset == "xor" or dataset == "orange_skin" or dataset == "nonlinear_additive":
 
         # gt features positiions
         gtfeatures_positions = np.tile(np.arange(k), (mini_batch_size, 1))
-        onehots_arr_gt = np.zeros_like(scores.detach().cpu().numpy())
+        onehots_arr_gt = np.zeros_like(scores)
         for i, elem in enumerate(onehots_arr_gt):
             elem[gtfeatures_positions[i]] = 1
 
@@ -117,11 +124,11 @@ def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_
         # qfit features positions
         if  instancewise:
             switch_gtfeatures_positions = ranks[:, :k]  # (mini_batch_size, k)
-            onehots_arr=np.zeros_like(scores.detach().cpu().numpy())
+            onehots_arr=np.zeros_like(scores)
             for i, elem in enumerate(onehots_arr):
                 elem[switch_gtfeatures_positions[i]]=1
         else:
-            onehots_arr=np.zeros_like(scores.detach().cpu().numpy())
+            onehots_arr=np.zeros_like(scores)
 
 
 
@@ -146,20 +153,33 @@ def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_
 
         gtfeatures_positions = [] # indices of gt features
         switch_gtfeatures_positions = []
-        for i in range(gtfeatures.shape[0]): # for each data sample
+        for i in range(gtfeatures.shape[0]):
+
+            # print(ranks[i])#
+            # print(gtfeatures[i])
+            # print(ranks[i][gtfeatures[i] - 1])# for each data sample
+
             switch_gtfeatures_positions.append(ranks[i][gtfeatures[i] - 1]) # getting the
             gtfeatures_positions.append(np.arange(len(gtfeatures[i])) + 1)
         switch_gtfeatures_positions = np.array(switch_gtfeatures_positions)
         gtfeatures_positions = np.array(gtfeatures_positions) # these are indices in the array which should be best (+1)
         important_features_num = [len(i) for i in gtfeatures_positions]
 
-        onehots_arr_gt = np.zeros_like(scores.detach().cpu().numpy())
+
+        onehots_arr_gt = np.zeros_like(scores)
         for i, elem in enumerate(onehots_arr_gt):
             elem[datatype_val[i]] = 1
 
-        onehots_arr = np.zeros_like(scores.detach().cpu().numpy())
+        onehots_arr = np.zeros_like(scores)
         for i, elem in enumerate(onehots_arr):
             elem[ranks[i, :important_features_num[i]]] = 1
+
+###### above sth wring
+
+        onehots_arr = np.zeros_like(scores)
+        for i, elem in enumerate(onehots_arr):
+            elem[ranks[i, :np.sum(datatype_val[i])]] = 1
+
 
     tpr, fdr = get_tpr(gtfeatures_positions, switch_gtfeatures_positions)
 
@@ -176,7 +196,7 @@ def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_
     #     switch_gtfeatures_positions_arr.append(onehot(dat, 11))
 
     #mcc = matthews_corrcoef(np.array(gtfeatures_positions_arr).flatten(), np.array(switch_gtfeatures_positions_arr).flatten())
-    mcc = matthews_corrcoef(onehots_arr.flatten(), onehots_arr_gt.flatten())
+    mcc = matthews_corrcoef(onehots_arr.flatten(), datatype_val.flatten())
 
     return tpr, fdr, mcc
 
