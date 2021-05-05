@@ -77,16 +77,20 @@ plt.ylabel('KLD (BIF)')
 
 
 """ third plot: learned importance in each case """
-top_few = [0, 1, 2, 3, 4, 5, 6]
+top_few = [0, 1, 2, 3, 4, 5, 6, 7]
 column_names = np.load('column_names_diabetic.npy', allow_pickle=True)
-
+pal = sns.color_palette("Paired", len(column_names))
+# pal = sns.color_palette("bright", len(column_names))
+# pal = sns.color_palette("colorblind", len(column_names))
 
 plt.figure(3)
 plt.subplot(511)
 mean_importance = mean_importance_all[0, :]
 order_by_importance = np.argsort(mean_importance)[::-1] # descending order
+rank = order_by_importance[top_few]
 sns.barplot(y=[element for element in column_names[order_by_importance][top_few]],
-            x=[element for element in mean_importance[order_by_importance][top_few]])
+            x=[element for element in mean_importance[order_by_importance][top_few]],
+            palette=np.array(pal[::-1])[rank])
 plt.xlim([0,0.6])
 plt.title('BIF (non_priv)')
 
@@ -96,32 +100,40 @@ plt.subplot(512)
 mean_importance = mean_importance_all[1, :]
 plt.title('BIF (eps=%.2f)'%privacy_level[1])
 order_by_importance = np.argsort(mean_importance)[::-1] # descending order
+rank = order_by_importance[top_few]
 sns.barplot(y=[element for element in column_names[order_by_importance][top_few]],
-            x=[element for element in mean_importance[order_by_importance][top_few]])
+            x=[element for element in mean_importance[order_by_importance][top_few]],
+            palette=np.array(pal[::-1])[rank])
 plt.xlim([0,0.6])
 
 plt.subplot(513)
 mean_importance = mean_importance_all[2, :]
 plt.title('BIF (eps=%.2f)'%privacy_level[2])
 order_by_importance = np.argsort(mean_importance)[::-1] # descending order
+rank = order_by_importance[top_few]
 sns.barplot(y=[element for element in column_names[order_by_importance][top_few]],
-            x=[element for element in mean_importance[order_by_importance][top_few]])
+            x=[element for element in mean_importance[order_by_importance][top_few]],
+            palette=np.array(pal[::-1])[rank])
 plt.xlim([0,0.6])
 
 plt.subplot(514)
 mean_importance = mean_importance_all[3, :]
 plt.title('BIF (eps=%.2f)'%privacy_level[3])
 order_by_importance = np.argsort(mean_importance)[::-1] # descending order
+rank = order_by_importance[top_few]
 sns.barplot(y=[element for element in column_names[order_by_importance][top_few]],
-            x=[element for element in mean_importance[order_by_importance][top_few]])
+            x=[element for element in mean_importance[order_by_importance][top_few]],
+            palette=np.array(pal[::-1])[rank])
 plt.xlim([0,0.6])
 
 plt.subplot(515)
 mean_importance = mean_importance_all[4, :]
 plt.title('BIF (eps=%.2f)'%privacy_level[4])
 order_by_importance = np.argsort(mean_importance)[::-1] # descending order
+rank = order_by_importance[top_few]
 sns.barplot(y=[element for element in column_names[order_by_importance][top_few]],
-            x=[element for element in mean_importance[order_by_importance][top_few]])
+            x=[element for element in mean_importance[order_by_importance][top_few]],
+            palette=np.array(pal[::-1])[rank])
 plt.xlim([0,0.6])
 
 
