@@ -59,7 +59,12 @@ def main():
 #############################################################
     classifier = Feedforward(input_dim, 200, 50).to(device)
     if ar.load_saved_model:
-        classifier.load_state_dict(torch.load(f'dp_classifier_sig{ar.dp_sigma}.pt'))
+        loaded_states = torch.load(f'dp_classifier_sig{ar.dp_sigma}.pt')
+        clean_states = dict()
+        for key in classifier.state_dict().keys():
+            clean_states[key] = loaded_states[key]
+        classifier.load_state_dict(clean_states)
+        classifier.eval()
     else:
         criterion = torch.nn.BCELoss()
         optimizer = optim.Adam(classifier.parameters(), lr=ar.lr)
@@ -235,7 +240,7 @@ def main():
     plt.figure(2)
     sns.barplot(y = [element for element in column_names[order_by_importance][top_few]],
                 x = [element for element in posterior_mean_switch[order_by_importance][top_few]])
-    if ar.dp_sigma==0.0:
+    if ar.dp_sigma==1e-6:
         plt.title("BIF (non_priv)")
     else:
         plt.title("BIF (sigma=%.2f)" %ar.dp_sigma)
@@ -250,7 +255,7 @@ def parse():
     parser.add_argument('--clf-epochs', type=int, default=20)
     parser.add_argument('--clf-batch-size', type=int, default=1000)
 
-    parser.add_argument('--switch-epochs', type=int, default=200)
+    parser.add_argument('--switch-epochs', type=int, default=250)
     parser.add_argument('--switch-batch-size', type=int, default=500)
     parser.add_argument('--save-model', action='store_true', default=True)
     parser.add_argument('--load-saved-model', action='store_true', default=True)
@@ -259,13 +264,13 @@ def parse():
     parser.add_argument('--dp-clip', type=float, default=0.01)
 
 
-    # sigma = 504 for eps = 0.001
     # sigma = 68.7 for eps = 0.01
     # sigma = 8.8 for eps = 0.1
     # sigma = 2.4 for eps = 1.0
-    # sigma = 0.61 for eps = 10.0
+    # sigma = 0.84 for eps = 4.0
+    # sigma = 1e-6 for eps = infty (nonprivate)
 
-    parser.add_argument('--dp-sigma', type=float, default=0.0)
+    parser.add_argument('--dp-sigma', type=float, default=8.8)
     # parser.add_argument('--dp-clip', type=float, default=0.01)
     parser.add_argument('--seed', type=int, default=0)
     # parser.add_argument('--dp-sigma', type=float, default=1.35)
