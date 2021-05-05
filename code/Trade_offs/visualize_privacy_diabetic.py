@@ -2,7 +2,16 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-from distance_Dirichlet import L2dist, expected_suff_stats, KL_Dir, KL_Bern
+from distance_Dirichlet import KL_Dir, KL_Bern
+import matplotlib
+
+## plotting the results
+font = {
+    # 'family': 'normal',
+    # 'weight': 'bold',
+    'size': 14}
+
+matplotlib.rc('font', **font)
 
 # sigma = 68.7 for eps = 0.01
 # sigma = 8.8 for eps = 0.1
@@ -11,62 +20,36 @@ from distance_Dirichlet import L2dist, expected_suff_stats, KL_Dir, KL_Bern
 # sigma = 1e-6 for eps = infty (nonprivate)
 
 noise_level = [1e-6, 0.84, 2.4, 8.8, 68.7]
+privacy_level = [1e6, 4.0, 1.0, 0.1, 0.01] # in terms of epsilon
 
 """ first plot : accuracy vs privacy """
-# maxseed = 1
-# maxepoch = 20
-# maxnoise = len(privacy_level) # including sigma = 0
-#
-# ROC = np.zeros((maxseed, maxepoch, maxnoise))
-# phi_estimate_all =np.zeros(())
-#
-# for seednum in range(0, maxseed):
-#
-#     for noise_level in range(0, maxnoise):
-#         if noise_level==0:
-#             dp_sigma=0.0
-#         elif noise_level==1:
-#             dp_sigma=1.0
-#         elif noise_level==2:
-#             dp_sigma = 2.0
-#         elif noise_level==3:
-#             dp_sigma = 4.0
-#         elif noise_level==4:
-#             dp_sigma = 8.0
-#         else:
-#             dp_sigma = 17.0
-#         filename = 'pri_' + str(dp_sigma) + 'seed_' + str(seednum) + 'roc.npy'
-#         roc = np.load(filename)
-#         print(filename)
-#         print(roc)
-#         ROC[seednum,:,noise_level] = np.load(filename)
-#
-# mean_ROC = np.mean(ROC[:,19,:], 0)
-# std_ROC = np.std(ROC[:,19,:],0)
-#
-# sns.set(style="whitegrid")
-# plt.figure(1)
-# # plt.plot(fairness_metrics["race"], eval_metrics["ROC AUC"])
-# # ax = sns.lineplot(x=privacy_level, y=mean_ROC, ci=std_ROC, palette="tab10", linewidth=2.5)
-# # ax = sns.errorbar()
-# plt.errorbar(privacy_level, mean_ROC, yerr=std_ROC, fmt='o', linewidth=2.5, color='black',
-#              ecolor='lightgray', elinewidth=3, capsize=0)
-# plt.xlabel('Privacy in terms of noise level')
-# plt.ylabel('ROC AUC')
-# plt.savefig('privacy_vs_roc.pdf')
+ROC = np.zeros(len(noise_level))
+for nse_lv in range(0, len(noise_level)):
+    filename = 'pri_' + str(noise_level[nse_lv]) + 'seed_' + str(0) + 'roc.npy'
+    ROC[nse_lv] = np.load(filename)
+sns.set(style="whitegrid")
+plt.figure(1)
+plt.subplot(131)
+plt.plot(privacy_level, ROC, 'o-')
+plt.xticks(privacy_level)
+plt.xscale('log')
+plt.xlabel('Privacy (eps)')
+plt.ylabel('ROC')
+# plt.show()
+plt.savefig('privacy_vs_roc_diabetic.pdf')
 
 
 """ second plot : KLD vs privacy """
 # unpack all the results
 input_dim  = 22
-# mean_importance_all = np.zeros((len(noise_level), input_dim))
+mean_importance_all = np.zeros((len(noise_level), input_dim))
 phi_est_mat_all = np.zeros((len(noise_level), input_dim))
 seednum = 0
 
 for nse_lv in range(0, len(noise_level)):
 
-    # filename =  'pri_' + str(privacy_level[nse_lv]) + 'seed_' + str(seednum) + 'importance.npy'
-    # mean_importance_all[nse_lv, seednum, :] = np.mean(np.load(filename), axis=0)
+    filename =  'pri_' + str(noise_level[nse_lv]) + 'seed_' + str(seednum) + 'importance.npy'
+    mean_importance_all[nse_lv, :] = np.load(filename)
     filename = 'pri_' + str(noise_level[nse_lv]) + 'seed_' + str(seednum) + 'phi_est.npy'
     phi_est_mat_all[nse_lv, :] = np.load(filename)
 
@@ -79,15 +62,68 @@ KLD[3] = KL_Dir(phi_est_mat_all[0,:], phi_est_mat_all[4,:])
 #     KLD[nse_lv] = KL_Dir(phi_est_mat_all[0,:], phi_est_mat_all[nse_lv+1,:])
 
 print('KLD ', KLD)
+sns.set(style="whitegrid")
+plt.subplot(132)
+plt.plot(privacy_level[1:], KLD, 'o-')
+plt.xticks(privacy_level[1:])
+plt.xscale('log')
+plt.xlabel('Privacy (eps)')
+plt.ylabel('KLD (BIF)')
+# plt.savefig('privacy_vs_KLD_BIF_diabetic.pdf')
 
-# # KLD = [KLD_1, KLD_60, KLD_125, KLD_185, KLD_250]
-# #
-# KLD = np.median(KLD, axis=1)
-# plt.figure(4)
-# ax = sns.regplot(x=privacy_level[1:], y=KLD, fit_reg=False, scatter_kws={"color":"darkred","alpha":0.3,"s":200})
-# ax = sns.lineplot(x=privacy_level[1:], y=KLD)
-# ax.set_title('Q-FIT')
-#
-# ax.set_xlabel("privacy in terms of noise level")
-# ax.set_ylabel("KLD")
-# plt.savefig('KLD_privacy.pdf')
+##### subplot(133) for INVASE ####
+
+
+
+
+""" third plot: learned importance in each case """
+top_few = [0, 1, 2, 3, 4, 5, 6]
+column_names = np.load('column_names_diabetic.npy', allow_pickle=True)
+
+
+plt.figure(3)
+plt.subplot(511)
+mean_importance = mean_importance_all[0, :]
+order_by_importance = np.argsort(mean_importance)[::-1] # descending order
+sns.barplot(y=[element for element in column_names[order_by_importance][top_few]],
+            x=[element for element in mean_importance[order_by_importance][top_few]])
+plt.xlim([0,0.6])
+plt.title('BIF (non_priv)')
+
+# privacy_level = [1e6, 4.0, 1.0, 0.1, 0.01] # in terms of epsilon
+
+plt.subplot(512)
+mean_importance = mean_importance_all[1, :]
+plt.title('BIF (eps=%.2f)'%privacy_level[1])
+order_by_importance = np.argsort(mean_importance)[::-1] # descending order
+sns.barplot(y=[element for element in column_names[order_by_importance][top_few]],
+            x=[element for element in mean_importance[order_by_importance][top_few]])
+plt.xlim([0,0.6])
+
+plt.subplot(513)
+mean_importance = mean_importance_all[2, :]
+plt.title('BIF (eps=%.2f)'%privacy_level[2])
+order_by_importance = np.argsort(mean_importance)[::-1] # descending order
+sns.barplot(y=[element for element in column_names[order_by_importance][top_few]],
+            x=[element for element in mean_importance[order_by_importance][top_few]])
+plt.xlim([0,0.6])
+
+plt.subplot(514)
+mean_importance = mean_importance_all[3, :]
+plt.title('BIF (eps=%.2f)'%privacy_level[3])
+order_by_importance = np.argsort(mean_importance)[::-1] # descending order
+sns.barplot(y=[element for element in column_names[order_by_importance][top_few]],
+            x=[element for element in mean_importance[order_by_importance][top_few]])
+plt.xlim([0,0.6])
+
+plt.subplot(515)
+mean_importance = mean_importance_all[4, :]
+plt.title('BIF (eps=%.2f)'%privacy_level[4])
+order_by_importance = np.argsort(mean_importance)[::-1] # descending order
+sns.barplot(y=[element for element in column_names[order_by_importance][top_few]],
+            x=[element for element in mean_importance[order_by_importance][top_few]])
+plt.xlim([0,0.6])
+
+
+plt.show()
+
