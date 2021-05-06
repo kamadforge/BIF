@@ -17,7 +17,7 @@ from evaluation_metrics import compute_median_rank, binary_classification_metric
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", default="xor")
+parser.add_argument("--dataset", default="adult_short")
 args = parser.parse_args()
 
 from tab_dataloader import load_adult_short, load_credit, load_cervical, load_isolet, load_intrusion
@@ -80,7 +80,7 @@ weight_sum=np.zeros(X_test.shape[1])
 weights_all_local = []
 argsorted_all_local = []
 
-for i in range(len(X_test)):
+for i in range(3): #len(X_test)
     print(i)
     exp = explainer.explain_instance(data_row=X_test[i],predict_fn=classifier.predict_proba, num_features=input_dim)
     exp_list = exp.as_list()
@@ -88,30 +88,30 @@ for i in range(len(X_test)):
     #print(exp_list)
 
     weights = np.abs(np.array(exp_map[1]))
-    weights_sorted = weights[weights[:, 0].argsort()]
-    weights_all_local.append(weights_sorted)
+    weights_ordered = weights[weights[:, 0].argsort()][:,1] #sum of weights from 0 to last feature
+    weights_all_local.append(weights_ordered)
 
-    weights_argsorted = np.argsort(weights_sorted)
+    weights_argsorted = np.argsort(weights_ordered)[::-1] #first is most imprortant
     argsorted_all_local.append(weights_argsorted)
 
-    weight_sum+=weights_sorted[:,1]
+    # just for online output
+    weight_sum+=weights_ordered
     weights_sum_argsorted = np.argsort(weight_sum)
     print(f"argsort of sum after {i} iters: {weights_sum_argsorted}")
-
-
 
 
     #print(m)
     #print(m_sorted)
     #print(weight_sum)
 print(weight_sum)
-sorted_features = np.sort(weight_sum)
-argsorted_features = np.argsort(weight_sum)
+sorted_features = np.sort(weight_sum)[::-1]
+argsorted_features = np.argsort(weight_sum)[::-1]
 print(sorted_features)
 print(argsorted_features)
 
+print(argsorted_all_local)
 np.save(f"ranks/{dataset}_local", weights_all_local)
-np.save(f"ranks/{dataset}_local_ranks", weights_argsorted)
+np.save(f"ranks/{dataset}_local_ranks", argsorted_all_local)
 
 
 
