@@ -1,5 +1,6 @@
 """
 1. removed vips data
+2.
 """
 
 __author__ = 'mijung'
@@ -33,13 +34,15 @@ from tab_dataloader import load_intrusion, load_covtype
 from make_synthetic_datasets import generate_data
 from make_synthetic_datasets import generate_invase
 #from data.synthetic_data_loader import synthetic_data_loader
+from numpy import genfromtxt
+
 
 
 if  __name__ =='__main__':
     parser=argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="xor") # "xor, orange_skin, or nonlinear_additive"
+    parser.add_argument("--dataset", default="adult_short") # "xor, orange_skin, or nonlinear_additive"
     parser.add_argument("--mode", default="test") # test, training
-    parser.add_argument("--testtype", default="local") #global, local
+    parser.add_argument("--testtype", default="global") #global, local
     parser.add_argument("--prune", default=True) #tests the subset of features
     parser.add_argument("--k", default=1, type=int)
     parser.add_argument("--met", default=1, type=int) #1-qfit,  2-shap, 3-invase 4-l2x
@@ -144,16 +147,6 @@ if  __name__ =='__main__':
         optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
         num_epochs = 500
 
-    """ set the privacy parameter """
-    # dp_epsilon = 1
-    # dp_delta = 1/N_tot
-    # k = MaxIter*2 # two expected suff stats
-    # params = privacy_calibrator.gaussian_mech(dp_epsilon, dp_delta, prob=nu, k=k)
-    # sigma = params['sigma']
-    # print('privacy parameter is ', sigma)
-    # iter_sigmas = np.array([0, sigma])  # test non-private first, then private with the desired epsilon level
-
-
     file_write=True
 
     # at every repeat, we reshuffle data
@@ -172,51 +165,40 @@ if  __name__ =='__main__':
         ytst=y_test
         y = y_train
 
-
     if mode=='train':
 
         num_repeat = 1
-        # iter_sigmas = np.array([0., 1., 10., 50., 100.]) # use this one when we have different levels of noise.
         iter_sigmas = np.array([0.])
         if method == "nn":
             LR_model0 = {}
         for k in range(iter_sigmas.shape[0]):
             sigma = iter_sigmas[k]
-
             for repeat_idx in range(num_repeat):
+                for epoch in range(num_epochs):
+                    print("epoch number: ", epoch)
+                    optimizer.zero_grad()
+                    ypred_tr = model(torch.Tensor(X))
+                    loss = criterion(ypred_tr, torch.LongTensor(y))
+                    loss.backward()
+                    optimizer.step()
 
-                if method=="nn":
+                    ###########
+                    # TEST per epoch
+                    y_pred = model(torch.Tensor(Xtst))
+                    y_pred = torch.argmax(y_pred, dim=1)
+                    accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == ytst) / len(ytst))
+                    print("test accuracy: ", accuracy)
 
-                    for epoch in range(num_epochs):
-                        print("epoch number: ", epoch)
-                        optimizer.zero_grad()
-                        ypred_tr = model(torch.Tensor(X))
-                        loss = criterion(ypred_tr, torch.LongTensor(y))
-                        loss.backward()
-                        optimizer.step()
+                LR_model0[repeat_idx] = model.state_dict()
 
-                        ###########
-                        # TEST per epoch
-
-                        y_pred = model(torch.Tensor(Xtst))
-                        y_pred = torch.argmax(y_pred, dim=1)
-                        accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == ytst) / len(ytst))
-                        print("test accuracy: ", accuracy)
-
-                if method=="nn":
-                    LR_model0[repeat_idx] = model.state_dict()
-
-        if method == "nn":
-            if not os.path.isdir("checkpoints"):
-                os.mkdir("checkpoints")
-            np.save('checkpoints/%s_%s_LR_model0_epochs_%d_acc_%.2f' % (dataset, method, num_epochs, accuracy), LR_model0)
+        if not os.path.isdir("checkpoints"):
+            os.mkdir("checkpoints")
+        np.save('checkpoints/%s_%s_LR_model0_epochs_%d_acc_%.2f' % (dataset, method, num_epochs, accuracy), LR_model0)
 
     ###########################################
 
     elif mode == "test":
-
         print(f"dataset: {dataset}")
-
         # pruning
         if prune:
             print("testing a subset of features")
@@ -230,64 +212,22 @@ if  __name__ =='__main__':
 
             if 1:
                 if args.testtype=="global":
+                    import json
+                    with open('rankings/global_ranks') as f:
+                        data = json.load(f)
+
                     k = 1 #number of important features to keep
-                    met = 1 #2-shap, 3-invase 4-l2x
-                    if dataset=="adult":
-                        if met==1:
-                            important_features=[10,5,0,12,4,7,9,3,8,11,6,1,2,13]#qfit
-                        elif met==2:
-                            important_features=[7,4,10,0,12,11,6,1,3,5,2,13,9,8]#shap
-                        elif met==3:
-                            important_features=[5,4,10,0,12,11,9,13,8,3,7,2,1,6]#invase
-                        elif met==4:
-                            important_features=[5,4,0,9,2,10,11,3,12,1,7,13,6,8]#l2x global
+                    met = 4 #2-shap, 3-invase 4-l2x, 5-lime
 
-                    elif dataset=="credit":
-                        if met == 1:
-                            important_features = [13,3,11,27,10,9,25,19,6,7,16,8,0,17,5,15,26,21,14,12,4,23,2,28,24,22,1,20,18]  # ,15,6,18,7,12,17] #qfit
-                        elif met==2:
-                            important_features = [13,16,6,3,11,9,1,7,0,24,4,18,25,5,10,28,22,20,17,8,2,21,26,23,27,14,12,15,19]#,0,19,18,8,9] #shap
-                        elif met==3:
-                            important_features = [10,13,16,15,7,22,21,17,3,18,2,12,23,0,11,19,24,14,6,4,27,20,8,5,1,26,25,9,28]
-                        elif met==4:
-                            important_features = [27,19,15,13,21,9,3,26,11,14,6,28,7,18,1,16,2,25,4,5,24,8,17,23,10,22,12,20,0]
+                    path_lime = "../../comparison_methods/LIME/ranks/adult_short_local_ranks.npy"
+                    ran = np.load(path_lime)
+                    print(ran)
 
-                    elif dataset=="cervical":
-                        if met==1:
-                            important_features = [32,0,11,31,2,1,3,33,4,20,10,15,6,28,9,30,5,17,13,7,8,24,16,23,12,27,14,18,19,22,29,25,26,21]
-                        elif met==2:
-                            important_features = [32,0,4,5,33,2,3,28,20,10,1,6,31,7,13,30,8,9,11,12,14,27,15,29,17,18,19,21,22,23,24,25,26,16]
-                        elif met==3:
-                            important_features = [10,32,1,6,5,30,17,33,22,7,12,23,16,21,13,31,9,25,20,19,15,27,18,8,26,14,24,29,4,28,3,11,0,2]
-                        elif met==4:
-                            important_features = [31,32,25,30,26,3,7,33,11,10,9,8,4,6,5,13,2,1,12,16,14,15,17,18,19,20,21,22,23,24,27,28,29,0]
-
-                    elif dataset=="intrusion": #dummy rankings
-                        if met==1:
-                            important_features = [26, 17, 27, 18,  5,  0, 36,  2,  8, 29, 35,  3, 21,  1,  6, 30,  9, 15, 16, 32, 20, 28, 22, 11, 39, 19, 24, 31,  7, 13, 10, 25, 23, 14, 12, 37, 34, 38, 33,  4]
-                            important_features = [17, 27, 26, 18,  5,  0, 14, 12, 23, 33, 32,  2,  1, 11, 38,  8, 29, 37, 3, 21, 16, 39, 20,  9, 19, 25, 10, 13, 15, 24, 35, 31, 34, 22, 28,  7, 30,  6, 36,  4]
-                            important_features = [17, 27, 18,  5, 26,  0,  4, 28,  8, 39, 25, 11, 33,  2,  6,  9, 13, 21,
-        10, 36, 19, 12, 24,  1, 16, 35, 32, 31, 23, 38, 22, 15, 29, 30, 20,  7,
-         3, 37, 14, 34]
-                        elif met==2:
-                            important_features = [17,5,32,24,30,2,4,3,28,8,1,10,29,27,6,33,37,26,0,23,18,21,9,13,35,15,31,36,7,39,11,12,14,16,38,20,22,25,34,19]
-                        elif met==3:
-                            important_features = [33,17,30,2,27,13,9,15,7,35,16,3,25,12,21,28,39,8,18,29,14,20,38,24,10,23,6,31,0,1,19,11,36,34,4,32,5,37,22,26]
-                        elif met==4:
-                            important_features = [24, 29, 31, 34, 18, 16, 11, 35, 32,  1, 39, 38, 36,  6, 23,  5, 19, 15, 27,  0, 37, 12, 13  ,2,14, 10, 22, 20 ,33 ,26,  9,  8, 25, 17, 21,  7, 30,  4,  3, 28] #l2x
-
-                    elif dataset=="census":
-                        if met== 1:
-                            important_features = [17,39,14,5,21,30,10,0,24,16,6,36,18,25,13,26,4,38,9,31,29,7,11,20,27,28,35,19,33,32,12,34,8,22,37,23,3,2,1,15]
-
-                    elif dataset=="isolet":
-                        if met==1:
-                            important_features = [576,512,466,233,481,396,202,200,472,234,9,265,487,431,545,224,97,425,174]
-                        if met==2:
-                            important_features = [265,203,13,396,204,533,361,233,459,534,360,9,332]
+                    rank_str = data[dataset][met]
+                    rank = [int(num) for num in rank_str.strip().split(",")]
 
                     # important_features = result
-                    important_features = important_features[:k]
+                    important_features = rank[:k]
                     unimportant_features = np.delete(features_num, important_features)
                     print("important features: ", important_features, "for met", met)
                     #pruning global
