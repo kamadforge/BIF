@@ -40,7 +40,7 @@ from numpy import genfromtxt
 
 if  __name__ =='__main__':
     parser=argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="adult_short") # "xor, orange_skin, or nonlinear_additive"
+    parser.add_argument("--dataset", default="credit") # "xor, orange_skin, or nonlinear_additive"
     parser.add_argument("--mode", default="test") # test, training
     parser.add_argument("--testtype", default="global") #global, local
     parser.add_argument("--prune", default=True) #tests the subset of features

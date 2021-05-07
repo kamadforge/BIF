@@ -80,7 +80,8 @@ weight_sum=np.zeros(X_test.shape[1])
 weights_all_local = []
 argsorted_all_local = []
 
-for i in range(3): #len(X_test)
+print(f"Length: {len(X_test)}")
+for i in range(len(X_test)):
     print(i)
     exp = explainer.explain_instance(data_row=X_test[i],predict_fn=classifier.predict_proba, num_features=input_dim)
     exp_list = exp.as_list()
