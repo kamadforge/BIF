@@ -109,8 +109,8 @@ if train_mode:
     print(argsorted_features)
 
     print(argsorted_all_local)
-    #np.save(f"ranks/{dataset}_local", weights_all_local)
-    #np.save(f"ranks/{dataset}_local_ranks", argsorted_all_local)
+    np.save(f"ranks/{dataset}_local", weights_all_local)
+    np.save(f"ranks/{dataset}_local_ranks", argsorted_all_local)
 
 elif test_mode:
     file_args = f"ranks/{dataset}_local_ranks.npy"
