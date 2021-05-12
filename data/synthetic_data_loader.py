@@ -67,6 +67,8 @@ def synthetic_data_loader(dataset):
         xor_dataset = np.load(os.path.join(pathmain, 'data/synthetic/XOR/dataset_XOR.npy'), allow_pickle=True)
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
+        datatypes = np.zeros_like(x_tot)
+        datatypes[:, :2] = 1
 
     elif dataset == "orange_skin":
 
@@ -75,6 +77,8 @@ def synthetic_data_loader(dataset):
                               allow_pickle=True)
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
+        datatypes = np.zeros_like(x_tot)
+        datatypes[:, 3:7] = 1
 
     elif dataset == "nonlinear_additive":
 
@@ -83,6 +87,8 @@ def synthetic_data_loader(dataset):
                               allow_pickle=True)
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
+        datatypes = np.zeros_like(x_tot)
+        datatypes[:, 7:] = 1
 
     elif dataset == "alternating":
 
