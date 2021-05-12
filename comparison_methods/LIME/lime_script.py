@@ -17,7 +17,7 @@ from evaluation_metrics import compute_median_rank, binary_classification_metric
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", default="adult_short")
+parser.add_argument("--dataset", default="orange_skin")
 args = parser.parse_args()
 
 from tab_dataloader import load_adult_short, load_credit, load_cervical, load_isolet, load_intrusion
@@ -25,8 +25,10 @@ from synthetic_data_loader import synthetic_data_loader
 import numpy as np
 dataset=args.dataset #nonlinear_additive, orange_skin, xor
 dataset_method = f"load_{dataset}"
-
+train_mode=1
+test_mode=1
 print(dataset)
+
 
 if "syn" in dataset or dataset=="xor" or "nonlinear" in dataset or "orange" in dataset:
     x_tot, y_tot, datatypes_tot = synthetic_data_loader(dataset)
@@ -39,14 +41,10 @@ if "syn" in dataset or dataset=="xor" or "nonlinear" in dataset or "orange" in d
     #     N = 2668
     X = x_tot[:N, :] #train X
     y = y_tot[:N] #train y
-    if dataset == "alternating" or "syn" in dataset:
-        datatypes = datatypes_tot[:N]  # only for alternating, if datatype comes from orange_skin or nonlinear
-    else:
-        datatypes = None
+    datatypes = datatypes_tot[:N]  # only for alternating, if datatype comes from orange_skin or
     X_test = x_tot[N:, :]
     y_test = y_tot[N:]
-    if dataset == "alternating" or "syn" in dataset:
-        datatypes_test = datatypes_tot[N:]
+    datatypes_test = datatypes_tot[N:]
 # elif dataset=="xor" or "nonlinear" in dataset or "orange" in dataset:
 #     X_train, y_train, X_test, y_test = synthetic_data_loader(dataset)
 #     X = X_train
@@ -59,63 +57,91 @@ else:
 
 input_dim = X.shape[1]
 hidden_dim = input_dim
-#how_many_samps = N
+    #how_many_samps = N
 
+if train_mode:
+    classifier = sklearn.ensemble.RandomForestClassifier(n_estimators=500) #500
+    classifier.fit(X, y)
 
-# rf = sklearn.ensemble.RandomForestClassifier(n_estimators=500) #500
-# rf.fit(X, y)
+    # classifier = xgboost.XGBClassifier(n_estimators=300, max_depth=5)
+    # classifier.fit(X, y)
 
-classifier = xgboost.XGBClassifier(n_estimators=300, max_depth=5)
-classifier.fit(X, y)
-
-#predict_fn = lambda x: rf.predict_proba(X_test)
-score = sklearn.metrics.accuracy_score(y_test, classifier.predict(X_test))
-print("Score: ", score)
-
-
-
-explainer = lime.lime_tabular.LimeTabularExplainer(X, kernel_width=4)
-
-weight_sum=np.zeros(X_test.shape[1])
-weights_all_local = []
-argsorted_all_local = []
-
-print(f"Length: {len(X_test)}")
-for i in range(len(X_test)):
-    print(i)
-    exp = explainer.explain_instance(data_row=X_test[i],predict_fn=classifier.predict_proba, num_features=input_dim)
-    exp_list = exp.as_list()
-    exp_map = exp.as_map()
-    #print(exp_list)
-
-    weights = np.abs(np.array(exp_map[1]))
-    weights_ordered = weights[weights[:, 0].argsort()][:,1] #sum of weights from 0 to last feature
-    weights_all_local.append(weights_ordered)
-
-    weights_argsorted = np.argsort(weights_ordered)[::-1] #first is most imprortant
-    argsorted_all_local.append(weights_argsorted)
-
-    # just for online output
-    weight_sum+=weights_ordered
-    weights_sum_argsorted = np.argsort(weight_sum)
-    print(f"argsort of sum after {i} iters: {weights_sum_argsorted}")
-
-
-    #print(m)
-    #print(m_sorted)
-    #print(weight_sum)
-print(weight_sum)
-sorted_features = np.sort(weight_sum)[::-1]
-argsorted_features = np.argsort(weight_sum)[::-1]
-print(sorted_features)
-print(argsorted_features)
-
-print(argsorted_all_local)
-np.save(f"ranks/{dataset}_local", weights_all_local)
-np.save(f"ranks/{dataset}_local_ranks", argsorted_all_local)
+    #predict_fn = lambda x: rf.predict_proba(X_test)
+    score = sklearn.metrics.accuracy_score(y_test, classifier.predict(X_test))
+    print("Score: ", score)
 
 
 
+    explainer = lime.lime_tabular.LimeTabularExplainer(X, kernel_width=1)
+
+    weight_sum=np.zeros(X_test.shape[1])
+    weights_all_local = []
+    argsorted_all_local = []
+
+    print(f"Length: {len(X_test)}")
+    for i in range(len(X_test)):
+        print(i)
+        exp = explainer.explain_instance(data_row=X_test[i],predict_fn=classifier.predict_proba, num_features=input_dim)
+        exp_list = exp.as_list()
+        exp_map = exp.as_map()
+        #print(exp_list)
+
+        weights = np.abs(np.array(exp_map[1]))
+        weights_ordered = weights[weights[:, 0].argsort()][:,1] #sum of weights from 0 to last feature
+        weights_all_local.append(weights_ordered)
+
+        weights_argsorted = np.argsort(weights_ordered)[::-1] #first is most imprortant
+        argsorted_all_local.append(weights_argsorted)
+
+        # just for online output
+        weight_sum+=weights_ordered
+        weights_sum_argsorted = np.argsort(weight_sum)
+        print(f"argsort of sum after {i} iters: {weights_sum_argsorted}")
+
+
+        #print(m)
+        #print(m_sorted)
+        #print(weight_sum)
+    print(weight_sum)
+    sorted_features = np.sort(weight_sum)[::-1]
+    argsorted_features = np.argsort(weight_sum)[::-1]
+    print(sorted_features)
+    print(argsorted_features)
+
+    print(argsorted_all_local)
+    #np.save(f"ranks/{dataset}_local", weights_all_local)
+    #np.save(f"ranks/{dataset}_local_ranks", argsorted_all_local)
+
+elif test_mode:
+    file_args = f"ranks/{dataset}_local_ranks.npy"
+    file = f"ranks/{dataset}_local.npy"
+
+    ranks = np.load(file_args)
+    ranks = np.flip(ranks)
+    vals = np.load(file)
+    vals = np.flip(vals)
+
+
+
+
+
+    if dataset == "xor":
+        k = 2
+    elif dataset == "orange_skin" or dataset == "nonlinear_additive":
+        k = 4
+    elif dataset == "alternating":
+        k = 5
+    elif dataset == "syn4":
+        k = 7
+    elif dataset == "syn5" or dataset == "syn6":
+        k = 9
+
+    print(datatypes_test)
+
+    tpr, fdr, mcc = binary_classification_metrics(vals, k, dataset, 2000, datatypes_test, True)
+
+    print(f"tpr: {tpr}, fdr: {fdr}")
+    print(f"mcc: {mcc}")
 
 
 #weights = np.array(exp_list)[:, -1]
@@ -123,4 +149,4 @@ np.save(f"ranks/{dataset}_local_ranks", argsorted_all_local)
 
 
 
-exp.show_in_notebook(show_table=True)
+#exp.show_in_notebook(show_table=True)

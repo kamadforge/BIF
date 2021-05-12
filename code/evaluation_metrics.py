@@ -48,7 +48,7 @@ def create_rank(scores, k):
         permutated_rank = (-permutated_weights).argsort().argsort() + 1
         rank = permutated_rank[np.argsort(idx)]
 
-        rank = np.argsort(score.detach().cpu().numpy())[::-1]
+        rank = np.argsort(score)[::-1]
 
 
         if type(rank).__module__=='torch':
