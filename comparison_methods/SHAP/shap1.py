@@ -16,7 +16,7 @@ from evaluation_metrics import compute_median_rank, binary_classification_metric
 from tab_dataloader import load_adult_short, load_credit, load_cervical, load_isolet, load_intrusion
 from synthetic_data_loader import synthetic_data_loader
 import numpy as np
-dataset="syn6" #nonlinear_additive, orange_skin
+dataset="syn4" #xor, nonlinear_additive, orange_skin
 dataset_method = f"load_{dataset}"
 
 
@@ -31,14 +31,11 @@ if "syn" in dataset or dataset=="xor" or "nonlinear" in dataset or "orange" in d
     #     N = 2668
     X = x_tot[:N, :] #train X
     y = y_tot[:N] #train y
-    if dataset == "alternating" or "syn" in dataset:
-        datatypes = datatypes_tot[:N]  # only for alternating, if datatype comes from orange_skin or nonlinear
-    else:
-        datatypes = None
+    datatypes = datatypes_tot[:N]
+
     X_test = x_tot[N:, :]
     y_test = y_tot[N:]
-    if dataset == "alternating" or "syn" in dataset:
-        datatypes_test = datatypes_tot[N:]
+    datatypes_test = datatypes_tot[N:]
 # elif dataset=="xor" or "nonlinear" in dataset or "orange" in dataset:
 #     X_train, y_train, X_test, y_test = synthetic_data_loader(dataset)
 #     X = X_train
@@ -71,7 +68,7 @@ shap_local_arg = np.argsort(shap_vals)#[::-1]
 shap_local_abs = np.abs(shap_vals)
 shap_local_abs_arg = np.argsort(-np.abs(shap_vals)) #minus for the reverse order
 
-print(shap_local_abs_arg)
+print(shap_local_abs_arg[0:5])
 
 if dataset=="adult_short":
     dataset="adult"
@@ -97,7 +94,8 @@ elif dataset == "syn4":
 elif dataset == "syn5" or dataset == "syn6":
     k = 9
 
-print(datatypes_test)
+
+print(datatypes_test[0:5])
 
 tpr, fdr, mcc = binary_classification_metrics(shap_vals, k, dataset, 2000, datatypes_test, True, shap_local_abs_arg)
 
