@@ -35,17 +35,23 @@ from make_synthetic_datasets import generate_data
 from make_synthetic_datasets import generate_invase
 #from data.synthetic_data_loader import synthetic_data_loader
 from numpy import genfromtxt
+import json
 
 
 
 if  __name__ =='__main__':
+
+    ###############
+    # GET ARGS
+
     parser=argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="credit") # "xor, orange_skin, or nonlinear_additive"
-    parser.add_argument("--mode", default="test") # test, training
-    parser.add_argument("--testtype", default="global") #global, local
+    parser.add_argument("--dataset", default="intrusion", choices=["xor", "orange_skin", "nonlinear_additive", "syn4", "syn5", "syn6", "credit", "adult_short", "intrusion"])
+    parser.add_argument("--mode", default="train") # test, train
+    parser.add_argument("--testtype", default="local") #global, local
     parser.add_argument("--prune", default=True) #tests the subset of features
-    parser.add_argument("--k", default=1, type=int)
-    parser.add_argument("--met", default=1, type=int) #1-qfit,  2-shap, 3-invase 4-l2x
+    parser.add_argument("--ktop", default=3, type=int)
+    parser.add_argument("--met", default=1, type=int) #0-qfit,  1-shap, 2-invase 3-l2x 4-lime
+    parser.add_argument("--train_epochs", default=500, type=int)
     args=parser.parse_args()
     dataset = args.dataset
     method = "nn"
@@ -54,6 +60,9 @@ if  __name__ =='__main__':
     mode = args.mode
     prune = args.prune
     rn.seed(rnd_num)
+
+    #######################
+    # GET DATA
 
     def save_dataset(path, dataset):
         if not os.path.isdir(os.path.split(path)[0]):
@@ -124,6 +133,7 @@ if  __name__ =='__main__':
 
     ####################################
     # define essential quantities
+
     if dataset=="intrusion":
         output_num = 4
     else:
@@ -133,7 +143,6 @@ if  __name__ =='__main__':
     training_data_por = 0.8
     N = int(training_data_por * N_tot)
     N_test = N_tot - N
-
 
     if method == "nn":
         if which_net == 'FC_net':
@@ -145,7 +154,7 @@ if  __name__ =='__main__':
         criterion = nn.CrossEntropyLoss()
         # optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
         optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
-        num_epochs = 500
+        num_epochs = args.train_epochs
 
     file_write=True
 
@@ -157,13 +166,19 @@ if  __name__ =='__main__':
     y = y_tot[rand_perm_nums[0:N]]
     Xtst = x_tot[rand_perm_nums[N:], :]
     ytst = y_tot[rand_perm_nums[N:]]
-
+    if "syn" in dataset:
+        datatypes_tr = datatypes[rand_perm_nums[0:N]]
+        datatypes_tst=datatypes[rand_perm_nums[N:]]
+        datatypes_tst_num_relevantfeatures = np.sum(datatypes_tst, axis=1)
 
     if dataset=="adult_short" or dataset=="credit" or dataset=="intrusion":
         Xtst=X_test
         X=X_train
         ytst=y_test
         y = y_train
+
+    #################
+    # TRAIN
 
     if mode=='train':
 
@@ -196,6 +211,7 @@ if  __name__ =='__main__':
         np.save('checkpoints/%s_%s_LR_model0_epochs_%d_acc_%.2f' % (dataset, method, num_epochs, accuracy), LR_model0)
 
     ###########################################
+    # TEST FOR SYNTHETIC DATASETS (GLOBAL AND LOCAL) (TABLE 1)
 
     elif mode == "test":
         print(f"dataset: {dataset}")
@@ -210,22 +226,16 @@ if  __name__ =='__main__':
                 return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
             test=Xtst.copy()
 
+            ktop = args.ktop
+            met = args.met  # 1-qfit,  2-shap, 3-invase 4-l2x
+            met_names = {1: "qfit", 2: "shap", 3: "invase", 4: "l2x", 5: "shap"}
+
             if 1:
-                if args.testtype=="global":
-                    import json
+                if args.testtype=="global": #global test
                     with open('rankings/global_ranks') as f:
                         data = json.load(f)
-
-                    k = 1 #number of important features to keep
-                    met = 4 #2-shap, 3-invase 4-l2x, 5-lime
-
-                    path_lime = "../../comparison_methods/LIME/ranks/adult_short_local_ranks.npy"
-                    ran = np.load(path_lime)
-                    print(ran)
-
                     rank_str = data[dataset][met]
                     rank = [int(num) for num in rank_str.strip().split(",")]
-
                     # important_features = result
                     important_features = rank[:k]
                     unimportant_features = np.delete(features_num, important_features)
@@ -234,35 +244,41 @@ if  __name__ =='__main__':
                     print("pruning global")
                     test[:, unimportant_features] = 0
 
-                ###################
-                # local test
-                else:
+                else: # local test
                     k = args.k
                     met = args.met  #1-qfit,  2-shap, 3-invase 4-l2x
-                    met_names = {1 : "qfit", 2: "shap", 3: "invase", 4: "l2x", 5: "shap"}
+                    met_names = {0 : "qfit", 1: "shap", 2: "invase", 3: "l2x", 4: "lime"}
+                    print("Method: ", met_names[met])
 
-                    if dataset=="adult_short" and met!=1:
+                    if dataset=="adult_short" and met!=1 and met!=4:
                         dataset="adult"
 
-                    if met == 1:
+                    if met == 0:
                         dir_ranks = "publish_qfit/code/rankings"
-                    elif met == 2:
+                    elif met == 1:
                         dir_ranks = "comparison_methods/SHAP/ranks"
-                    elif met == 3:
+                    elif met == 2:
                         dir_ranks  = "comparison_methods/INVASE/INVASE_custom_datasets/ranks"
-                    elif met == 4:
+                    elif met == 3:
                         dir_ranks = "comparison_methods/L2X/ranks"
+                    elif met == 4:
+                        dir_ranks = "comparison_methods/LIME/ranks"
 
+                    if (met == 2 or met ==3):
+                        file = f"instance_featureranks_test_{met_names[met]}_{dataset}_k_{k}.npy"
+                    if met == 4:
+                        file = f"{dataset}_local_ranks.npy"
+                    if met == 1:
+                        file = "shap_"+dataset+".npy"
 
-
-                    for file in os.listdir(os.path.join("../../", dir_ranks)):
-                        if dataset in file and f"k_{k}" in file:
-                            unimportant_features_instance = np.load(os.path.join("../../", dir_ranks, file))
-                            print(f"loaded dataset '{met_names[met]}' in '{file}' from '{dir_ranks}'")
-
-                    if met == 2:
-                        features_rank = np.load(os.path.join("../../", dir_ranks, "shap_"+dataset+".npy"))
-                    unimportant_features_instance = features_rank[:, k:]
+                    features_rank = np.load(os.path.join("../../", dir_ranks, file))
+                    #features_rank = np.flip(features_rank) if met ==4 else features_rank
+                    unimportant_features_instance = features_rank[:, k:] #works for constant k real world datasets
+                    if "syn" in dataset:
+                        important_features_instance_onehot = np.zeros_like(features_rank)
+                        for i in range(len(features_rank)):
+                             imp_feat = features_rank[i, :k+1]
+                             important_features_instance_onehot[i, imp_feat]=1
 
                     #pruning local
                     print(f"unimportant features shape: {unimportant_features_instance.shape}")
@@ -275,24 +291,27 @@ if  __name__ =='__main__':
                 # zeroing values in the input dataset
                 print(f"the shape of test dataset is: {test.shape}")
 
-
                 i = 0  # choose a sample
                 mini_batch_size = 2000
                 datatypes_test_samp = None
-
                 # loading the trained model on a dataset (credit, adult, intrusion, etc.)
                 for file in os.listdir("checkpoints"):
                     if dataset in file:
-                        LR_model = np.load(os.path.join("checkpoints", file), allow_pickle=True)
+                        checkpoint_model = np.load(os.path.join("checkpoints", file), allow_pickle=True)
                         print("Loaded: ", file)
-                model.load_state_dict(LR_model[()][0], strict=False)
-
+                model.load_state_dict(checkpoint_model[()][0], strict=False)
                 # testing the subset of features on a trained model
                 y_pred = model(torch.Tensor(test))
                 y_pred = torch.argmax(y_pred, dim=1)
-
                 accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == ytst) / len(ytst))
                 print("test accuracy: ", accuracy)
+
+                #######################
+                # for synthetic we compute mcc
+
+                if "syn" in dataset:
+                    mcc = matthews_corrcoef(important_features_instance_onehot.flatten(), datatypes_tst.flatten())
+                    print("MCC: ", mcc)
 
 
     # elif mode=='test':
