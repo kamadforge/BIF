@@ -159,11 +159,11 @@ def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_
         gtfeatures_positions = np.array(gtfeatures_positions) # these are indices in the array which should be best (+1)
         important_features_num = [len(i) for i in gtfeatures_positions]
 
-        onehots_arr_gt = np.zeros_like(scores.detach().cpu().numpy())
+        onehots_arr_gt = np.zeros_like(scores)
         for i, elem in enumerate(onehots_arr_gt):
             elem[datatype_val[i]] = 1
 
-        onehots_arr = np.zeros_like(scores.detach().cpu().numpy())
+        onehots_arr = np.zeros_like(scores)
         for i, elem in enumerate(onehots_arr):
             elem[ranks[i, :important_features_num[i]]] = 1
 

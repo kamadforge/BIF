@@ -96,100 +96,75 @@ else:
 
 
 def get_args():
-
     parser = argparse.ArgumentParser()
-
     # general
-    parser.add_argument("--dataset", default="orange_skin") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6
+    parser.add_argument("--dataset", default="credit") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=200, type=int)
-    parser.add_argument("--epochs", default=7, type=int) # 7
-    parser.add_argument("--lr", default=0.01, type=float)
-
+    parser.add_argument("--epochs", default=10, type=int) # 7
+    parser.add_argument("--lr", default=0.1, type=float)
     # for switch training
     parser.add_argument("--num_Dir_samples", default=30, type=int)
     parser.add_argument("--alpha", default=10, type=float)
-    parser.add_argument("--point_estimate", default=False)
-
-    parser.add_argument("--train", default=True)
+    parser.add_argument("--point_estimate", default=1)
+    parser.add_argument("--train", default=1)
     parser.add_argument("--test", default=True)
-
     # for instance wise training, False for global
     parser.add_argument("--switch_nn", default=True)
-
     parser.add_argument("--training_local", default=False)
     parser.add_argument("--local_training_iter", default=200, type=int)
     parser.add_argument("--set_hooks", default=True)
-    parser.add_argument("--kl_term", default=True)
-
+    parser.add_argument("--kl_term", default=False)
+    # parse
     args = parser.parse_args()
-
     return args
-
 args = get_args()
 print(args)
-
 global output_num
 if args.dataset == "intrusion":
     output_num = 4
 else:
     output_num = 2
-
+# settings
 torch.set_printoptions(precision=4, sci_mode=False)
 
 #######################
 # LOSS
 
 def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_samps, annealing_rate, method, kl_term, point_estimate):
-
     if method=="vips":
         BCE = F.binary_cross_entropy(prediction, true_y, reduction='mean')
-
         return BCE
     elif method=="nn":
-
-        if args.switch_nn:
-
+        if args.switch_nn: #local explanations
             loss = nn.CrossEntropyLoss()
-
             if point_estimate:
+                # mini_batch x [0,1] vs. mini_batch x [0,1] for BCE
                 if args.mini_batch_size == 1:
                     true_y = true_y.unsqueeze(0)
                 BCE = loss(prediction, true_y)
-
             else: #sampling
-
                 #for each sample compute the loss with the same true_y, then take the mean of the losses
                 # computing the crossnetropy term of the elbo
-
                 BCE_mat = torch.zeros(prediction.shape[1])  # contains losses for each sample
                 for ind in torch.arange(0, prediction.shape[1]):  # for each sample
+                    # mini_batch x samples x [0,1] and for each sample mini_batch x [0,1]
                     y_pred = prediction[:, ind, :]  # get the prediction
                     BCE_mat[ind] = loss(y_pred, true_y)  # compute the loss for that sample
-
                 BCE = torch.mean(BCE_mat)  # average the losses
-
-
             if kl_term:
-
                 if point_estimate:
                     # KLD termaa
                     alpha_0 = torch.Tensor([alpha_0])
                     hidden_dim = torch.Tensor([hidden_dim])
-
                     trm1 = torch.lgamma(torch.sum(phi_cand)) - torch.lgamma(hidden_dim*alpha_0)
                     trm2 = - torch.sum(torch.lgamma(phi_cand)) + hidden_dim*torch.lgamma(alpha_0)
                     trm3 = torch.sum((phi_cand-alpha_0)*(torch.digamma(phi_cand)-torch.digamma(torch.sum(phi_cand))))
-
                     KLD = trm1 + trm2 + trm3
-
                     return BCE + annealing_rate*KLD/how_many_samps
-
                 else: # sampling with kl
-
                     alpha_0 = torch.Tensor([alpha_0])
                     hidden_dim = torch.Tensor([hidden_dim])
-
                     mini_batch_size = phi_cand.shape[0]
                     # KL_mat = torch.zeros(mini_batch_size)
                     # for i in torch.arange(0,mini_batch_size):
@@ -200,24 +175,17 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
                     #
                     #     KL_mat[i] = trm1 + trm2 + trm3
                     #
-
                     trm1_mul = torch.lgamma(torch.sum(phi_cand, dim=1)) - torch.lgamma(hidden_dim * alpha_0)
                     trm2_mul = - torch.sum(torch.lgamma(phi_cand), dim=1) + hidden_dim * torch.lgamma(alpha_0)
                     trm3_mul = torch.sum((phi_cand - alpha_0) * (torch.digamma(phi_cand) - torch.digamma(torch.sum(phi_cand,dim=1)).unsqueeze(dim=1)), dim=1)
-
                     KL_mul = trm1_mul + trm2_mul + trm3_mul
                     KLD = torch.mean(KL_mul)
                     # return BCE + + annealing_rate * KLD / how_many_samps
                     return BCE + KLD / mini_batch_size
-
-            else: #no kl term (both point estimate and sampling)
-
+            else: # no kl term (both point estimate and sampling)
                 return BCE
-
-        else: #non-switch nn
-
+        else: #global explanations (non- importance switch nn)
             loss = nn.CrossEntropyLoss()
-
             if point_estimate:
                 if args.mini_batch_size == 1:
                     true_y = true_y.unsqueeze(0)
@@ -228,7 +196,6 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
                     y_pred = prediction[:, ind, :]
                     BCE_mat[ind] = loss(y_pred, true_y)
                 BCE = torch.mean(BCE_mat)
-
             if kl_term:
                 # KLD term
                 alpha_0 = torch.Tensor([alpha_0])
@@ -240,12 +207,9 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
                 KLD = trm1 + trm2 + trm3
                 return BCE + + annealing_rate * KLD / how_many_samps
             else: #no kl term (both point estimate and sampling)
-
                 return BCE
 
-
 def shuffle_data(y,x,how_many_samps, datatypes=None):
-
     idx = np.random.permutation(how_many_samps)
     shuffled_y = y[idx]
     shuffled_x = x[idx,:]
@@ -253,19 +217,19 @@ def shuffle_data(y,x,how_many_samps, datatypes=None):
         shuffled_datatypes = None
     else:
         shuffled_datatypes = datatypes[idx]
-
     return shuffled_y, shuffled_x, shuffled_datatypes
 
 #######################################################
-
+# MAIN
 
 def main():
-
     dataset = args.dataset
     method = args.method
     mini_batch_size = args.mini_batch_size
     point_estimate = args.point_estimate
 
+    #######################
+    # model local or global
     if method == "nn":
         if args.switch_nn:
             from models.switch_MLP import Model_switchlearning
@@ -274,79 +238,70 @@ def main():
     elif method=="vips":
         from models.switch_LR import Model
 
-
     ###########################################33
     # LOAD DATA
 
-    if "syn" in dataset or dataset=="xor" or "nonlinear" in dataset or "orange" in dataset:
-        x_tot, y_tot, datatypes_tot = synthetic_data_loader(dataset)
-        N_tot, d = x_tot.shape
-        training_data_por = 0.8
-        N = int(training_data_por * N_tot)
-        # if dataset == "adult_short":
-        #     N = 26048
-        # elif dataset == "credit":
-        #     N = 2668
-        X = x_tot[:N, :]
-        y = y_tot[:N]
-        if dataset == "alternating" or "syn" in dataset:
-            datatypes = datatypes_tot[:N]  # only for alternating, if datatype comes from orange_skin or nonlinear
-        else:
-            datatypes = None
-        X_test = x_tot[N:, :]
-        y_test = y_tot[N:]
-        if dataset == "alternating" or "syn" in dataset:
-            datatypes_test = datatypes_tot[N:]
+    #if "syn" in dataset or dataset=="xor" or "nonlinear" in dataset or "orange" in dataset:
+    x_tot, y_tot, datatypes_tot = synthetic_data_loader(dataset)
+    N_tot, d = x_tot.shape
+    training_data_por = 0.8
+    N = int(training_data_por * N_tot)
+    X = x_tot[:N, :]
+    y = y_tot[:N]
+    if dataset == "alternating" or "syn" in dataset:
+        datatypes = datatypes_tot[:N]  # only for alternating, if datatype comes from orange_skin or nonlinear
     else:
-        X_train, y_train, X_test, y_test = synthetic_data_loader(dataset)
-        X = X_train
-        y = y_train
-        N_tot, d = X_train.shape
-        N = len(X_train)
         datatypes = None
-
+    X_test = x_tot[N:, :]
+    y_test = y_tot[N:]
+    if dataset == "alternating" or "syn" in dataset:
+        datatypes_test = datatypes_tot[N:]
+    # else:
+    #     X_train, y_train, X_test, y_test = synthetic_data_loader(dataset)
+    #     X = X_train
+    #     y = y_train
+    #     N_tot, d = X_train.shape
+    #     N = len(X_train)
+    #     datatypes = None
     input_dim = d
     hidden_dim = input_dim
     how_many_samps = N
 
     #######################################################
-    # preparing variational inference to learn switch vector
+    # VARIATIONAL INFERENCE PARAMS TO LEARN IMPORTANCE SWITCH
 
     alpha_0 = args.alpha #0.01 # below 1 so that we encourage sparsity. #dirichlet dist parameters
     num_samps_for_switch = args.num_Dir_samples
     num_repeat = 1 # repeating the entire experiment
-    # noise
-    # iter_sigmas = np.array([0., 1., 10., 50., 100.])
-    iter_sigmas = np.array([0.])
 
+    #####################################
+    # load pretrained model g for the switch model
+    for i in os.listdir("checkpoints"):
+        file = os.path.join(path_code, "checkpoints", i)
+        if dataset in file and method in file:
+            LR_model = np.load(file, allow_pickle=True)
+            model_g = file
+            print("Loaded: ", file)
+    if not os.path.isdir("weights"):
+        os.mkdir("weights")
+
+    # train mode
     if args.train:
-
-        for k in range(iter_sigmas.shape[0]): # noise levels, normal training, leave 0
-            #load pretrained model for the switch model
-            for i in os.listdir("checkpoints"):
-                file = os.path.join(path_code, "checkpoints", i)
-                if dataset in file and method in file:
-                    LR_model = np.load(file, allow_pickle=True)
-                    file_loaded = file
-                    print("Loaded: ", file)
-            if not os.path.isdir("weights"):
-                os.mkdir("weights")
-
-            filename = os.path.join(path_code, 'weights/%s_%d_%.1f_%d_switch_posterior_mean' % (dataset, args.num_Dir_samples, args.alpha, args.epochs)+str(int(iter_sigmas[k])))
-            filename_last = os.path.join(path_code, 'weights/%s_switch_posterior_mean' % (dataset)+str(int(iter_sigmas[k])))
-            filename_phi = os.path.join(path_code, 'weights/%s_%d_%.1f_%d_switch_parameter' % (dataset, args.num_Dir_samples, args.alpha, args.epochs)+ str(int(iter_sigmas[k])))
-
+        if 1:
+            filename = os.path.join(path_code, 'weights/%s_%d_%.1f_%d_switch_posterior_mean' % (dataset, args.num_Dir_samples, args.alpha, args.epochs))
+            filename_last = os.path.join(path_code, 'weights/%s_switch_posterior_mean' % (dataset))
+            filename_phi = os.path.join(path_code, 'weights/%s_%d_%.1f_%d_switch_parameter' % (dataset, args.num_Dir_samples, args.alpha, args.epochs))
             posterior_mean_switch_mat = np.empty([num_repeat, input_dim])
             switch_parameter_mat = np.empty([num_repeat, input_dim])
             mean_of_means=np.zeros(input_dim)
 
-
-        ############################################3
-        # TRAINING
+            ############################################3
+            # TRAINING
 
             for repeat_idx in range(num_repeat):
                 print(repeat_idx)
-                # load model - either vips or nn
+                ####################
+                # get combined model (g+switches, based on the choice of local or global feature selection) and load the model g, and train switches
                 if method=="vips":
                     model = Model(input_dim=input_dim, LR_model=torch.Tensor(LR_model[repeat_idx,:]), num_samps_for_switch=num_samps_for_switch)
                 elif method=="nn":
@@ -354,9 +309,8 @@ def main():
                         model = Modelnn(d,output_num, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
                     else:
                         model = Model_switchlearning(d,output_num, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
+                    # load model g and freeze it
                     model.load_state_dict(LR_model[()][repeat_idx], strict=False)
-
-                    # hooks to not update other parameters than switch-related
                     if args.set_hooks:
                         # in case you use pre-trained classifier
                         h = model.fc1.weight.register_hook(lambda grad: grad * 0)
@@ -370,8 +324,8 @@ def main():
                         #h = model.bn1.bias.register_hook(lambda grad: grad * 0)
                         #h = model.bn2.bias.register_hook(lambda grad: grad * 0)
 
-                ##########################################################################
-
+                ############################################
+                # perform training
                 print('Starting Switch Training')
                 #optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
                 optimizer = optim.Adam(model.parameters(), lr=args.lr)
@@ -394,7 +348,7 @@ def main():
                             datatypes_train_batch = datatypesTrain[i*mini_batch_size:(i+1)*mini_batch_size]
                         optimizer.zero_grad()
                         # run the model
-                        outputs, phi_cand, S, prephi = model(torch.Tensor(inputs), mini_batch_size) #100,10,150
+                        outputs, phi_cand, S, prephi = model(torch.Tensor(inputs), mini_batch_size) # the example shape 100,10,150
                         # loss
                         if method=="vips":
                             labels = torch.squeeze(torch.Tensor(labels))
@@ -427,7 +381,7 @@ def main():
                     print('epoch number is ', epoch)
                     print('running loss is \n', running_loss)
 
-                print('Finished global Training')
+                print('Finished global Training\n')
 
 
                 ###################################################
@@ -522,56 +476,66 @@ def main():
 # TEST
 
     if args.test:
+            print("\nTesting:\n")
 
-            # running the test
-            def test_instance(dataset, switch_nn, training_local, output_num):
+            #####################
+            # FIRST MAKE A RUN TO GET LOCAL IMPORTANCE (FOR LOCAL)
+            # that is both for synthetic and real-world datasets
+
+            def test_get_switches(dataset, switch_nn, training_local, output_num):
+
+                # get data sample, x, y, and gt_features
                 print(f"dataset: {dataset}")
                 path = os.path.join(path_code, f"models/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt")
                 i = 0  # choose a sample
-                mini_batch_size = 100000
-                datatypes_test_samp=None
+                mini_batch_size = X_test.shape[0]  # entire test dataset
+                inputs_test_samp = X_test[i * mini_batch_size:(i + 1) * mini_batch_size,
+                                   :]  # (mini_batch_size* feat_num)
+                labels_test_samp = y_test[i * mini_batch_size:(i + 1) * mini_batch_size]
+                if dataset == "alternating" or "syn" in dataset:
+                    datatypes_test_samp = datatypes_test[i * mini_batch_size:(i + 1) * mini_batch_size]
 
-
+                # choose global or local switch+model g
                 if switch_nn:
                     model = Model_switchlearning(d,output_num, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
                 else:
                     model = Modelnn(d,output_num, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
                 model.load_state_dict(torch.load(path), strict=False)
 
-
-                inputs_test_samp = X_test[i * mini_batch_size:(i + 1) * mini_batch_size, :] #(mini_batch_size* feat_num)
-                labels_test_samp = y_test[i * mini_batch_size:(i + 1) * mini_batch_size]
-                if dataset == "alternating" or "syn" in dataset:
-                    datatypes_test_samp = datatypes_test[i * mini_batch_size:(i + 1) * mini_batch_size]
-
+                # ground truth relevant features (used for synthtic data only)
+                # relevant_features - indices
+                # datatypes_test_samp - one-hot vector
                 if "syn" in dataset:
                     relevant_features=[]
                     for i in range(datatypes_test_samp.shape[0]):
                         relevant_features.append(np.where(datatypes_test_samp[i]>0))
-                    datatypes_test_samp = np.array(relevant_features).squeeze(1)
+                    datatypes_test_samp_arg = np.array(relevant_features).squeeze(1)
+                else:
+                    datatypes_test_samp_arg = None
+                    datatypes_test_samp = None
 
-
+                # run the forward test on the original all features to get the S importance values
                 inputs_test_samp = torch.Tensor(inputs_test_samp)
                 model.eval()
                 outputs, phi, S, phi_est = model(inputs_test_samp, mini_batch_size)
                 torch.set_printoptions(profile="full")
 
-                #####################
+                return S, datatypes_test_samp_arg, datatypes_test_samp, inputs_test_samp
+
+            #########################3
+            # PRUNE AND TEST MODEL G ON SUBSET OF FEATURES
+
+            ##################
+            # REAL DATASETS
+
+            def test_pruned(inputs_test_samp, ktop):
                 inputs_test_samp1=inputs_test_samp.clone()
-                inputs_test_samp3=inputs_test_samp.clone()
-                inputs_test_samp5=inputs_test_samp.clone()
-
-                ##########################
-
                 if not os.path.isdir("rankings"):
                     os.mkdir("rankings")
 
-
-                ktop=1
-                #local samples results:
                 if args.switch_nn: #local
                     instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
-                    instance_unimportant_features = instance_best_features_ascending[:, :-ktop]
+                    instance_unimportant_features = instance_best_features_ascending[:, :-ktop] #(num_test_samples, num_features, num_dirichlet_samples)
                 else: #global
                     instance_best_features_ascending = np.argsort(S.detach().cpu().numpy())
                     instance_best_features_ascending = instance_best_features_ascending[:-ktop]
@@ -579,169 +543,60 @@ def main():
                 print("unimportant features shape", instance_unimportant_features.shape)
                 np.save(os.path.join(path_code, str(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{ktop}.npy")), instance_unimportant_features)
 
-
-                #########################
-
                 #unimportant_features_instance = np.load(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy")
 
+                # run the test (forward pass) on the subset of features, which were selected, the rest is pruned/zeroed out
                 for i, data in enumerate(inputs_test_samp1):
-                    #print(inputs_test_samp1[i])
                     inputs_test_samp1[i, instance_unimportant_features[i]] = 0
-                    #print(inputs_test_samp1[i])
-
-
-                ###################################
-                i = 0  # choose a sample
-                mini_batch_size = 2000
-                datatypes_test_samp = None
 
                 input_num= d
                 model = FC(input_num, output_num)
-                LR_model = np.load(file_loaded, allow_pickle=True)
+                LR_model = np.load(model_g, allow_pickle=True)
                 model.load_state_dict(LR_model[()][0], strict=False)
-
-
-
-
-
+                # run the original model g on the pruned features
                 y_pred = model(torch.Tensor(inputs_test_samp1))
                 y_pred = torch.argmax(y_pred, dim=1)
 
                 accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == y_test) / len(y_test))
-                print("test accuracy 1: ", accuracy)
+                print(f"model g test accuracy top-{ktop} features: ", accuracy)
 
-
-
-                ##############################3
-                ################################3
-                #
-                # k=3
-                # #local samples results:
-                # instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
-                # instance_unimportant_features = instance_best_features_ascending[:, :-k]
-                # np.save(os.path.join(path_code, f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy"), instance_unimportant_features)
-                #
-                #
-                # #########################
-                #
-                # #unimportant_features_instance = np.load(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy")
-                #
-                # for i, data in enumerate(inputs_test_samp3):
-                #     inputs_test_samp3[i, instance_unimportant_features[i]] = 0
-                #
-                #
-                # ###################################
-                # i = 0  # choose a sample
-                # mini_batch_size = 2000
-                # datatypes_test_samp = None
-                #
-                # input_num= d
-                # model = FC(input_num, output_num)
-                # LR_model = np.load(file_loaded, allow_pickle=True)
-                # model.load_state_dict(LR_model[()][0], strict=False)
-                #
-                # y_pred = model(torch.Tensor(inputs_test_samp3))
-                # y_pred = torch.argmax(y_pred, dim=1)
-                #
-                # accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == y_test) / len(y_test))
-                # print("test accuracy 3: ", accuracy)
-                #
-                # ##############################3
-                # ##################################
-                #
-                #
-                # k=5
-                # #local samples results:
-                # instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
-                # instance_unimportant_features = instance_best_features_ascending[:, :-k]
-                # np.save(os.path.join(path_code, f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy"), instance_unimportant_features)
-                #
-                #
-                # #########################
-                #
-                # #unimportant_features_instance = np.load(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy")
-                #
-                # for i, data in enumerate(inputs_test_samp5):
-                #     inputs_test_samp5[i, instance_unimportant_features[i]] = 0
-                #
-                #
-                # ###################################
-                # i = 0  # choose a sample
-                # mini_batch_size = 2000
-                # datatypes_test_samp = None
-                # input_num= d
-                # model = FC(input_num, output_num)
-                # LR_model = np.load(file_loaded, allow_pickle=True)
-                # model.load_state_dict(LR_model[()][0], strict=False)
-                #
-                # y_pred = model(torch.Tensor(inputs_test_samp5))
-                # y_pred = torch.argmax(y_pred, dim=1)
-                #
-                # accuracy = (np.sum(np.round(y_pred.detach().cpu().numpy().flatten()) == y_test) / len(y_test))
-                # print("test accuracy 5: ", accuracy)
-                # ##############################
-                # ######################3
-                # #####################
-
-
-                samples_to_see=5
-                if mini_batch_size>samples_to_see and datatypes_test_samp is not None:
-                    print(datatypes_test_samp[:samples_to_see])
-                    print("outputs", outputs[:samples_to_see])
-                    print("phi", phi[:samples_to_see])
-                return S, datatypes_test_samp
+                return accuracy
 
 
             dataset=args.dataset
-            S, datatypes_test_samp = test_instance(dataset, args.switch_nn, False, output_num)
-            if dataset=="xor":
-                k=2
-            elif dataset == "orange_skin" or dataset == "nonlinear_additive":
-                k=4
-            elif dataset == "alternating":
-                k=5
-            elif dataset == "syn4":
-                k=7
-            elif dataset == "syn5" or dataset == "syn6":
-                k=9
+            S, datatypes_test_samp_arg, datatypes_test_samp_onehot, inputs_test_samp = test_get_switches(dataset, args.switch_nn, False, output_num)
+
+            accuracy = test_pruned(inputs_test_samp, 5)
+
+            return [accuracy]
 
             #######################################
-            # evaluation
-
-            # synthetic=["xor", "orange_skin", "nonlinear_additive", "alternating", "syn4", "syn5", "syn6"]
-            #
-            # if (args.dataset in synthetic) and (args.switch_nn) :
-            #     if not args.point_estimate:
-            #         S=S.mean(dim=2)
-            #
-            #     median_ranks = compute_median_rank(S, k, dataset, datatypes_test_samp)
-            #     mean_median_ranks=np.mean(median_ranks)
-            #     #if not args.point_estimate:
-            #     #    S=S.mean(dim=1)
-            #     tpr, fdr = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp)
-            #     print("mean median rank", mean_median_ranks)
-            #     print(f"tpr: {tpr}, fdr: {fdr}")
-            #
-            # else:
-            #     tpr, fdr = -1,-1
+            # EVALUATION FOR SYNTHETIC DATASETS
+            # we look here only on the local feature choice
 
             synthetic = ["xor", "orange_skin", "nonlinear_additive", "alternating", "syn4", "syn5", "syn6"]
+
+            if (args.dataset in synthetic):
+
+                k_dic={"xor": 2, "orange_skin": 4, "nonlinear_additive": 4, "alternating": 5, "syn4": 7, "syn5": 9, "syn6": 9 }
+                k=k_dic[dataset]
+
 
             if (args.dataset in synthetic) and (args.switch_nn):
                 if not args.point_estimate:
                     S = S.mean(dim=2)
 
-                median_ranks = compute_median_rank(S, k, dataset, datatypes_test_samp)
+                median_ranks = compute_median_rank(S, k, dataset, datatypes_test_samp_arg)
                 mean_median_ranks = np.mean(median_ranks)
                 # if not args.point_estimate:
                 #    S=S.mean(dim=1)
                 mini_batch_size = 2000
 
 
-                tpr, fdr, mcc = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp, args.switch_nn)
+                tpr, fdr, mcc = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp_arg, args.switch_nn)
                 print("mean median rank", mean_median_ranks)
-                print(f"tpr: {tpr}, fdr: {fdr}")
-                print(f"mcc: {mcc}")
+                #print(f"tpr: {tpr}, fdr: {fdr}")
+                #print(f"mcc: {mcc}")
 
             elif (args.dataset in synthetic):
                 mini_batch_size = 2000
@@ -749,17 +604,15 @@ def main():
                     S = S.mean(dim=0)
 
                 S= np.tile(S.detach().cpu().numpy(), (2000, 1))
+                print(S[0:5])
 
-                tpr, fdr, mcc = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp, True)
+                tpr, fdr, mcc = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp_arg, True)
 
                 #print("mean median rank", mean_median_ranks)
                 print(f"tpr: {tpr}, fdr: {fdr}")
                 print(f"mcc: {mcc}")
             else: #real datasets, no tpr, fdr, mcc can be calculated
                 tpr, fdr = -1,-1
-
-
-
 
     return tpr, fdr, S
 
@@ -781,16 +634,27 @@ def main():
 
 
 if __name__ == '__main__':
-    runs = 1
+    runs = 5
 
     tprs, fdrs, Ss = [], [], []
     for i in range(runs):
         print(f"\n\nRun: {i}\n")
-        tpr, fdr, S = main()
-        tprs.append(tpr); fdrs.append(fdr); Ss.append(S.mean(dim=0).detach().numpy())
+        vals = main()
 
-    print("*"*50)
-    S_average = np.round(np.mean(Ss, axis=0),3)
-    S_average_nums = np.argsort(S_average)[::-1]
-    print(f"tpr mean {np.mean(tprs)}, fdr mean: {np.mean(fdrs)}, tpr std {np.std(tprs)}, fdr_std {np.std(fdrs)}, S_testmean: {S_average}, S_args: {S_average_nums}")
-    print(",".join([str(a) for a in S_average_nums]))
+        if len(vals)==3: # synthetic
+            tpr = vals[0]; fdr = vals[1]; S = vals[2]
+            tprs.append(tpr); fdrs.append(fdr); Ss.append(S.mean(dim=0).detach().numpy())
+
+        print("*" * 50)
+        S_average = np.round(np.mean(Ss, axis=0), 3)
+        S_average_nums = np.argsort(S_average)[::-1]
+        print(f"tpr mean {np.mean(tprs)}, fdr mean: {np.mean(fdrs)}, tpr std {np.std(tprs)}, fdr_std {np.std(fdrs)}, S_testmean: {S_average}, S_args: {S_average_nums}")
+        print(",".join([str(a) for a in S_average_nums]))
+
+        if len(vals)==1: #real
+            acc = vals[0]
+            tprs.append(acc)
+        print(f"final acc mean {np.mean(tprs)}")
+
+
+
