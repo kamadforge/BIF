@@ -116,6 +116,8 @@ def get_args():
     parser.add_argument("--local_training_iter", default=200, type=int)
     parser.add_argument("--set_hooks", default=True)
     parser.add_argument("--kl_term", default=False)
+
+    parser.add_argument("--ktop_real", default=1)
     # parse
     args = parser.parse_args()
     return args
@@ -567,7 +569,7 @@ def main():
             dataset=args.dataset
             S, datatypes_test_samp_arg, datatypes_test_samp_onehot, inputs_test_samp = test_get_switches(dataset, args.switch_nn, False, output_num)
 
-            accuracy = test_pruned(inputs_test_samp, 5)
+            accuracy = test_pruned(inputs_test_samp, args.ktop_real)
 
             return [accuracy]
 
@@ -644,17 +646,22 @@ if __name__ == '__main__':
         if len(vals)==3: # synthetic
             tpr = vals[0]; fdr = vals[1]; S = vals[2]
             tprs.append(tpr); fdrs.append(fdr); Ss.append(S.mean(dim=0).detach().numpy())
+        elif len(vals) == 1:  # real
+            acc = vals[0]
+            tprs.append(acc)
 
-        print("*" * 50)
+    print("*" * 20)
+    if len(vals) == 3:
         S_average = np.round(np.mean(Ss, axis=0), 3)
         S_average_nums = np.argsort(S_average)[::-1]
         print(f"tpr mean {np.mean(tprs)}, fdr mean: {np.mean(fdrs)}, tpr std {np.std(tprs)}, fdr_std {np.std(fdrs)}, S_testmean: {S_average}, S_args: {S_average_nums}")
         print(",".join([str(a) for a in S_average_nums]))
 
-        if len(vals)==1: #real
-            acc = vals[0]
-            tprs.append(acc)
+    if len(vals)==1: #real
         print(f"final acc mean {np.mean(tprs)}")
+        print(f"dataset {args.dataset}, ktop_real {args.ktop_real} lr {args.lr}, it {args.epochs}, mini_batch_size {args.mini_batch_size}")
+
+    print("********END\n\n\n")
 
 
 
