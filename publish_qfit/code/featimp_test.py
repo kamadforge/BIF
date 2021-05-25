@@ -90,15 +90,16 @@ else:
     pathmain = cwd_parent
     path_code = cwd
 
+os.makedirs("checkpoints", exist_ok=True)
+os.makedirs("checkpoints_bif", exist_ok=True)
 
 ##################################################3
 # ARGUMENTS
 
-
 def get_args():
     parser = argparse.ArgumentParser()
     # general
-    parser.add_argument("--dataset", default="credit") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
+    parser.add_argument("--dataset", default="adult") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=200, type=int)
     parser.add_argument("--epochs", default=10, type=int) # 7
@@ -455,13 +456,13 @@ def main():
 
                     torch.save(model.state_dict(),
                                os.path.join(path_code,
-                                            f"models/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt"))
+                                            f"checkpoints_bif/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt"))
 
                 else: #if switch_nn is true testing a single instance
 
                     torch.save(model.state_dict(),
                                os.path.join(path_code,
-                                            f"models/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt"))
+                                            f"checkpoints_bif/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt"))
 
         #-------------------------------------------
 
@@ -486,7 +487,7 @@ def main():
 
                 # get data sample, x, y, and gt_features
                 print(f"dataset: {dataset}")
-                path = os.path.join(path_code, f"models/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt")
+                path = os.path.join(path_code, f"checkpoints_bif/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt")
                 i = 0  # choose a sample
                 mini_batch_size = X_test.shape[0]  # entire test dataset
                 inputs_test_samp = X_test[i * mini_batch_size:(i + 1) * mini_batch_size,
@@ -580,7 +581,6 @@ def main():
 
                 k_dic={"xor": 2, "orange_skin": 4, "nonlinear_additive": 4, "alternating": 5, "syn4": 7, "syn5": 9, "syn6": 9 }
                 k=k_dic[dataset]
-
 
             if (args.dataset in synthetic) and (args.switch_nn):
                 if not args.point_estimate:

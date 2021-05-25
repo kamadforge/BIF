@@ -78,7 +78,7 @@ def synthetic_data_loader(dataset):
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
         datatypes = np.zeros_like(x_tot)
-        datatypes[:, 3:7] = 1
+        datatypes[:, :4] = 1
 
     elif dataset == "nonlinear_additive":
 
@@ -88,7 +88,7 @@ def synthetic_data_loader(dataset):
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
         datatypes = np.zeros_like(x_tot)
-        datatypes[:, 7:] = 1
+        datatypes[:, :4] = 1
 
     elif dataset == "alternating":
 

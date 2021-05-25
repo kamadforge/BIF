@@ -44,7 +44,6 @@ def synthetic_data_loader(dataset):
         x_tot = np.concatenate([X_train, X_test])
         y_tot = np.concatenate([y_train, y_test])
 
-        return X_train, y_train, X_test, y_test
 
     elif dataset == "adult_short":
         X_train, y_train, X_test, y_test = load_adult_short()

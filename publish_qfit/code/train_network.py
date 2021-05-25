@@ -51,7 +51,7 @@ if  __name__ =='__main__':
     parser.add_argument("--prune", default=True) #tests the subset of features
     parser.add_argument("--ktop", default=3, type=int)
     parser.add_argument("--met", default=1, type=int) #0-qfit,  1-shap, 2-invase 3-l2x 4-lime
-    parser.add_argument("--train_epochs", default=500, type=int)
+    parser.add_argument("--train_epochs", default=250, type=int)
     args=parser.parse_args()
     dataset = args.dataset
     method = "nn"

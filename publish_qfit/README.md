@@ -23,7 +23,8 @@
 
 ###I. Synthetic tabular datasets:
 
-#### 1. Pre-train the network
+#### 1. Get the pre-trained models 
+(optional: in case no other desired model exists)
 
 ```
 cd code
@@ -31,6 +32,8 @@ python train_network.py --dataset xor
 ```
 
 Datasets: xor, orange_skin, nonlinear_additive, syn4, syn5, syn6
+
+The pre-trained models are already in `code/checkpoints directory`
 
 #### 2. Run Q-FIT and compute metrics
 
@@ -51,6 +54,8 @@ python train_network.py --dataset adult_short
 ```
 
 Datasets: credit, adult_short
+
+The pre-trained models are already in `data` folder.
 
 #### 2. Run Q-FIT and compute feature ranking
 
