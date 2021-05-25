@@ -117,7 +117,7 @@ def get_args():
     parser.add_argument("--set_hooks", default=True)
     parser.add_argument("--kl_term", default=False)
 
-    parser.add_argument("--ktop_real", default=1)
+    parser.add_argument("--ktop_real", default=1, type=int)
     # parse
     args = parser.parse_args()
     return args
