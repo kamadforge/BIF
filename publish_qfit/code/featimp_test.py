@@ -384,7 +384,7 @@ def main():
                     print('epoch number is ', epoch)
                     print('running loss is \n', running_loss)
 
-                print('Finished global Training\n')
+                #print('Finished global Training\n')
 
 
                 ###################################################
