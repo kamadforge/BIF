@@ -12,6 +12,8 @@ params=ParameterGrid({"dataset": [args.dataset], "lr": [0.005, 0.1, 0.05, 0.01],
 
 for p in params:
 
+    print(p)
+
     subprocess.call(["/home/kadamczewski/miniconda3/bin/python", "/home/kadamczewski/Dropbox_from/Current_research/featimp_dp/code/featimp_test.py", "--dataset", p['dataset'], "--lr", str(p['lr']), "--epochs", str(p['epochs']), "--mini_batch_size", str(p['mini_batch_size']), "--ktop_real", str(p['ktop_real'])])
 
     #subprocess.call(["python", "featimp_test.py", "--dataset", p['dataset'], "--lr", str(p['lr']), "--epochs", str(p['epochs']), "--mini_batch_size", str(p['mini_batch_size']), "--ktop_real", str(p['ktop_real'])])
