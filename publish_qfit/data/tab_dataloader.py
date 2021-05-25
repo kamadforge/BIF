@@ -111,9 +111,7 @@ def load_intrusion():
     feature_selected = np.concatenate((pos_samps_input, neg_samps_input))
     label_selected = np.concatenate((pos_samps_label, neg_samps_label))
 
-    X_train, X_test, y_train, y_test = train_test_split(feature_selected, label_selected, train_size=0.70,
-                                                        test_size=0.30,
-                                                        random_state=seed_number)
+    X_train, X_test, y_train, y_test = train_test_split(feature_selected, label_selected, train_size=0.80, test_size=0.20, random_state=seed_number)
 
     return X_train, y_train, X_test, y_test
 

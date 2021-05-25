@@ -17,7 +17,7 @@ from evaluation_metrics import compute_median_rank, binary_classification_metric
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", default="orange_skin")
+parser.add_argument("--dataset", default="nonlinear_additive")
 args = parser.parse_args()
 
 from tab_dataloader import load_adult_short, load_credit, load_cervical, load_isolet, load_intrusion
@@ -25,7 +25,7 @@ from synthetic_data_loader import synthetic_data_loader
 import numpy as np
 dataset=args.dataset #nonlinear_additive, orange_skin, xor
 dataset_method = f"load_{dataset}"
-train_mode=1
+train_mode=0
 test_mode=1
 print(dataset)
 
@@ -72,7 +72,7 @@ if train_mode:
 
 
 
-    explainer = lime.lime_tabular.LimeTabularExplainer(X, kernel_width=1)
+    explainer = lime.lime_tabular.LimeTabularExplainer(X, kernel_width=3)
 
     weight_sum=np.zeros(X_test.shape[1])
     weights_all_local = []
@@ -89,9 +89,11 @@ if train_mode:
         weights = np.abs(np.array(exp_map[1]))
         weights_ordered = weights[weights[:, 0].argsort()][:,1] #sum of weights from 0 to last feature
         weights_all_local.append(weights_ordered)
+        print("weights_argsorted: ", weights_ordered)
 
         weights_argsorted = np.argsort(weights_ordered)[::-1] #first is most imprortant
         argsorted_all_local.append(weights_argsorted)
+        print("weights_argsorted: ", weights_argsorted)
 
         # just for online output
         weight_sum+=weights_ordered
@@ -105,21 +107,26 @@ if train_mode:
     print(weight_sum)
     sorted_features = np.sort(weight_sum)[::-1]
     argsorted_features = np.argsort(weight_sum)[::-1]
-    print(sorted_features)
-    print(argsorted_features)
+    print("sorted feat:", sorted_features)
+    print("argsorted_feat:", argsorted_features)
 
     print(argsorted_all_local)
     np.save(f"ranks/{dataset}_local", weights_all_local)
     np.save(f"ranks/{dataset}_local_ranks", argsorted_all_local)
 
-elif test_mode:
+if test_mode:
+    print("Test")
     file_args = f"ranks/{dataset}_local_ranks.npy"
     file = f"ranks/{dataset}_local.npy"
 
     ranks = np.load(file_args)
-    ranks = np.flip(ranks)
+    #ranks = np.flip(ranks)
     vals = np.load(file)
-    vals = np.flip(vals)
+    #vals = np.flip(vals)
+    print("loaded:")
+    print(ranks[0:5])
+    print(vals[0:5])
+
 
 
 
@@ -138,7 +145,7 @@ elif test_mode:
 
     print(datatypes_test)
 
-    tpr, fdr, mcc = binary_classification_metrics(vals, k, dataset, 2000, datatypes_test, True)
+    tpr, fdr, mcc = binary_classification_metrics(vals, k, dataset, len(X_test), datatypes_test, True)
 
     print(f"tpr: {tpr}, fdr: {fdr}")
     print(f"mcc: {mcc}")
