@@ -99,25 +99,26 @@ os.makedirs("checkpoints_bif", exist_ok=True)
 def get_args():
     parser = argparse.ArgumentParser()
     # general
-    parser.add_argument("--dataset", default="adult") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
+    parser.add_argument("--dataset", default="nonlinear_additive") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=200, type=int)
-    parser.add_argument("--epochs", default=10, type=int) # 7
+    parser.add_argument("--epochs", default=3, type=int) # 7
     parser.add_argument("--lr", default=0.1, type=float)
     # for switch training
     parser.add_argument("--num_Dir_samples", default=30, type=int)
     parser.add_argument("--alpha", default=10, type=float)
-    parser.add_argument("--point_estimate", default=1)
+    parser.add_argument("--point_estimate", default=0)
     parser.add_argument("--train", default=1)
     parser.add_argument("--test", default=True)
     # for instance wise training, False for global
-    parser.add_argument("--switch_nn", default=True)
+    parser.add_argument("--switch_nn", default=0)
     parser.add_argument("--training_local", default=False)
     parser.add_argument("--local_training_iter", default=200, type=int)
     parser.add_argument("--set_hooks", default=True)
     parser.add_argument("--kl_term", default=False)
 
     parser.add_argument("--ktop_real", default=1, type=int)
+    parser.add_argument("--runs_num", default=5)
     # parse
     args = parser.parse_args()
     return args
@@ -478,7 +479,7 @@ def main():
 ####################################3
 # TEST
 
-    if args.test:
+    if args.test and args.switch_nn:
             print("\nTesting:\n")
 
             #####################
@@ -504,6 +505,7 @@ def main():
                 else:
                     model = Modelnn(d,output_num, num_samps_for_switch, mini_batch_size, point_estimate=point_estimate)
                 model.load_state_dict(torch.load(path), strict=False)
+                print(f"\nModel with importance network loaded from {path}")
 
                 # ground truth relevant features (used for synthtic data only)
                 # relevant_features - indices
@@ -565,58 +567,75 @@ def main():
 
                 return accuracy
 
+            def test_pruned_syn(S):
+
+
+                k_dic = {"xor": 2, "orange_skin": 4, "nonlinear_additive": 4, "alternating": 5, "syn4": 7, "syn5": 9, "syn6": 9}
+                k = k_dic[args.dataset]
+
+                if (args.switch_nn):
+                    if not args.point_estimate:
+                        S = S.mean(dim=2)
+
+                    median_ranks = compute_median_rank(S, k, dataset, datatypes_test_samp_arg)
+                    mean_median_ranks = np.mean(median_ranks)
+                    # if not args.point_estimate:
+                    #    S=S.mean(dim=1)
+                    mini_batch_size = 2000
+
+                    tpr, fdr, mcc = binary_classification_metrics(S, k, dataset, mini_batch_size,
+                                                                  datatypes_test_samp_arg, args.switch_nn)
+                    print("mean median rank", mean_median_ranks)
+                    # print(f"tpr: {tpr}, fdr: {fdr}")
+                    print(f"mcc: {mcc}")
+
+                elif (args.dataset in synthetic):
+                    mini_batch_size = 2000
+                    if not args.point_estimate:
+                        S = S.mean(dim=0)
+
+                    S = np.tile(S.detach().cpu().numpy(), (2000, 1))
+                    print(S[0:5])
+
+                    tpr, fdr, mcc = binary_classification_metrics(S, k, dataset, mini_batch_size,
+                                                                  datatypes_test_samp_arg, True)
+
+                    # print("mean median rank", mean_median_ranks)
+                    print(f"tpr: {tpr}, fdr: {fdr}")
+                    print(f"mcc: {mcc}")
+                else:  # real datasets, no tpr, fdr, mcc can be calculated
+                    tpr, fdr = -1, -1
+
+                return mcc
+
+
+
+            ######################
 
             dataset=args.dataset
-            S, datatypes_test_samp_arg, datatypes_test_samp_onehot, inputs_test_samp = test_get_switches(dataset, args.switch_nn, False, output_num)
 
-            accuracy = test_pruned(inputs_test_samp, args.ktop_real)
+            # getting lcaol switches from the importance net
+            S, datatypes_test_samp_arg, datatypes_test_samp_onehot, inputs_test_samp = test_get_switches(dataset, args.switch_nn, False, output_num)
+            print("Got local switches from the importance network")
+            # testing the lcaol switches
+            synthetic = ["xor", "orange_skin", "nonlinear_additive", "alternating", "syn4", "syn5", "syn6"]
+            if (args.dataset in synthetic):
+                accuracy = test_pruned_syn(S)
+            else:
+                accuracy = test_pruned(inputs_test_samp, args.ktop_real)
+
+            print("Tested on the subset of features chosen for each instance")
 
             return [accuracy]
+
+    else:
+        print("Please test the global setting in train_network.py")
 
             #######################################
             # EVALUATION FOR SYNTHETIC DATASETS
             # we look here only on the local feature choice
 
-            synthetic = ["xor", "orange_skin", "nonlinear_additive", "alternating", "syn4", "syn5", "syn6"]
 
-            if (args.dataset in synthetic):
-
-                k_dic={"xor": 2, "orange_skin": 4, "nonlinear_additive": 4, "alternating": 5, "syn4": 7, "syn5": 9, "syn6": 9 }
-                k=k_dic[dataset]
-
-            if (args.dataset in synthetic) and (args.switch_nn):
-                if not args.point_estimate:
-                    S = S.mean(dim=2)
-
-                median_ranks = compute_median_rank(S, k, dataset, datatypes_test_samp_arg)
-                mean_median_ranks = np.mean(median_ranks)
-                # if not args.point_estimate:
-                #    S=S.mean(dim=1)
-                mini_batch_size = 2000
-
-
-                tpr, fdr, mcc = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp_arg, args.switch_nn)
-                print("mean median rank", mean_median_ranks)
-                #print(f"tpr: {tpr}, fdr: {fdr}")
-                #print(f"mcc: {mcc}")
-
-            elif (args.dataset in synthetic):
-                mini_batch_size = 2000
-                if not args.point_estimate:
-                    S = S.mean(dim=0)
-
-                S= np.tile(S.detach().cpu().numpy(), (2000, 1))
-                print(S[0:5])
-
-                tpr, fdr, mcc = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp_arg, True)
-
-                #print("mean median rank", mean_median_ranks)
-                print(f"tpr: {tpr}, fdr: {fdr}")
-                print(f"mcc: {mcc}")
-            else: #real datasets, no tpr, fdr, mcc can be calculated
-                tpr, fdr = -1,-1
-
-    return tpr, fdr, S
 
 
     # print('estimated posterior mean of Switch is', estimated_Switch)
@@ -636,12 +655,16 @@ def main():
 
 
 if __name__ == '__main__':
-    runs = 5
+    runs = args.runs_num
 
     tprs, fdrs, Ss = [], [], []
     for i in range(runs):
         print(f"\n\nRun: {i}\n")
         vals = main()
+
+        if vals is None:
+            print("no local values returned")
+            continue
 
         if len(vals)==3: # synthetic
             tpr = vals[0]; fdr = vals[1]; S = vals[2]
@@ -649,6 +672,7 @@ if __name__ == '__main__':
         elif len(vals) == 1:  # real
             acc = vals[0]
             tprs.append(acc)
+
 
     print("*" * 20)
     if len(vals) == 3:
@@ -659,6 +683,7 @@ if __name__ == '__main__':
 
     if len(vals)==1: #real
         print(f"final acc mean {np.mean(tprs)}")
+        print(f"final acc std {np.std(tprs)}")
         print(f"dataset {args.dataset}, ktop_real {args.ktop_real} lr {args.lr}, it {args.epochs}, mini_batch_size {args.mini_batch_size}")
 
     print("********END\n\n\n")

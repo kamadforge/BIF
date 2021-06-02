@@ -45,13 +45,13 @@ if  __name__ =='__main__':
     # GET ARGS
 
     parser=argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="intrusion", choices=["xor", "orange_skin", "nonlinear_additive", "syn4", "syn5", "syn6", "credit", "adult_short", "intrusion"])
-    parser.add_argument("--mode", default="train") # test, train
+    parser.add_argument("--dataset", default="syn6", choices=["xor", "orange_skin", "nonlinear_additive", "syn4", "syn5", "syn6", "credit", "adult_short", "intrusion"])
+    parser.add_argument("--mode", default="test") # test, train
     parser.add_argument("--testtype", default="local") #global, local
     parser.add_argument("--prune", default=True) #tests the subset of features
-    parser.add_argument("--ktop", default=3, type=int)
-    parser.add_argument("--met", default=1, type=int) #0-qfit,  1-shap, 2-invase 3-l2x 4-lime
-    parser.add_argument("--train_epochs", default=250, type=int)
+    parser.add_argument("--ktop", default=4, type=int)
+    parser.add_argument("--met", default=0, type=int) #0-qfit,  1-shap, 2-invase 3-l2x 4-lime
+    parser.add_argument("--train_epochs", default=500, type=int)
     args=parser.parse_args()
     dataset = args.dataset
     method = "nn"
@@ -232,12 +232,18 @@ if  __name__ =='__main__':
 
             if 1:
                 if args.testtype=="global": #global test
-                    with open('rankings/global_ranks') as f:
+                    global_json_path = 'rankings/global_ranks'
+                    print(f"The ranks from the JSON file in {global_json_path}")
+                    with open(global_json_path) as f:
                         data = json.load(f)
-                    rank_str = data[dataset][met]
+                    try:
+                        rank_str = data[dataset][met]
+                    except KeyError:
+                        print("\nError: The dataset is not suited for global selection")
+                        exit()
                     rank = [int(num) for num in rank_str.strip().split(",")]
                     # important_features = result
-                    important_features = rank[:k]
+                    important_features = rank[:ktop]
                     unimportant_features = np.delete(features_num, important_features)
                     print("important features: ", important_features, "for met", met)
                     #pruning global
@@ -245,7 +251,7 @@ if  __name__ =='__main__':
                     test[:, unimportant_features] = 0
 
                 else: # local test
-                    k = args.k
+                    k = args.ktop
                     met = args.met  #1-qfit,  2-shap, 3-invase 4-l2x
                     met_names = {0 : "qfit", 1: "shap", 2: "invase", 3: "l2x", 4: "lime"}
                     print("Method: ", met_names[met])
@@ -298,7 +304,7 @@ if  __name__ =='__main__':
                 for file in os.listdir("checkpoints"):
                     if dataset in file:
                         checkpoint_model = np.load(os.path.join("checkpoints", file), allow_pickle=True)
-                        print("Loaded: ", file)
+                        print("Loaded original checkpoint: ", file)
                 model.load_state_dict(checkpoint_model[()][0], strict=False)
                 # testing the subset of features on a trained model
                 y_pred = model(torch.Tensor(test))
