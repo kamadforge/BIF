@@ -45,8 +45,8 @@ if  __name__ =='__main__':
     # GET ARGS
 
     parser=argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="syn6", choices=["xor", "orange_skin", "nonlinear_additive", "syn4", "syn5", "syn6", "credit", "adult_short", "intrusion"])
-    parser.add_argument("--mode", default="test") # test, train
+    parser.add_argument("--dataset", default="orange_skin_mean5", choices=["xor", "orange_skin", "nonlinear_additive", "syn4", "syn5", "syn6", "credit", "adult_short", "intrusion"])
+    parser.add_argument("--mode", default="train") # test, train
     parser.add_argument("--testtype", default="local") #global, local
     parser.add_argument("--prune", default=True) #tests the subset of features
     parser.add_argument("--ktop", default=4, type=int)
@@ -98,6 +98,11 @@ if  __name__ =='__main__':
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot}
             save_dataset('../data/synthetic/orange_skin/dataset_orange_skin.npy', dataset_tosave)
+        elif dataset == "orange_skin_mean5":
+            x_tot, y_tot, datatypes = generate_data(10000, 'orange_skin')
+            y_tot = np.argmax(y_tot, axis=1)
+            dataset_tosave = {'x': x_tot, 'y': y_tot}
+            save_dataset('../data/synthetic/orange_skin/dataset_orange_skin.npy', dataset_tosave)
         elif dataset == "nonlinear_additive":
             x_tot, y_tot, datatypes = generate_data(10000, 'nonlinear_additive')
             y_tot = np.argmax(y_tot, axis=1)
@@ -115,6 +120,11 @@ if  __name__ =='__main__':
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
             save_dataset('../data/synthetic/invase/dataset_syn4.npy', dataset_tosave)
+        elif dataset == "syn4_mean5":
+            x_tot, y_tot, datatypes = generate_invase(10000, 'syn4')
+            y_tot = np.argmax(y_tot, axis=1)
+            dataset_tosave = {'x': x_tot, 'y': y_tot, 'datatypes': datatypes}
+            save_dataset('../data/synthetic/invase/dataset_syn4_mean5.npy', dataset_tosave)
         elif dataset == "syn5":
             x_tot, y_tot, datatypes = generate_invase(10000, 'syn5')
             y_tot = np.argmax(y_tot, axis=1)

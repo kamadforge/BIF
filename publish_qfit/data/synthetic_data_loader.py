@@ -57,10 +57,25 @@ def synthetic_data_loader(dataset):
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
 
+    elif dataset == "xor_mean5":
+
+
+        xor_dataset = np.load(os.path.join(pathmain, 'data/synthetic/XOR/dataset_XOR_mean5.npy'), allow_pickle=True)
+        x_tot = xor_dataset[()]['x']
+        y_tot = xor_dataset[()]['y']
+
     elif dataset == "orange_skin":
 
 
         xor_dataset = np.load(os.path.join(pathmain, 'data/synthetic/orange_skin/dataset_orange_skin.npy'),
+                              allow_pickle=True)
+        x_tot = xor_dataset[()]['x']
+        y_tot = xor_dataset[()]['y']
+
+    elif dataset == "orange_skin_mean5":
+
+
+        xor_dataset = np.load(os.path.join(pathmain, 'data/synthetic/orange_skin/dataset_orange_skin_mean5.npy'),
                               allow_pickle=True)
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
@@ -85,6 +100,14 @@ def synthetic_data_loader(dataset):
     elif dataset == "syn4":
 
         xor_dataset = np.load(os.path.join(pathmain, 'data/synthetic/invase/dataset_syn4.npy'),
+                              allow_pickle=True)
+        x_tot = xor_dataset[()]['x']
+        y_tot = xor_dataset[()]['y']
+        datatypes = xor_dataset[()]['datatypes']
+
+    elif dataset == "syn4_mean5":
+
+        xor_dataset = np.load(os.path.join(pathmain, 'data/synthetic/invase/dataset_syn4_mean5.npy'),
                               allow_pickle=True)
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']

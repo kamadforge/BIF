@@ -79,6 +79,8 @@ def generate_data(n=100, datatype='', seed = 0, val = False):
     features_num=11
 
     X = np.random.randn(n, features_num)
+    # test for changing the mean
+    #X = np.random.normal(10, 1, size=(n, features_num))
 
     datatypes = None
 
