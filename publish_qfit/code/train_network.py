@@ -45,13 +45,13 @@ if  __name__ =='__main__':
     # GET ARGS
 
     parser=argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="orange_skin_mean5", choices=["xor", "orange_skin", "nonlinear_additive", "syn4", "syn5", "syn6", "credit", "adult_short", "intrusion"])
-    parser.add_argument("--mode", default="train") # test, train
+    parser.add_argument("--dataset", default="intrusion", choices=["xor", "orange_skin", "nonlinear_additive", "syn4", "syn5", "syn6", "credit", "adult_short", "intrusion"])
+    parser.add_argument("--mode", default="test") # test, train
     parser.add_argument("--testtype", default="local") #global, local
     parser.add_argument("--prune", default=True) #tests the subset of features
-    parser.add_argument("--ktop", default=4, type=int)
-    parser.add_argument("--met", default=0, type=int) #0-qfit,  1-shap, 2-invase 3-l2x 4-lime
-    parser.add_argument("--train_epochs", default=500, type=int)
+    parser.add_argument("--ktop", default=5, type=int)
+    parser.add_argument("--met", default=4, type=int) #0-qfit,  1-shap, 2-invase 3-l2x 4-lime
+    parser.add_argument("--train_epochs", default=50, type=int) #500
     args=parser.parse_args()
     dataset = args.dataset
     method = "nn"
@@ -93,16 +93,21 @@ if  __name__ =='__main__':
             y_tot = np.argmax(y_tot, axis=1)
             dataset_XOR={'x': x_tot, 'y':y_tot}
             save_dataset('../data/synthetic/XOR/dataset_XOR.npy', dataset_XOR)
+        elif dataset == "xor_mean5":
+            x_tot, y_tot, datatypes = generate_data(10000, 'XOR_mean5')
+            y_tot = np.argmax(y_tot, axis=1)
+            dataset_XOR = {'x': x_tot, 'y': y_tot}
+            save_dataset('../data/synthetic/XOR/dataset_XOR_mean5.npy', dataset_XOR)
         elif dataset == "orange_skin":
             x_tot, y_tot, datatypes = generate_data(10000, 'orange_skin')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot}
             save_dataset('../data/synthetic/orange_skin/dataset_orange_skin.npy', dataset_tosave)
         elif dataset == "orange_skin_mean5":
-            x_tot, y_tot, datatypes = generate_data(10000, 'orange_skin')
+            x_tot, y_tot, datatypes = generate_data(10000, 'orange_skin_mean5')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_tosave = {'x': x_tot, 'y': y_tot}
-            save_dataset('../data/synthetic/orange_skin/dataset_orange_skin.npy', dataset_tosave)
+            save_dataset('../data/synthetic/orange_skin/dataset_orange_skin_mean5.npy', dataset_tosave)
         elif dataset == "nonlinear_additive":
             x_tot, y_tot, datatypes = generate_data(10000, 'nonlinear_additive')
             y_tot = np.argmax(y_tot, axis=1)
@@ -176,6 +181,8 @@ if  __name__ =='__main__':
     y = y_tot[rand_perm_nums[0:N]]
     Xtst = x_tot[rand_perm_nums[N:], :]
     ytst = y_tot[rand_perm_nums[N:]]
+    global Xtst_means
+    Xtst_means = np.mean(Xtst, 0)
     if "syn" in dataset:
         datatypes_tr = datatypes[rand_perm_nums[0:N]]
         datatypes_tst=datatypes[rand_perm_nums[N:]]
@@ -258,7 +265,8 @@ if  __name__ =='__main__':
                     print("important features: ", important_features, "for met", met)
                     #pruning global
                     print("pruning global")
-                    test[:, unimportant_features] = 0
+                    test[:, unimportant_features] = Xtst_means[unimportant_features]
+                    #test[:, unimportant_features] = 0
 
                 else: # local test
                     k = args.ktop
@@ -300,7 +308,8 @@ if  __name__ =='__main__':
                     print(f"unimportant features shape: {unimportant_features_instance.shape}")
                     print("pruning local")
                     for i, data in enumerate(test):
-                        test[i, unimportant_features_instance[i]] = 0
+                        test[i, unimportant_features_instance[i]] = Xtst_means[unimportant_features_instance[i]]
+
 
                 ###########################
                 # pruning (both local and global)
