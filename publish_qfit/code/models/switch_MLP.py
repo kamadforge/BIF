@@ -45,6 +45,11 @@ class Modelnn(nn.Module):
         # it looks like too large values are making softplus-transformed values very large and returns NaN.
         # this occurs when optimizing with a large step size (or/and with a high momentum value)
 
+        # compute the variance
+
+        var_phi = ((phi/torch.sum(phi))*(1-(phi/torch.sum(phi))))/(torch.sum(phi)+1)
+
+        # this is the mean which we use as a proxy for S importance
         if self.point_estimate:
             S = phi / torch.sum(phi)
             output = x * S
@@ -84,7 +89,7 @@ class Modelnn(nn.Module):
             output = output.transpose_(0, 1)
 
 
-        return output, phi, S, pre_phi
+        return output, phi, S, pre_phi, var_phi
 
     # t = torch.tensor([[[1,2,3,4],[5,6,7,8]],[[9,10,11,12],[13,14,15,16]], [[17,18,19,20],[21,22,23,24]]])
     # t.shape is torch.Size([3, 2, 4])

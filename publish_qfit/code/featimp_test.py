@@ -99,10 +99,10 @@ os.makedirs("checkpoints_bif", exist_ok=True)
 def get_args():
     parser = argparse.ArgumentParser()
     # general
-    parser.add_argument("--dataset", default="xor") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
+    parser.add_argument("--dataset", default="xor") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=200, type=int)
-    parser.add_argument("--epochs", default=10, type=int) # 7
+    parser.add_argument("--epochs", default=7, type=int) # 7
     parser.add_argument("--lr", default=0.1, type=float)
     # for switch training
     parser.add_argument("--num_Dir_samples", default=30, type=int)
@@ -111,7 +111,7 @@ def get_args():
     parser.add_argument("--train", default=1)
     parser.add_argument("--test", default=True)
     # for instance wise training switch_nn=1, and 0 for global
-    parser.add_argument("--switch_nn", default=0)
+    parser.add_argument("--switch_nn", default=1)
     parser.add_argument("--training_local", default=False)
     parser.add_argument("--local_training_iter", default=200, type=int)
     parser.add_argument("--set_hooks", default=True)
@@ -355,7 +355,7 @@ def main():
                             datatypes_train_batch = datatypesTrain[i*mini_batch_size:(i+1)*mini_batch_size]
                         optimizer.zero_grad()
                         # run the model
-                        outputs, phi_cand, S, prephi = model(torch.Tensor(inputs), mini_batch_size) # the example shape 100,10,150
+                        outputs, phi_cand, S, prephi, var_phi = model(torch.Tensor(inputs), mini_batch_size) # the example shape 100,10,150
                         # loss
                         if method=="vips":
                             labels = torch.squeeze(torch.Tensor(labels))
@@ -385,6 +385,7 @@ def main():
                                     print("Mean over samples", S.mean(dim=0))
                                     print(torch.argsort(S.mean(dim=0), descending=True))
                                     S_global_final = S.mean(dim=0)
+                                print(f"Variance: {var_phi}")
 
                     training_loss_per_epoch[epoch] = running_loss
                     print('epoch number is ', epoch)
@@ -533,7 +534,7 @@ def main():
                 # run the forward test on the original all features to get the S importance values
                 inputs_test_samp = torch.Tensor(inputs_test_samp)
                 model.eval()
-                outputs, phi, S, phi_est = model(inputs_test_samp, mini_batch_size)
+                outputs, phi, S, phi_est, var_phi = model(inputs_test_samp, mini_batch_size)
                 torch.set_printoptions(profile="full")
 
                 return S, datatypes_test_samp_arg, datatypes_test_samp, inputs_test_samp
