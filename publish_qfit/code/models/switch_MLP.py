@@ -6,6 +6,8 @@ from torch.distributions import Gamma
 import numpy as np
 
 
+
+
 class Modelnn(nn.Module):
 
     def __init__(self, input_num, output_num, num_samps_for_switch, mini_batch_size, point_estimate):

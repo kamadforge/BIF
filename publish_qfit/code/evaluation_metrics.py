@@ -111,7 +111,7 @@ def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_
     if ranks==None:
         ranks = create_rank(scores, k)  # ranks start with 1 and end with 10 (not 0 to 9),
     # [7,6,1,4,3,5,8,11,9,10,2] means feature 7 is the smallest and 2 the biggest
-    if dataset == "xor" or dataset == "orange_skin" or dataset == "nonlinear_additive":
+    if "xor" in dataset or "orange_skin" in dataset or "nonlinear_additive" in dataset:
 
         # gt features positiions
         gtfeatures_positions = np.tile(np.arange(k), (mini_batch_size, 1))

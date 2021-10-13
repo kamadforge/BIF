@@ -99,10 +99,10 @@ os.makedirs("checkpoints_bif", exist_ok=True)
 def get_args():
     parser = argparse.ArgumentParser()
     # general
-    parser.add_argument("--dataset", default="nonlinear_additive") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
+    parser.add_argument("--dataset", default="xor") #xor, orange_skin, nonlinear, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=200, type=int)
-    parser.add_argument("--epochs", default=3, type=int) # 7
+    parser.add_argument("--epochs", default=10, type=int) # 7
     parser.add_argument("--lr", default=0.1, type=float)
     # for switch training
     parser.add_argument("--num_Dir_samples", default=30, type=int)
@@ -110,14 +110,14 @@ def get_args():
     parser.add_argument("--point_estimate", default=0)
     parser.add_argument("--train", default=1)
     parser.add_argument("--test", default=True)
-    # for instance wise training, False for global
+    # for instance wise training switch_nn=1, and 0 for global
     parser.add_argument("--switch_nn", default=0)
     parser.add_argument("--training_local", default=False)
     parser.add_argument("--local_training_iter", default=200, type=int)
     parser.add_argument("--set_hooks", default=True)
-    parser.add_argument("--kl_term", default=False)
+    parser.add_argument("--kl_term", default=0)
 
-    parser.add_argument("--ktop_real", default=1, type=int)
+    parser.add_argument("--ktop_real", default=3, type=int)
     parser.add_argument("--runs_num", default=5)
     # parse
     args = parser.parse_args()
@@ -258,6 +258,9 @@ def main():
         datatypes = None
     X_test = x_tot[N:, :]
     y_test = y_tot[N:]
+    global X_test_means
+    X_test_means = np.mean(X_test, 0)
+    print(X_test_means)
     if dataset == "alternating" or "syn" in dataset:
         datatypes_test = datatypes_tot[N:]
     # else:
@@ -377,13 +380,20 @@ def main():
                                 if point_estimate:
                                     print("One importance vector", S)
                                     print(torch.argsort(S)[::-1])
+                                    S_global_final = S
                                 else:
                                     print("Mean over samples", S.mean(dim=0))
                                     print(torch.argsort(S.mean(dim=0), descending=True))
+                                    S_global_final = S.mean(dim=0)
 
                     training_loss_per_epoch[epoch] = running_loss
                     print('epoch number is ', epoch)
                     print('running loss is \n', running_loss)
+                    #if global save the rank
+                if not args.switch_nn:
+                    torch.save(S_global_final, f"rankings/global/global_{dataset}_pointest_{args.point_estimate}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt")
+                    print("Global switch saved")
+
 
                 #print('Finished global Training\n')
 
@@ -479,8 +489,10 @@ def main():
 ####################################3
 # TEST
 
-    if args.test and args.switch_nn:
+    if args.test:
+
             print("\nTesting:\n")
+
 
             #####################
             # FIRST MAKE A RUN TO GET LOCAL IMPORTANCE (FOR LOCAL)
@@ -493,8 +505,7 @@ def main():
                 path = os.path.join(path_code, f"checkpoints_bif/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt")
                 i = 0  # choose a sample
                 mini_batch_size = X_test.shape[0]  # entire test dataset
-                inputs_test_samp = X_test[i * mini_batch_size:(i + 1) * mini_batch_size,
-                                   :]  # (mini_batch_size* feat_num)
+                inputs_test_samp = X_test[i * mini_batch_size:(i + 1) * mini_batch_size, :]  # (mini_batch_size* feat_num)
                 labels_test_samp = y_test[i * mini_batch_size:(i + 1) * mini_batch_size]
                 if dataset == "alternating" or "syn" in dataset:
                     datatypes_test_samp = datatypes_test[i * mini_batch_size:(i + 1) * mini_batch_size]
@@ -533,10 +544,11 @@ def main():
             ##################
             # REAL DATASETS
 
-            def test_pruned(inputs_test_samp, ktop):
+            def test_pruned(S, inputs_test_samp, ktop):
                 inputs_test_samp1=inputs_test_samp.clone()
-                if not os.path.isdir("rankings"):
-                    os.mkdir("rankings")
+                os.makedirs("rankings", exist_ok=True)
+                os.makedirs("rankings/local", exist_ok=True)
+                os.makedirs("rankings/global", exist_ok=True)
 
                 if args.switch_nn: #local
                     instance_best_features_ascending = np.argsort(S.detach().cpu().numpy(), axis=1)
@@ -546,13 +558,12 @@ def main():
                     instance_best_features_ascending = instance_best_features_ascending[:-ktop]
                     instance_unimportant_features = np.tile(instance_best_features_ascending, (inputs_test_samp1.shape[0], 1))
                 print("unimportant features shape", instance_unimportant_features.shape)
-                np.save(os.path.join(path_code, str(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{ktop}.npy")), instance_unimportant_features)
 
-                #unimportant_features_instance = np.load(f"rankings/instance_featureranks_test_qfit_{dataset}_k_{k}.npy")
 
-                # run the test (forward pass) on the subset of features, which were selected, the rest is pruned/zeroed out
+                # run the test (forward pass) on the subset of features, which were selected, the rest is pruned/zeroed out/ mean
                 for i, data in enumerate(inputs_test_samp1):
-                    inputs_test_samp1[i, instance_unimportant_features[i]] = 0
+                    inputs_test_samp1[i, instance_unimportant_features[i]] = torch.Tensor(X_test_means[instance_unimportant_features[i]])
+                    #inputs_test_samp1[i, instance_unimportant_features[i]] = 0
 
                 input_num= d
                 model = FC(input_num, output_num)
@@ -570,7 +581,7 @@ def main():
             def test_pruned_syn(S):
 
 
-                k_dic = {"xor": 2, "orange_skin": 4, "nonlinear_additive": 4, "alternating": 5, "syn4": 7, "syn5": 9, "syn6": 9}
+                k_dic = {"xor": 2, "xor_mean5": 2, "orange_skin": 4, "orange_skin_mean5": 4, "nonlinear_additive": 4, "alternating": 5, "syn4": 7, "syn4_mean5": 7, "syn5": 9, "syn6": 9}
                 k = k_dic[args.dataset]
 
                 if (args.switch_nn):
@@ -591,14 +602,13 @@ def main():
 
                 elif (args.dataset in synthetic):
                     mini_batch_size = 2000
-                    if not args.point_estimate:
-                        S = S.mean(dim=0)
+                    #if not args.point_estimate:
+                    #    S = S.mean(dim=0)
 
                     S = np.tile(S.detach().cpu().numpy(), (2000, 1))
                     print(S[0:5])
 
-                    tpr, fdr, mcc = binary_classification_metrics(S, k, dataset, mini_batch_size,
-                                                                  datatypes_test_samp_arg, True)
+                    tpr, fdr, mcc = binary_classification_metrics(S, k, dataset, mini_batch_size, datatypes_test_samp_arg, True)
 
                     # print("mean median rank", mean_median_ranks)
                     print(f"tpr: {tpr}, fdr: {fdr}")
@@ -614,19 +624,31 @@ def main():
 
             dataset=args.dataset
 
-            # getting lcaol switches from the importance net
-            S, datatypes_test_samp_arg, datatypes_test_samp_onehot, inputs_test_samp = test_get_switches(dataset, args.switch_nn, False, output_num)
-            print("Got local switches from the importance network")
-            # testing the lcaol switches
-            synthetic = ["xor", "orange_skin", "nonlinear_additive", "alternating", "syn4", "syn5", "syn6"]
+            if args.switch_nn:
+                # getting lcaol switches from the importance net
+                S, datatypes_test_samp_arg, datatypes_test_samp_onehot, inputs_test_samp = test_get_switches(dataset, args.switch_nn, False, output_num)
+                print("Got local switches from the importance network")
+                if not args.point_estimate:
+                    S = torch.mean(S, axis=2)
+            else:  # get global switches
+                S = torch.load(f"rankings/global/global_{dataset}_pointest_{args.point_estimate}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt")
+                print(f"Switch global loaded: {S}")
+                #S = S.unsqueeze(0).repeat(X_test.shape[0],1)
+                inputs_test_samp = torch.Tensor(X_test)
+                datatypes_test_samp_arg = None
+
+                # testing the local switches
+            synthetic = ["xor", "xor_mean5", "orange_skin", "orange_skin_mean5", "nonlinear_additive", "alternating", "syn4", "syn4_mean5", "syn5", "syn6"]
             if (args.dataset in synthetic):
                 accuracy = test_pruned_syn(S)
             else:
-                accuracy = test_pruned(inputs_test_samp, args.ktop_real)
+                accuracy = test_pruned(S, inputs_test_samp, args.ktop_real)
 
             print("Tested on the subset of features chosen for each instance")
 
             return [accuracy]
+
+
 
     else:
         print("Please test the global setting in train_network.py")
