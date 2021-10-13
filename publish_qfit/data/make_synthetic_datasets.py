@@ -80,18 +80,19 @@ def generate_data(n=100, datatype='', seed = 0, val = False):
 
     X = np.random.randn(n, features_num)
     # test for changing the mean
-    #X = np.random.normal(10, 1, size=(n, features_num))
+    if "mean" in datatype:
+        X = np.random.normal(10, 1, size=(n, features_num))
 
     datatypes = None
 
-    if datatype == 'orange_skin' or datatype == 'syn2':
+    if 'orange_skin' in datatype or datatype == 'syn2':
         y = generate_orange_labels(X)
         datatypes = np.zeros((n, features_num))
         indices = np.array([0, 1, 2, 3])
         datatypes[:, indices] = 1
 
 
-    elif datatype == 'XOR' or datatype == 'syn1':
+    elif 'XOR' in datatype or datatype == 'syn1':
         y = generate_XOR_labels(X)
         datatypes = np.zeros((n, features_num))
         indices = np.array([0, 1])
