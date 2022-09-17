@@ -45,12 +45,12 @@ if  __name__ =='__main__':
     # GET ARGS
 
     parser=argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="intrusion", choices=["xor", "orange_skin", "nonlinear_additive", "syn4", "syn5", "syn6", "credit", "adult_short", "intrusion"])
-    parser.add_argument("--mode", default="test") # test, train
+    parser.add_argument("--dataset", default="xor", choices=["xor", "orange_skin", "nonlinear_additive", "syn4", "syn5", "syn6", "credit", "adult_short", "intrusion"])
+    parser.add_argument("--mode", default="train") # test, train
     parser.add_argument("--testtype", default="local") #global, local
     parser.add_argument("--prune", default=True) #tests the subset of features
     parser.add_argument("--ktop", default=5, type=int)
-    parser.add_argument("--met", default=4, type=int) #0-qfit,  1-shap, 2-invase 3-l2x 4-lime
+    parser.add_argument("--met", default=4, type=int) #0-bif,  1-shap, 2-invase 3-l2x 4-lime
     parser.add_argument("--train_epochs", default=50, type=int) #500
     args=parser.parse_args()
     dataset = args.dataset
@@ -244,8 +244,8 @@ if  __name__ =='__main__':
             test=Xtst.copy()
 
             ktop = args.ktop
-            met = args.met  # 1-qfit,  2-shap, 3-invase 4-l2x
-            met_names = {1: "qfit", 2: "shap", 3: "invase", 4: "l2x", 5: "shap"}
+            met = args.met  # 1-bif,  2-shap, 3-invase 4-l2x
+            met_names = {1: "bif", 2: "shap", 3: "invase", 4: "l2x", 5: "shap"}
 
             if 1:
                 if args.testtype=="global": #global test
@@ -270,15 +270,15 @@ if  __name__ =='__main__':
 
                 else: # local test
                     k = args.ktop
-                    met = args.met  #1-qfit,  2-shap, 3-invase 4-l2x
-                    met_names = {0 : "qfit", 1: "shap", 2: "invase", 3: "l2x", 4: "lime"}
+                    met = args.met  #1-bif,  2-shap, 3-invase 4-l2x
+                    met_names = {0 : "bif", 1: "shap", 2: "invase", 3: "l2x", 4: "lime"}
                     print("Method: ", met_names[met])
 
                     if dataset=="adult_short" and met!=1 and met!=4:
                         dataset="adult"
 
                     if met == 0:
-                        dir_ranks = "publish_qfit/code/rankings"
+                        dir_ranks = "publish_bif_tab/code/rankings"
                     elif met == 1:
                         dir_ranks = "comparison_methods/SHAP/ranks"
                     elif met == 2:
