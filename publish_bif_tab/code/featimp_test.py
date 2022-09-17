@@ -107,18 +107,18 @@ def get_args():
     # for switch training
     parser.add_argument("--num_Dir_samples", default=30, type=int)
     parser.add_argument("--alpha", default=10, type=float)
-    parser.add_argument("--point_estimate", default=0)
-    parser.add_argument("--train", default=1)
-    parser.add_argument("--test", default=True)
+    parser.add_argument("--point_estimate", default=0, type=int)
+    parser.add_argument("--train", default=1, type=int)
+    parser.add_argument("--test", default=1, type=int)
     # for instance wise training switch_nn=1, and 0 for global
-    parser.add_argument("--switch_nn", default=1)
-    parser.add_argument("--training_local", default=False)
+    parser.add_argument("--switch_nn", default=0, type=int)
+    parser.add_argument("--training_local", default=0, type=int)
     parser.add_argument("--local_training_iter", default=200, type=int)
-    parser.add_argument("--set_hooks", default=True)
-    parser.add_argument("--kl_term", default=0)
+    parser.add_argument("--set_hooks", default=1, type=int)
+    parser.add_argument("--kl_term", default=0, type=int)
 
     parser.add_argument("--ktop_real", default=3, type=int)
-    parser.add_argument("--runs_num", default=5)
+    parser.add_argument("--runs_num", default=5, type=int)
     # parse
     args = parser.parse_args()
     return args
