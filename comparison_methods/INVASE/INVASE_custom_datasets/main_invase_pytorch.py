@@ -23,12 +23,13 @@ import numpy as np
 import torch as pt
 import sys
 
+sys.path.append("/home/kamil/Dropbox/Current_research/featimp_dp")
 from comparison_methods.INVASE.data_generation import generate_dataset
 from comparison_methods.INVASE.INVASE_custom_datasets.invase_pytorch import Invase
 from comparison_methods.INVASE.utils import feature_performance_metric, prediction_performance_metric
 
-sys.path.append("/home/kamil/Dropbox/Current_research/featimp_dp/publish_qfit")
-from publish_qfit.data.make_synthetic_datasets import generate_data_forinvasecode
+sys.path.append("/publish_bif_tab")
+from publish_bif_tab.data.make_synthetic_datasets import generate_data_forinvasecode
 
 
 # try:
@@ -41,7 +42,7 @@ from publish_qfit.data.make_synthetic_datasets import generate_data_forinvasecod
 #   # noinspection PyUnresolvedReferences
 #   from utils import feature_performance_metric, prediction_performance_metric
 
-from publish_qfit.data.tab_dataloader import load_adult_short, load_credit, load_intrusion
+from publish_bif_tab.data.tab_dataloader import load_adult_short, load_credit, load_intrusion
 
 
 
@@ -153,6 +154,7 @@ def main(args):
 
     y_hat = model.predict(x_test)
 
+    # uncomment for evaluation
     # Evaluate the performance of feature importance
     auc, apr, acc = prediction_performance_metric(y_test, y_hat)
 
@@ -164,14 +166,14 @@ def main(args):
 
 
 
-  return performance
+  #return performance
 
 
 ##
 if __name__ == '__main__':
   # Inputs for the main function
   parser = argparse.ArgumentParser()
-  parser.add_argument('--data_type', choices=['syn1', 'syn2', 'syn3', 'syn4', 'syn5', 'syn6'], default='intrusion', type=str)
+  parser.add_argument('--data_type', choices=['syn1', 'syn2', 'syn3', 'syn4', 'syn5', 'syn6'], default='syn4', type=str)
   parser.add_argument('--train_no', help='the number of training data', default=10000, type=int)
   parser.add_argument('--test_no', help='the number of testing data', default=10000, type=int)
   parser.add_argument('--dim', help='the number of features', choices=[11, 100], default=11, type=int)
@@ -180,7 +182,7 @@ if __name__ == '__main__':
   parser.add_argument('--critic_h_dim', help='hidden state dimensions for critic', default=200, type=int)
   parser.add_argument('--n_layer', help='the number of layers', default=3, type=int)
   parser.add_argument('--batch_size', help='the number of samples in mini batch', default=1000, type=int)
-  parser.add_argument('--iteration', help='the number of iteration', default=3000, type=int) #10000
+  parser.add_argument('--iteration', help='the number of iteration', default=1000, type=int) #10000, 3000
   parser.add_argument('--activation', help='activation function of the networks',
                       choices=['selu', 'relu'], default='relu', type=str)
   parser.add_argument('--learning_rate', help='learning rate of model training', default=0.0001, type=float)
