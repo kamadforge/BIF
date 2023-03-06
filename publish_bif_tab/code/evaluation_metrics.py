@@ -104,14 +104,14 @@ by 'features' we mean the numbers corresponding to ordered features
 gtfeatures - features that generated the label, e.g. for alternating it is 1,2,3,4,10 or 5,6,7,8, 10 (starting form 1) .
 '''
 
-def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_val=None, instancewise=False, ranks=None):
+def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_val=None, instancewise=False, ranks="None"):
     if torch.is_tensor(scores):
         scores = scores.detach().cpu().numpy()
     tpr, fdr = 0, 0
-    if ranks==None:
+    if ranks=="None":
         ranks = create_rank(scores, k)  # ranks start with 1 and end with 10 (not 0 to 9),
     # [7,6,1,4,3,5,8,11,9,10,2] means feature 7 is the smallest and 2 the biggest
-    if "xor" in dataset or "orange_skin" in dataset or "nonlinear_additive" in dataset:
+    if "xor" in dataset or "XOR" in dataset or "orange_skin" in dataset or "nonlinear_additive" in dataset or "subtract" in dataset:
 
         # gt features positiions
         gtfeatures_positions = np.tile(np.arange(k), (mini_batch_size, 1))
@@ -121,13 +121,13 @@ def binary_classification_metrics(scores, k, dataset, mini_batch_size, datatype_
 
 
         # qfit features positions
-        if  instancewise:
+        if  1:
             switch_gtfeatures_positions = ranks[:, :k]  # (mini_batch_size, k)
             onehots_arr=np.zeros_like(scores)
             for i, elem in enumerate(onehots_arr):
                 elem[switch_gtfeatures_positions[i]]=1
-        else:
-            onehots_arr=np.zeros_like(scores)
+        # else:
+        #     onehots_arr=np.zeros_like(scores)
 
 
 
