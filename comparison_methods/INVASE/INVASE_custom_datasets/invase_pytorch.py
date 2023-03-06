@@ -12,7 +12,6 @@ import torch.nn.functional as nnf
 
 import numpy as np
 
-
 class Net(nn.Module):
   def __init__(self, d_in, d_hid, d_out, act='relu', act_out='logsoftmax', use_bn=True):
     assert act in {'relu', 'selu'}
@@ -68,7 +67,7 @@ class Invase(nn.Module):
 
     self.device = device
     self.dim = x_train.shape[1]
-    self.label_dim = 4# y_train.shape[1]
+    self.label_dim = y_train.shape[1]
 
     self.model_type = model_type
 
@@ -125,6 +124,7 @@ class Invase(nn.Module):
     # Policy gradient loss computation.
     actor_term = pt.sum(selection * pt.log(actor_out + 1e-8) + (1 - selection) * pt.log(1 - actor_out + 1e-8), dim=1)
     sparcity_term = pt.mean(actor_out, dim=1)
+    #print("actor term: ", actor_term[0], ", reward: ", str(Reward[0].detach().cpu().numpy()))
     custom_actor_loss = Reward * actor_term - self.lamda * sparcity_term
 
     # custom actor loss
@@ -153,18 +153,18 @@ class Invase(nn.Module):
 
 
       #1 four lines for custom datasets
-      y_batch_scalar = pt.tensor(y_train[idx], device=self.device).long()
-      y_batch_onehot = pt.zeros(y_batch_scalar.shape[0], 4, device=self.device)
-      y_batch_onehot[y_batch_scalar == 0, 0] = 1
-      y_batch_onehot[y_batch_scalar == 1, 1] = 1
-      y_batch_onehot[y_batch_scalar == 1, 2] = 1
-      y_batch_onehot[y_batch_scalar == 1, 3] = 1
+      # y_batch_scalar = pt.tensor(y_train[idx], device=self.device).long()
+      # y_batch_onehot = pt.zeros(y_batch_scalar.shape[0], 4, device=self.device)
+      # y_batch_onehot[y_batch_scalar == 0, 0] = 1
+      # y_batch_onehot[y_batch_scalar == 1, 1] = 1
+      # y_batch_onehot[y_batch_scalar == 1, 2] = 1
+      # y_batch_onehot[y_batch_scalar == 1, 3] = 1
 
 
 
-      #2 lines for synthetic
-      # y_batch_onehot = pt.tensor(y_train[idx, :], device=self.device)
-      # y_batch_scalar = pt.max(y_batch_onehot, dim=1)[1]
+      #2 lines for synthetic -
+      y_batch_onehot = pt.tensor(y_train[idx, :], device=self.device)
+      y_batch_scalar = pt.max(y_batch_onehot, dim=1)[1]
 
       # print(y_batch_scalar)
       # print(y_batch_onehot[0], y_batch_scalar[0])
@@ -173,12 +173,13 @@ class Invase(nn.Module):
       actor_out = self.actor_net(x_batch)
       # Sampling the features based on the selection_probability
       selection = pt.bernoulli(actor_out)
-      # Critic output
+      # Critic output -
+
       log_critic_out = self.critic_net(x_batch * selection)
       # Critic loss
       critic_loss = nnf.nll_loss(log_critic_out, y_batch_scalar)
 
-      combined_loss = critic_loss
+      combined_loss = critic_loss.clone()
       # # Train actor
       # Use multiple things as the y_true:
       # - selection, critic_out, baseline_out, and ground truth (y_batch)
@@ -204,6 +205,7 @@ class Invase(nn.Module):
         matches = pt.max(log_critic_out, dim=1)[1] == y_batch_scalar
         # print(matches)
         critic_acc = pt.sum(matches.to(pt.float32)) / y_batch_scalar.shape[0]
+        print("critic loss: ", critic_loss.item(), "comb: ", combined_loss.item())
         print(f'Iterations: {iter_idx}, critic acc: {np.round(critic_acc.item(), 4)}, '
               f'actor loss: {np.round(actor_loss.item(), 4)}')
 

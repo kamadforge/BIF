@@ -27,8 +27,8 @@ from comparison_methods.INVASE.data_generation import generate_dataset
 from comparison_methods.INVASE.invase_pytorch import Invase
 from comparison_methods.INVASE.utils import feature_performance_metric, prediction_performance_metric
 
-sys.path.append("/home/kamil/Dropbox/Current_research/featimp_dp/publish_qfit")
-from publish_qfit.data.make_synthetic_datasets import generate_data_forinvasecode
+sys.path.append("/publish_bif_tab")
+from publish_bif_tab.data.make_synthetic_datasets import generate_data_forinvasecode
 
 
 try:
@@ -137,7 +137,7 @@ def main(args):
 if __name__ == '__main__':
   # Inputs for the main function
   parser = argparse.ArgumentParser()
-  parser.add_argument('--data_type', choices=['syn1', 'syn2', 'syn3', 'syn4', 'syn5', 'syn6'], default='syn3', type=str)
+  parser.add_argument('--data_type', choices=['syn1', 'syn2', 'syn3', 'syn4', 'syn5', 'syn6'], default='subtract', type=str)
   parser.add_argument('--train_no', help='the number of training data', default=10000, type=int)
   parser.add_argument('--test_no', help='the number of testing data', default=10000, type=int)
   parser.add_argument('--dim', help='the number of features', choices=[11, 100], default=10, type=int)
