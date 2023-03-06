@@ -249,7 +249,7 @@ def parse():
     # sig = 8.4 -> eps 0.984 ~= 1
     # sig = 17. -> eps 0.48  ~= 0.5
 
-    parser.add_argument('--dp-sigma', type=float, default=0.0)
+    parser.add_argument('--dp-sigma', type=float, default=1)
     # parser.add_argument('--dp-clip', type=float, default=0.01)
     parser.add_argument('--seed', type=int, default=0)
     # parser.add_argument('--dp-sigma', type=float, default=1.35)

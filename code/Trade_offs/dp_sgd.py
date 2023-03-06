@@ -13,15 +13,19 @@ def dp_sgd_backward(params, loss, device, clip_norm, noise_factor):
   :param noise_factor:
   :return:
   """
+  # if not a list, make it into a list
   if not isinstance(params, list):
     params = [p for p in params]
 
   with backpack(BatchGrad(), BatchL2Grad()):
     loss.backward()
 
+  #p.batch_l2 has size of the clf-batch-size
   squared_param_norms = [p.batch_l2 for p in params]  # first we get all the squared parameter norms...
-  global_norms = pt.sqrt(pt.sum(pt.stack(squared_param_norms), dim=0))  # ...then compute the global norms...
+  global_norms = pt.sqrt(pt.sum(pt.stack(squared_param_norms), dim=0))  # ...then compute the global norms summing all the norms for all the sets of parameters ...
   global_clips = pt.clamp_max(clip_norm / global_norms, 1.)  # ...and finally get a vector of clipping factors
+
+# we have a clip value for each data sample within a batch
 
   for idx, param in enumerate(params):
     clipped_sample_grads = param.grad_batch * expand_vector(global_clips, param.grad_batch)
