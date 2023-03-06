@@ -13,11 +13,12 @@ from pathlib import Path
 sys.path.append(str(Path(sys.path[0]).resolve().parent.parent / "data"))
 sys.path.append(str(Path(sys.path[0]).resolve().parent.parent / "code"))
 import xgboost
-from evaluation_metrics import compute_median_rank, binary_classification_metrics
+from publish_bif_tab.code.evaluation_metrics import compute_median_rank, binary_classification_metrics
+from publish_bif_tab.data.make_synthetic_datasets import create_data
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", default="nonlinear_additive")
+parser.add_argument("--dataset", default="xor")
 args = parser.parse_args()
 
 from tab_dataloader import load_adult_short, load_credit, load_cervical, load_isolet, load_intrusion

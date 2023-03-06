@@ -10,39 +10,43 @@ from pathlib import Path
 sys.path.append(str(Path(sys.path[0]).resolve().parent.parent / "data"))
 sys.path.append(str(Path(sys.path[0]).resolve().parent.parent / "code"))
 
-from evaluation_metrics import compute_median_rank, binary_classification_metrics
+from publish_bif_tab.code.evaluation_metrics import compute_median_rank, binary_classification_metrics
+from publish_bif_tab.data.make_synthetic_datasets import create_data
 
-
-from tab_dataloader import load_adult_short, load_credit, load_cervical, load_isolet, load_intrusion
-from synthetic_data_loader import synthetic_data_loader
+from publish_bif_tab.data.tab_dataloader import load_adult_short, load_credit, load_intrusion
+from publish_bif_tab.data.synthetic_data_loader import synthetic_data_loader
 import numpy as np
-dataset="syn4" #xor, nonlinear_additive, orange_skin
+dataset="subtract" #xor, subtract, nonlinear_additive, orange_skin
 dataset_method = f"load_{dataset}"
 
 
-if "syn" in dataset or dataset=="xor" or "nonlinear" in dataset or "orange" in dataset:
-    x_tot, y_tot, datatypes_tot = synthetic_data_loader(dataset)
-    N_tot, d = x_tot.shape
-    training_data_por = 0.8
-    N = int(training_data_por * N_tot)
-    # if dataset == "adult_short":
-    #     N = 26048
-    # elif dataset == "credit":
-    #     N = 2668
-    X = x_tot[:N, :] #train X
-    y = y_tot[:N] #train y
-    datatypes = datatypes_tot[:N]
+if "syn" in dataset or dataset=="xor" or "nonlinear" in dataset or "orange" in dataset or "subtract" in dataset:
+#     x_tot, y_tot, datatypes_tot = synthetic_data_loader(dataset)
+#     N_tot, d = x_tot.shape
+#     training_data_por = 0.8
+#     N = int(training_data_por * N_tot)
+#     # if dataset == "adult_short":
+#     #     N = 26048
+#     # elif dataset == "credit":
+#     #     N = 2668
+#     X = x_tot[:N, :] #train X
+#     y = y_tot[:N] #train y
+#     datatypes = datatypes_tot[:N]
+#
+#     X_test = x_tot[N:, :]
+#     y_test = y_tot[N:]
+#     datatypes_test = datatypes_tot[N:]
+# # elif dataset=="xor" or "nonlinear" in dataset or "orange" in dataset:
+# #     X_train, y_train, X_test, y_test = synthetic_data_loader(dataset)
+# #     X = X_train
+# #     y = y_train
+# #     N_tot, d = X_train.shape
+# #     N = len(X_train)
+# #     datatypes = None
 
-    X_test = x_tot[N:, :]
-    y_test = y_tot[N:]
-    datatypes_test = datatypes_tot[N:]
-# elif dataset=="xor" or "nonlinear" in dataset or "orange" in dataset:
-#     X_train, y_train, X_test, y_test = synthetic_data_loader(dataset)
-#     X = X_train
-#     y = y_train
-#     N_tot, d = X_train.shape
-#     N = len(X_train)
-#     datatypes = None
+    x_train, y_train, x_test, y_test, datatypes_test, input_shape = create_data(dataset, n=int(1e6))
+
+    N, d = x_train.shape
 else:
     X, y, X_test, y_test = globals()[dataset_method]()
 
@@ -50,6 +54,9 @@ input_dim = d
 hidden_dim = input_dim
 how_many_samps = N
 
+X = x_train
+y = y_train
+X_test = x_test
 
 
 
@@ -83,7 +90,7 @@ mean_sv_arg=np.argsort(shap_vals)[::-1]
 #print(mean_sv_arg)
 #print(','.join([str(elem) for elem in mean_sv_arg]) )
 
-if dataset == "xor":
+if dataset == "xor" or dataset=="subtract":
     k = 2
 elif dataset == "orange_skin" or dataset == "nonlinear_additive":
     k = 4
