@@ -33,7 +33,7 @@ from tab_dataloader import load_adult, load_credit, load_adult_short
 from tab_dataloader import load_intrusion, load_covtype
 from make_synthetic_datasets import generate_data
 from make_synthetic_datasets import generate_invase
-#from data.synthetic_data_loader import synthetic_data_loader
+from synthetic_data_loader import synthetic_data_loader
 from numpy import genfromtxt
 import json
 
@@ -43,6 +43,7 @@ def get_args():
 
     parser=argparse.ArgumentParser()
     parser.add_argument("--dataset", default="xor", choices=["xor", "orange_skin", "nonlinear_additive", "syn4", "syn5", "syn6", "credit", "adult_short", "intrusion"])
+    parser.add_argument("--load_dataset", default=1, type=int)
     parser.add_argument("--mode", default="train") # test, train
     parser.add_argument("--testtype", default="local") #global, local
     parser.add_argument("--prune", default=True) #tests the subset of features
@@ -57,39 +58,53 @@ def get_args():
     print(args)
     return args
 
-def get_data(args):
+def get_data(args, synthetic):
 #######################
     # GET DATA
+
+
 
     def save_dataset(path, dataset):
         if not os.path.isdir(os.path.split(path)[0]):
             os.makedirs(os.path.split(path)[0])
         np.save(path, dataset)
-    if 1:
-        if args.dataset == "credit":
-            X_train, y_train, X_test, y_test = load_credit()
-            x_tot = np.concatenate([X_train, X_test])
-            y_tot = np.concatenate([y_train, y_test])
-        if args.dataset == "intrusion":
-            X_train, y_train, X_test, y_test = load_intrusion()
-            x_tot = np.concatenate([X_train, X_test])
-            y_tot = np.concatenate([y_train, y_test])
-        elif args.dataset == "adult":
-            filename = 'adult.p'
-            with open(filename, 'rb') as f:
-                u = pickle._Unpickler(f)
-                u.encoding = 'latin1'
-                data = u.load()
-                y_tot, x_tot = data
-        elif args.dataset == "adult_short":
-            X_train, y_train, X_test, y_test = load_adult_short()
-            x_tot = np.concatenate([X_train, X_test])
-            y_tot = np.concatenate([y_train, y_test])
-        elif args.dataset=="xor":
+    # for synthetic we just return the total data (train and test) and divide later
+    # for real ones we have fixed train and test, so we distinguish Xtst (real) and X_test (synth), etc.
+    if args.load_dataset and os.path.isfile(f"'../data/synthetic/{args.dataset}/dataset_{args.dataset}.npy"):
+        if args.dataset in synthetic:
+            x_tot, y_tot, datatypes = synthetic_data_loader(args.dataset)
+        else: # not synthetic
+            if args.dataset == "credit":
+                X_train, y_train, X_test, y_test = load_credit()
+                x_tot = np.concatenate([X_train, X_test])
+                y_tot = np.concatenate([y_train, y_test])
+            if args.dataset == "intrusion":
+                X_train, y_train, X_test, y_test = load_intrusion()
+                x_tot = np.concatenate([X_train, X_test])
+                y_tot = np.concatenate([y_train, y_test])
+            elif args.dataset == "adult":
+                filename = 'adult.p'
+                with open(filename, 'rb') as f:
+                    u = pickle._Unpickler(f)
+                    u.encoding = 'latin1'
+                    data = u.load()
+                    y_tot, x_tot = data
+            elif args.dataset == "adult_short":
+                X_train, y_train, X_test, y_test = load_adult_short()
+                x_tot = np.concatenate([X_train, X_test])
+                y_tot = np.concatenate([y_train, y_test])
+    else:
+        if args.dataset=="xor":
             x_tot, y_tot, datatypes = generate_data(10000, 'XOR')
             y_tot = np.argmax(y_tot, axis=1)
             dataset_XOR={'x': x_tot, 'y':y_tot}
             save_dataset('../data/synthetic/XOR/dataset_XOR.npy', dataset_XOR)
+        elif args.dataset=="subtract":
+            x_tot, y_tot, datatypes = generate_data(10000, 'subtract')
+            y_tot = np.argmax(y_tot, axis=1)
+            dataset_subtract={'x': x_tot, 'y':y_tot}
+            os.makedirs('../data/synthetic/subtract/', exist_ok=True)
+            save_dataset('../data/synthetic/subtract/dataset_subtract.npy', dataset_subtract)
         elif args.dataset == "xor_mean5":
             x_tot, y_tot, datatypes = generate_data(10000, 'XOR_mean5')
             y_tot = np.argmax(y_tot, axis=1)
@@ -228,8 +243,10 @@ def train(args, model, optimizer, criterion, X, Xtst, y, ytst):
 
     if not os.path.isdir("checkpoints"):
         os.mkdir("checkpoints")
-    np.save('checkpoints/%s_%s_LR_model0_epochs_%d_acc_%.2f' % (args.dataset, args.method, args.train_epochs, accuracy), LR_model0)
+    saved_model_path = 'checkpoints/%s_%s_LR_model0_epochs_%d_acc_%.2f' % (args.dataset, args.method, args.train_epochs, accuracy)
+    np.save(saved_model_path, LR_model0)
     print("Model saved")
+    return saved_model_path
 
 def test(args):
     print(f"dataset: {args.dataset}")
