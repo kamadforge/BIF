@@ -38,6 +38,11 @@ def synthetic_data_loader(dataset):
             data = u.load()
             y_tot, x_tot = data
 
+    elif dataset == "adult_short":
+        X_train, y_train, X_test, y_test = load_adult_short()
+        x_tot = np.concatenate([X_train, X_test])
+        y_tot = np.concatenate([y_train, y_test])
+
     elif dataset == "intrusion":
 
         X_train, y_train, X_test, y_test = load_intrusion()
@@ -54,6 +59,13 @@ def synthetic_data_loader(dataset):
 
 
         xor_dataset = np.load(os.path.join(pathmain, 'data/synthetic/XOR/dataset_XOR.npy'), allow_pickle=True)
+        x_tot = xor_dataset[()]['x']
+        y_tot = xor_dataset[()]['y']
+
+    elif dataset == "subtract":
+
+
+        xor_dataset = np.load(os.path.join(pathmain, 'data/synthetic/subtract/dataset_subtract.npy'), allow_pickle=True)
         x_tot = xor_dataset[()]['x']
         y_tot = xor_dataset[()]['y']
 
