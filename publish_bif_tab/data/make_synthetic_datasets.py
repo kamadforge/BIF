@@ -40,6 +40,39 @@ def generate_XOR_labels(X):
 
     return y
 
+
+def generate_subtract_labels(X):
+
+    # sign = lambda a : (a>0)*1 - (a<0)*1
+    #
+    #
+    # mult = X[:,0]*X[:,1]
+    # signs= sign(mult)
+    #
+    # y = np.exp(signs*np.power(np.abs(X[:,0]*X[:,1]),1))
+    #
+    # #y = np.exp(X[:, 0] * X[:, 1])
+    #
+    # prob_1 = np.expand_dims(1 / (1+y) ,1)
+    # prob_0 = np.expand_dims(y / (1+y) ,1)
+    #
+    # y = np.concatenate((prob_0,prob_1), axis = 1)
+    # print(y[1:10])
+
+    y = np.exp(X[:,0]-X[:,1])
+
+    prob_1 = np.expand_dims(1 / (1+y) ,1)
+    prob_0 = np.expand_dims(y / (1+y) ,1)
+
+    y = np.concatenate((prob_0,prob_1), axis = 1)
+
+    # y = np.zeros([len(X), 2])
+    # y[:, 0] = np.reshape(np.random.binomial(1, prob_0), [len(X), ])
+    # y[:, 1] = 1 - y[:, 0]
+
+    return y
+
+
 def generate_orange_labels(X):
     logit = np.exp(np.sum(X[:,:4]**2, axis = 1) - 4.0)
 
@@ -91,8 +124,14 @@ def generate_data(n=100, datatype='', seed = 0, val = False):
         indices = np.array([0, 1, 2, 3])
         datatypes[:, indices] = 1
 
+    if 'subtract' in datatype:
+        y = generate_subtract_labels(X)
+        datatypes = np.zeros((n, features_num))
+        indices = np.array([0, 1])
+        datatypes[:, indices] = 1
 
-    elif 'XOR' in datatype or datatype == 'syn1':
+
+    elif 'XOR' in datatype or 'xor' in datatype or datatype == 'syn1':
         y = generate_XOR_labels(X)
         datatypes = np.zeros((n, features_num))
         indices = np.array([0, 1])
@@ -184,7 +223,7 @@ def generate_data(n=100, datatype='', seed = 0, val = False):
 
 def generate_data_forinvasecode(n, datatype):
 
-    if datatype == "xor" or datatype == "orange_skin" or datatype == "nonlinear_additive":
+    if datatype == "xor" or datatype == "subtract" or datatype == "orange_skin" or datatype == "nonlinear_additive":
         X, y, datatypes = generate_data(n, datatype)
     else:
         X, y, datatypes = generate_invase(n, datatype)
@@ -295,6 +334,8 @@ def generate_invase(n=100, data_type='', seed = 0):
 
     if data_type == 'syn1':
         logit = np.exp(x[:, 0] * x[:, 1])
+    if data_type == 'subtract':
+        logit = np.exp(x[:, 0] - x[:, 1])
     elif data_type == 'syn2':
         logit = np.exp(np.sum(x[:, 2:6] ** 2, axis=1) - 4.0)
     elif data_type == 'syn3':
@@ -372,7 +413,46 @@ def generate_invase(n=100, data_type='', seed = 0):
 #     ground_truth[idx1, 2:6] = 1
 #     ground_truth[idx2, 6:10] = 1
 
+def create_data(datatype, n=1000):
+  #from make_data import generate_data
+  # from publish_bif_tab.data.make_synthetic_datasets import generate_invase
+  # from publish_bif_tab.data.make_synthetic_datasets import generate_data
+  from publish_bif_tab.data.tab_dataloader import load_adult_short, load_intrusion, load_credit
+  """
+  Create train and validation datasets.
 
+  """
+  #these two lines for synthetic datasets
+
+  if datatype=="XOR" or datatype=="xor" or datatype=="subtract" or datatype=="orange_skin" or datatype=="nonlinear_additive" or datatype=="switch" or "syn" in datatype:
+    print(f"Loading synthetic dataset: {datatype}")
+
+    if datatype=="XOR" or datatype=="xor" or datatype=="subtract" or datatype=="orange_skin" or datatype=="nonlinear_additive":
+      x_train, y_train, _ = generate_data(n=8000, datatype=datatype, seed=0) #10**6
+      x_val, y_val, datatypes_val = generate_data(n=2000, datatype=datatype, seed=1) #10**5
+    else:
+      x_train, y_train, _ = generate_invase(n=8000, data_type=datatype, seed=0)  # 10**6
+      x_val, y_val, datatypes_val = generate_invase(n=2000, data_type=datatype, seed=1)  # 10**5
+
+    y_train = np.argmax(y_train, axis=1)
+    y_val = np.argmax(y_val, axis=1)
+
+  #this line for real data
+  if datatype=="adult" or datatype=="credit":
+    print(f"Loading real dataset: {datatype}")
+    x_train,y_train, x_val, y_val = load_adult_short()
+
+    datatypes_val = None
+
+  elif datatype == 'intrusion':
+    print(f"Loading real dataset: {datatype}")
+    x_train, y_train, x_val, y_val = load_intrusion()
+
+    datatypes_val = None
+
+  input_shape = x_train.shape[1]
+
+  return x_train, y_train, x_val, y_val, datatypes_val, input_shape
 
 if __name__=="__main__":
     generate_invase(100, "syn4", 0)
