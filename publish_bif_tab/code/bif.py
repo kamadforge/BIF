@@ -21,7 +21,7 @@ import yaml
 def get_args():
     parser = argparse.ArgumentParser()
     # general
-    parser.add_argument("--dataset", default="nonlinear_additive") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
+    parser.add_argument("--dataset", default="orange_skin") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
     parser.add_argument("--load_dataset", default=1, type=int)
     parser.add_argument("--method", default="nn")
     parser.add_argument("--mini_batch_size", default=200, type=int)
@@ -188,3 +188,17 @@ if args.test_switches:
 
 
     #return [accuracy]
+
+    from datetime import datetime
+    date = datetime.now().strftime("%d/%m/%y")
+
+    def write_to_csv(args, accuracy, date):
+        # file write
+        os.makedirs("results", exist_ok=1)
+        filename = f"results/grad_results_{args.dataset}.csv"
+        file = open(filename, "a+")
+        file.write(
+            f"{args.point_estimate}, {args.switch_nn}, {args.kl_term}, {args.alpha}, {args.batch}, {args.epochs}, {args.lr}, {args.num_Dir_samples},-,-,{accuracy}\n")
+        file.close()
+
+    write_to_csv(args, accuracy, date)
