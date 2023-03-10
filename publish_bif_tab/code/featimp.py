@@ -306,7 +306,7 @@ def train_switches(args, loaded_model, X, Xtst, y, ytst, datatypes_tr, datatypes
                         print(("Global setting:"))
                         if args.point_estimate:
                             print("One importance vector", S)
-                            print(torch.argsort(S)[::-1])
+                            #print(torch.argsort(S)[::-1])
                             S_global_final = S
                         else:
                             print("Mean over samples", S.mean(dim=0))

@@ -13,6 +13,7 @@ import socket
 import sys
 from pathlib import Path
 import torch
+import yaml
 
 ########################3
 # ARGS
@@ -20,15 +21,15 @@ import torch
 def get_args():
     parser = argparse.ArgumentParser()
     # general
-    parser.add_argument("--dataset", default="xor") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
+    parser.add_argument("--dataset", default="nonlinear_additive") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
     parser.add_argument("--load_dataset", default=1, type=int)
     parser.add_argument("--method", default="nn")
-    parser.add_argument("--mini_batch_size", default=100, type=int)
+    parser.add_argument("--mini_batch_size", default=200, type=int)
     parser.add_argument("--epochs", default=5, type=int) # 7
     parser.add_argument("--lr", default=0.01, type=float)
     # for switch training
     parser.add_argument("--num_Dir_samples", default=200, type=int)
-    parser.add_argument("--alpha", default=0.0001, type=float)
+    parser.add_argument("--alpha", default=0.01, type=float)
     parser.add_argument("--kl_term", default=1, type=int)
 
     parser.add_argument("--point_estimate", default=0, type=int)
@@ -42,7 +43,7 @@ def get_args():
     parser.add_argument("--training_local", default=0, type=int)
     parser.add_argument("--local_training_iter", default=200, type=int)
     parser.add_argument("--set_hooks", default=1, type=int)
-
+    parser.add_argument("--load_params", default=1, type=int)
 
     parser.add_argument("--ktop_real", default=3, type=int)
     parser.add_argument("--runs_num", default=5, type=int)
@@ -57,6 +58,15 @@ def get_args():
     parser.add_argument("--which_net", default="FC")
     # parse
     args = parser.parse_args()
+
+    if args.load_params:
+        opt = yaml.load(open("utils/params.yml"), Loader=yaml.FullLoader)
+        for key, params in opt.items():
+            if key==args.dataset:
+                for key, value in params.items():
+                    setattr(args, key, value)
+        print("arguments: {}".format(str(args)))
+
     return args
 
 ########################################
@@ -95,8 +105,15 @@ num_epochs = args.train_epochs
 
 checkpoints = {
     "subtract": "checkpoints/subtract_nn_LR_model0_epochs_500_acc_0.99",
-    "xor": "checkpoints/xor_nn_LR_model0_epochs_500_acc_0.97"
+    "xor": "checkpoints/xor_nn_LR_model0_epochs_500_acc_0.97",
+    "orange_skin": "checkpoints/orange_skin_nn_LR_model0_epochs_500_acc_1.00",
+    "nonlinear_additive": "checkpoints/nonlinear_additive_nn_LR_model0_epochs_500_acc_0.98"
 }
+
+if not args.train_model and args.dataset not in checkpoints:
+    print(f"No checkpoint for {args.dataset}. Please add path to checkpoints or select args.train_model")
+    exit()
+
 if args.train_model and args.mode == 'train':
     saved_model_path = train_network(args, model, optimizer,criterion, X, Xtst, y, ytst)
 else:
