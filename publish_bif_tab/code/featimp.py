@@ -83,12 +83,13 @@ cwd = os.getcwd()
 cwd_parent = Path(__file__).parent.parent
 if socket.gethostname()=='worona.local':
     pathmain = cwd
-    path_code = os.path.join(pathmain, "code")
+    #path_code = os.path.join(pathmain, "code")
+    path_code = os.path.join(pathmain)
 elif 'g0' in socket.gethostname() or 'p0' in socket.gethostname():
     sys.path.append(os.path.join(cwd_parent, "data"))
     pathmain=cwd
-    path_code = os.path.join(pathmain, "code")
-    #path_code = os.path.join(pathmain)
+    #path_code = os.path.join(pathmain, "code")
+    path_code = os.path.join(pathmain)
 else:
     pathmain = cwd_parent
     path_code = cwd
