@@ -21,7 +21,7 @@ from datetime import datetime
 def get_args():
     parser = argparse.ArgumentParser()
     # general
-    parser.add_argument("--dataset", default="orange_skin") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
+    parser.add_argument("--dataset", default="syn4") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
     parser.add_argument("--load_dataset", default=1, type=int)
     parser.add_argument("--method", default="nn")
     parser.add_argument("--batch", default=200, type=int)
@@ -107,7 +107,10 @@ checkpoints = {
     "subtract": "checkpoints/subtract_nn_LR_model0_epochs_500_acc_0.99",
     "xor": "checkpoints/xor_nn_LR_model0_epochs_500_acc_0.97",
     "orange_skin": "checkpoints/orange_skin_nn_LR_model0_epochs_500_acc_1.00",
-    "nonlinear_additive": "checkpoints/nonlinear_additive_nn_LR_model0_epochs_500_acc_0.98"
+    "nonlinear_additive": "checkpoints/nonlinear_additive_nn_LR_model0_epochs_500_acc_0.98",
+    "syn4": "checkpoints/syn4_nn_LR_model0_epochs_500_acc_0.65",
+    "syn5": "checkpoints/syn5_nn_LR_model0_epochs_500_acc_0.68",
+    "syn6": "checkpoints/syn6_nn_LR_model0_epochs_500_acc_0.74"
 }
 
 if not args.train_model and args.dataset not in checkpoints:
