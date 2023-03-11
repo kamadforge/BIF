@@ -24,7 +24,7 @@ def get_args():
     parser.add_argument("--dataset", default="orange_skin") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
     parser.add_argument("--load_dataset", default=1, type=int)
     parser.add_argument("--method", default="nn")
-    parser.add_argument("--mini_batch_size", default=200, type=int)
+    parser.add_argument("--batch", default=200, type=int)
     parser.add_argument("--epochs", default=5, type=int) # 7
     parser.add_argument("--lr", default=0.01, type=float)
     # for switch training
