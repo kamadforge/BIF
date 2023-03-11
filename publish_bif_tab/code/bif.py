@@ -166,7 +166,7 @@ if args.test_switches:
             S = torch.mean(S, axis=2)
     else:  # get global switches
         if switch_path is None:
-            global_switch_path = f"rankings/global/global_{args.dataset}_pointest_{args.point_estimate}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}_alpha_{args.alpha}.pt"
+            global_switch_path = f"rankings/global/global_{args.dataset}_pointest_{args.point_estimate}_batch_{args.batch}_lr_{args.lr}_epochs_{args.epochs}_alpha_{args.alpha}.pt"
         else:
             global_switch_path = switch_path
         ts = os.path.getmtime(global_switch_path)

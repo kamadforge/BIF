@@ -106,7 +106,7 @@ def get_args():
     parser.add_argument("--dataset", default="intrusion") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
     parser.add_argument("--load_dataset", default=1, type=int)
     parser.add_argument("--method", default="nn")
-    parser.add_argument("--mini_batch_size", default=200, type=int)
+    parser.add_argument("--batch", default=200, type=int)
     parser.add_argument("--epochs", default=7, type=int) # 7
     parser.add_argument("--lr", default=0.1, type=float)
     # for switch training
@@ -149,7 +149,7 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
             loss = nn.CrossEntropyLoss()
             if point_estimate:
                 # mini_batch x [0,1] vs. mini_batch x [0,1] for BCE
-                if args.mini_batch_size == 1:
+                if args.batch == 1:
                     true_y = true_y.unsqueeze(0)
                 BCE = loss(prediction, true_y)
             else: #sampling
@@ -174,9 +174,9 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
                 else: # sampling with kl
                     alpha_0 = torch.Tensor([alpha_0])
                     hidden_dim = torch.Tensor([hidden_dim])
-                    mini_batch_size = phi_cand.shape[0]
-                    # KL_mat = torch.zeros(mini_batch_size)
-                    # for i in torch.arange(0,mini_batch_size):
+                    batch = phi_cand.shape[0]
+                    # KL_mat = torch.zeros(batch)
+                    # for i in torch.arange(0,batch):
                     #     phi = phi_cand[i,:]
                     #     trm1 = torch.lgamma(torch.sum(phi)) - torch.lgamma(hidden_dim*alpha_0)
                     #     trm2 = - torch.sum(torch.lgamma(phi)) + hidden_dim*torch.lgamma(alpha_0)
@@ -190,13 +190,13 @@ def loss_function(prediction, true_y, phi_cand, alpha_0, hidden_dim, how_many_sa
                     KL_mul = trm1_mul + trm2_mul + trm3_mul
                     KLD = torch.mean(KL_mul)
                     # return BCE + + annealing_rate * KLD / how_many_samps
-                    return BCE + KLD / mini_batch_size
+                    return BCE + KLD / batch
             else: # no kl term (both point estimate and sampling)
                 return BCE
         else: #global explanations (non- importance switch nn)
             loss = nn.CrossEntropyLoss()
             if point_estimate:
-                if args.mini_batch_size == 1:
+                if args.batch == 1:
                     true_y = true_y.unsqueeze(0)
                 BCE = loss(prediction, true_y)
             else:  # sampling
@@ -245,9 +245,9 @@ def train_switches(args, loaded_model, X, Xtst, y, ytst, datatypes_tr, datatypes
         ####################
         # get combined model (g+switches, based on the choice of local or global feature selection) and load the model g, and train switches
         if args.switch_nn == False:
-            model = Modelnn(num_feat, output_num, args.num_Dir_samples, args.mini_batch_size, point_estimate=args.point_estimate)
+            model = Modelnn(num_feat, output_num, args.num_Dir_samples, args.batch, point_estimate=args.point_estimate)
         else:
-            model = Model_switchlearning(num_feat, output_num, args.num_Dir_samples, args.mini_batch_size,point_estimate=args.point_estimate)
+            model = Model_switchlearning(num_feat, output_num, args.num_Dir_samples, args.batch,point_estimate=args.point_estimate)
         # load model g and freeze it
         model.load_state_dict(loaded_model[()][repeat_idx], strict=False)
         if args.set_hooks:
@@ -270,7 +270,7 @@ def train_switches(args, loaded_model, X, Xtst, y, ytst, datatypes_tr, datatypes
         optimizer = optim.Adam(model.parameters(), lr=args.lr)
         # optimizer = optim.Adadelta(model.parameters(), lr=args.lr, rho=0.9, eps=1e-06, weight_decay=0)
         how_many_epochs = args.epochs
-        how_many_iter = np.int(num_samples_tr / args.mini_batch_size)
+        how_many_iter = np.int(num_samples_tr / args.batch)
         training_loss_per_epoch = np.zeros(how_many_epochs)
         annealing_steps = float(8000. * how_many_epochs)
         beta_func = lambda s: min(s, annealing_steps) / annealing_steps
@@ -281,14 +281,14 @@ def train_switches(args, loaded_model, X, Xtst, y, ytst, datatypes_tr, datatypes
             annealing_rate = beta_func(epoch)
             for i in range(how_many_iter):
                 # get the inputs
-                inputs = xTrain[i * args.mini_batch_size:(i + 1) * args.mini_batch_size, :]
-                labels = yTrain[i * args.mini_batch_size:(i + 1) * args.mini_batch_size]
+                inputs = xTrain[i * args.batch:(i + 1) * args.batch, :]
+                labels = yTrain[i * args.batch:(i + 1) * args.batch]
                 if (args.dataset == "alternating" or "syn" in args.dataset):
-                    datatypes_train_batch = datatypesTrain[i * args.mini_batch_size:(i + 1) * args.mini_batch_size]
+                    datatypes_train_batch = datatypesTrain[i * args.batch:(i + 1) * args.batch]
                 optimizer.zero_grad()
                 # run the model
                 outputs, phi_cand, S, prephi, var_phi = model(torch.Tensor(inputs),
-                                                              args.mini_batch_size)  # the example shape 100,10,150
+                                                              args.batch)  # the example shape 100,10,150
                 # loss
                 labels = torch.squeeze(torch.LongTensor(labels))
                 loss = loss_function(outputs, labels, phi_cand, args.alpha, num_feat, num_samples_tr, annealing_rate,args.method, args.kl_term, args.point_estimate, args)
@@ -321,7 +321,7 @@ def train_switches(args, loaded_model, X, Xtst, y, ytst, datatypes_tr, datatypes
             print('running loss is \n', running_loss)
             # if global save the rank
         if not args.switch_nn:
-            switches_path = f"rankings/global/global_{args.dataset}_pointest_{args.point_estimate}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}_alpha_{args.alpha}.pt"
+            switches_path = f"rankings/global/global_{args.dataset}_pointest_{args.point_estimate}_batch_{args.batch}_lr_{args.lr}_epochs_{args.epochs}_alpha_{args.alpha}.pt"
             torch.save(S_global_final, switches_path)
             print(f"Global switch saved to {switches_path}")
 
@@ -349,12 +349,12 @@ def train_switches(args, loaded_model, X, Xtst, y, ytst, datatypes_tr, datatypes
             print('estimated posterior mean of Switch is', posterior_mean_switch)
             mean_of_means += posterior_mean_switch
             # the whole model, switches and network
-            switch_model_path = os.path.join(path_code,f"checkpoints_bif/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}_alpha_{args.alpha}.pt")
+            switch_model_path = os.path.join(path_code,f"checkpoints_bif/switches_{args.dataset}_batch_{args.batch}_lr_{args.lr}_epochs_{args.epochs}_alpha_{args.alpha}.pt")
             torch.save(model.state_dict(),switch_model_path)
 
         else:  # if switch_nn is true testing a single instance
             # the whole model, called switches_path, network to ge switches, too since its necessary for local setting
-            switches_path = os.path.join(path_code,f"checkpoints_bif/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}_alpha_{args.alpha}_samp_{args.num_Dir_samples}.pt")
+            switches_path = os.path.join(path_code,f"checkpoints_bif/switches_{args.dataset}_batch_{args.batch}_lr_{args.lr}_epochs_{args.epochs}_alpha_{args.alpha}_samp_{args.num_Dir_samples}.pt")
             torch.save(model.state_dict(),switches_path)
 
     return switches_path
@@ -372,21 +372,21 @@ def test_get_switches(dataset, switch_nn, training_local, output_num, X_test, y_
     print(f"dataset: {dataset}")
     _, num_feat = X_test.shape
     if switch_model_path is None:
-        path=os.path.join(path_code,f"checkpoints_bif/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}_alpha_{args.alpha}_samp_{args.num_Dir_samples}.pt")
+        path=os.path.join(path_code,f"checkpoints_bif/switches_{args.dataset}_batch_{args.batch}_lr_{args.lr}_epochs_{args.epochs}_alpha_{args.alpha}_samp_{args.num_Dir_samples}.pt")
     else:
         path=switch_model_path
     i = 0  # choose a sample
-    mini_batch_size = X_test.shape[0]  # entire test dataset
-    inputs_test_samp = X_test[i * mini_batch_size:(i + 1) * mini_batch_size, :]  # (mini_batch_size* feat_num)
-    labels_test_samp = y_test[i * mini_batch_size:(i + 1) * mini_batch_size]
+    batch = X_test.shape[0]  # entire test dataset
+    inputs_test_samp = X_test[i * batch:(i + 1) * batch, :]  # (batch* feat_num)
+    labels_test_samp = y_test[i * batch:(i + 1) * batch]
     if dataset == "alternating" or "syn" in dataset:
-        datatypes_test_samp = datatypes_test[i * mini_batch_size:(i + 1) * mini_batch_size]
+        datatypes_test_samp = datatypes_test[i * batch:(i + 1) * batch]
 
     # choose global or local switch+model g
     if switch_nn:
-        model = Model_switchlearning(num_feat,output_num, args.num_Dir_samples, mini_batch_size, point_estimate=args.point_estimate)
+        model = Model_switchlearning(num_feat,output_num, args.num_Dir_samples, batch, point_estimate=args.point_estimate)
     else:
-        model = Modelnn(num_feat,output_num, args.num_Dir_samples, mini_batch_size, point_estimate=args.point_estimate)
+        model = Modelnn(num_feat,output_num, args.num_Dir_samples, batch, point_estimate=args.point_estimate)
     model.load_state_dict(torch.load(path), strict=False)
     print(f"\nModel with importance network loaded from {path}")
     ts = os.path.getmtime(path)
@@ -407,7 +407,7 @@ def test_get_switches(dataset, switch_nn, training_local, output_num, X_test, y_
     # run the forward test on the original all features to get the S importance values
     inputs_test_samp = torch.Tensor(inputs_test_samp)
     model.eval()
-    outputs, phi, S, phi_est, var_phi = model(inputs_test_samp, mini_batch_size)
+    outputs, phi, S, phi_est, var_phi = model(inputs_test_samp, batch)
     torch.set_printoptions(profile="full")
 
     return S, datatypes_test_samp_arg, datatypes_test_samp, inputs_test_samp
@@ -477,23 +477,23 @@ def test_pruned_syn(S, args, X_test, ytst, datatypes_tst, datatypes_test_samp_ar
         mean_median_ranks = np.mean(median_ranks)
         # if not args.point_estimate:
         #    S=S.mean(dim=1)
-        mini_batch_size = 2000
+        batch = 2000
 
-        tpr, fdr, mcc = binary_classification_metrics(S, k, args.dataset, mini_batch_size,
+        tpr, fdr, mcc = binary_classification_metrics(S, k, args.dataset, batch,
                                                       datatypes_test_samp_arg, args.switch_nn)
         print("mean median rank", mean_median_ranks)
         # print(f"tpr: {tpr}, fdr: {fdr}")
         print(f"mcc: {mcc}")
     else:
         if (args.dataset in synthetic):
-            mini_batch_size = 2000
+            batch = 2000
             #if not args.point_estimate:
             #    S = S.mean(dim=0)
 
             S = np.tile(S.detach().cpu().numpy(), (2000, 1))
             print(S[0:5])
 
-            tpr, fdr, mcc = binary_classification_metrics(S, k, args.dataset, mini_batch_size, datatypes_test_samp_arg, True)
+            tpr, fdr, mcc = binary_classification_metrics(S, k, args.dataset, batch, datatypes_test_samp_arg, True)
 
             # print("mean median rank", mean_median_ranks)
             print(f"tpr: {tpr}, fdr: {fdr}")
@@ -562,7 +562,7 @@ def main():
                 if not args.point_estimate:
                     S = torch.mean(S, axis=2)
             else:  # get global switches
-                S = torch.load(f"rankings/global/global_{args.dataset}_pointest_{args.point_estimate}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt")
+                S = torch.load(f"rankings/global/global_{args.dataset}_pointest_{args.point_estimate}_batch_{args.batch}_lr_{args.lr}_epochs_{args.epochs}.pt")
                 print(f"Switch global loaded: {S}")
                 #S = S.unsqueeze(0).repeat(X_test.shape[0],1)
                 inputs_test_samp = torch.Tensor(X_test)
@@ -652,7 +652,7 @@ if __name__ == '__main__':
     if len(vals)==1: #real
         print(f"final acc mean {np.mean(tprs)}")
         print(f"final acc std {np.std(tprs)}")
-        print(f"dataset {args.dataset}, ktop_real {args.ktop_real} lr {args.lr}, it {args.epochs}, mini_batch_size {args.mini_batch_size}")
+        print(f"dataset {args.dataset}, ktop_real {args.ktop_real} lr {args.lr}, it {args.epochs}, batch {args.batch}")
 
     print("********END\n\n\n")
 
