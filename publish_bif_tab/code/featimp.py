@@ -65,6 +65,7 @@ import os
 import socket
 import sys
 import sys
+from datetime import datetime
 from pathlib import Path
 sys.path.append(str(Path(sys.path[0]).resolve().parent / "data"))
 from tab_dataloader import load_adult, load_credit, load_adult_short, load_intrusion
@@ -319,9 +320,9 @@ def train_switches(args, loaded_model, X, Xtst, y, ytst, datatypes_tr, datatypes
             print('running loss is \n', running_loss)
             # if global save the rank
         if not args.switch_nn:
-            torch.save(S_global_final,
-                       f"rankings/global/global_{args.dataset}_pointest_{args.point_estimate}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt")
-            print("Global switch saved")
+            switches_path = f"rankings/global/global_{args.dataset}_pointest_{args.point_estimate}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}_alpha_{args.alpha}.pt"
+            torch.save(S_global_final, switches_path)
+            print(f"Global switch saved to {switches_path}")
 
         # print('Finished global Training\n')
 
@@ -346,16 +347,16 @@ def train_switches(args, loaded_model, X, Xtst, y, ytst, datatypes_tr, datatypes
             # posterior_mean_switch_mat[repeat_idx,:] = posterior_mean_switch
             print('estimated posterior mean of Switch is', posterior_mean_switch)
             mean_of_means += posterior_mean_switch
-
-            torch.save(model.state_dict(),
-                       os.path.join(path_code,
-                                    f"checkpoints_bif/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt"))
+            # the whole model, switches and network
+            switch_model_path = os.path.join(path_code,f"checkpoints_bif/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}_alpha_{args.alpha}.pt")
+            torch.save(model.state_dict(),switch_model_path)
 
         else:  # if switch_nn is true testing a single instance
+            # the whole model, called switches_path, network to ge switches, too since its necessary for local setting
+            switches_path = os.path.join(path_code,f"checkpoints_bif/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}_alpha_{args.alpha}_samp_{args.num_Dir_samples}.pt")
+            torch.save(model.state_dict(),switches_path)
 
-            torch.save(model.state_dict(),
-                       os.path.join(path_code,
-                                    f"checkpoints_bif/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt"))
+    return switches_path
 
 ####
 # testing
@@ -364,12 +365,15 @@ def train_switches(args, loaded_model, X, Xtst, y, ytst, datatypes_tr, datatypes
 # FIRST MAKE A RUN TO GET LOCAL IMPORTANCE (FOR LOCAL)
 # that is both for synthetic and real-world datasets
 
-def test_get_switches(dataset, switch_nn, training_local, output_num, X_test, y_test, datatypes_test, args):
+def test_get_switches(dataset, switch_nn, training_local, output_num, X_test, y_test, datatypes_test, args, switch_model_path=None):
 
     # get data sample, x, y, and gt_features
     print(f"dataset: {dataset}")
     _, num_feat = X_test.shape
-    path = os.path.join(path_code, f"checkpoints_bif/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt")
+    if switch_model_path is None:
+        path=os.path.join(path_code,f"checkpoints_bif/switches_{args.dataset}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}_alpha_{args.alpha}_samp_{args.num_Dir_samples}.pt")
+    else:
+        path=switch_model_path
     i = 0  # choose a sample
     mini_batch_size = X_test.shape[0]  # entire test dataset
     inputs_test_samp = X_test[i * mini_batch_size:(i + 1) * mini_batch_size, :]  # (mini_batch_size* feat_num)
@@ -384,6 +388,8 @@ def test_get_switches(dataset, switch_nn, training_local, output_num, X_test, y_
         model = Modelnn(num_feat,output_num, args.num_Dir_samples, mini_batch_size, point_estimate=args.point_estimate)
     model.load_state_dict(torch.load(path), strict=False)
     print(f"\nModel with importance network loaded from {path}")
+    ts = os.path.getmtime(path)
+    print(datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S'))
 
     # ground truth relevant features (used for synthtic data only)
     # relevant_features - indices
@@ -536,7 +542,7 @@ def main():
 
     # train mode
     if args.train:
-        train_switches(args, loaded_model, X, X_test, y, ytst, datatypes_tr, datatypes_tst)
+        switch_path = train_switches(args, loaded_model, X, X_test, y, ytst, datatypes_tr, datatypes_tst)
 
 ####################################3
 # TEST
@@ -550,7 +556,7 @@ def main():
 
             if args.switch_nn:
                 # getting lcaol switches from the importance net
-                S, datatypes_test_samp_arg, datatypes_test_samp_onehot, inputs_test_samp = test_get_switches(args.dataset, args.switch_nn, False, output_num, X_test, ytst, datatypes_tst, args)
+                S, datatypes_test_samp_arg, datatypes_test_samp_onehot, inputs_test_samp = test_get_switches(args.dataset, args.switch_nn, False, output_num, X_test, ytst, datatypes_tst, args, switch_path)
                 print("Got local switches from the importance network")
                 if not args.point_estimate:
                     S = torch.mean(S, axis=2)

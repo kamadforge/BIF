@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 import torch
 import yaml
-
+from datetime import datetime
 ########################3
 # ARGS
 
@@ -120,8 +120,6 @@ else:
     saved_model_path = checkpoints[args.dataset]
 ##############
 # TEST FOR SYNTHETIC DATASETS (GLOBAL AND LOCAL) (TABLE 1)
-# elif args.mode == "test":
-#     test(args)
 
 
 if "syn" in args.dataset and not args.switch_nn:
@@ -132,7 +130,6 @@ if "syn" in args.dataset and not args.switch_nn:
 # TRAIN SWITCHES (BOTH LOCAL AND GLOBAL)
 
 # load pretrained model g for the switch model
-
 loaded_model = np.load(saved_model_path+".npy", allow_pickle=True)
 print("Loaded: ", saved_model_path)
 # if 1:
@@ -146,7 +143,7 @@ print("Loaded: ", saved_model_path)
 #         os.mkdir("weights")
 
 if args.train_switches:
-    train_switches(args, loaded_model, X, Xtst, y, ytst, datatypes_tr, datatypes_tst)
+    switch_path = train_switches(args, loaded_model, X, Xtst, y, ytst, datatypes_tr, datatypes_tst)
 
 ####################################3
 # TEST SWITCHES (BOTH LOCAL AND GLOBAL)
@@ -161,15 +158,20 @@ if args.test_switches:
     else:
         output_num = 2
 
-
-    if args.switch_nn:
-        # getting lcaol switches from the importance net
-        S, datatypes_test_samp_arg, datatypes_test_samp_onehot, inputs_test_samp = test_get_switches(args.dataset, args.switch_nn, False, output_num, Xtst, ytst, datatypes_tst, args)
+    # get switches
+    if args.switch_nn:  # getting lcaol switches from the importance net
+        S, datatypes_test_samp_arg, datatypes_test_samp_onehot, inputs_test_samp = test_get_switches(args.dataset, args.switch_nn, False, output_num, Xtst, ytst, datatypes_tst, args, switch_path)
         print("Got local switches from the importance network")
         if not args.point_estimate:
             S = torch.mean(S, axis=2)
     else:  # get global switches
-        S = torch.load(f"rankings/global/global_{args.dataset}_pointest_{args.point_estimate}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}.pt")
+        if switch_path is None:
+            global_switch_path = f"rankings/global/global_{args.dataset}_pointest_{args.point_estimate}_batch_{args.mini_batch_size}_lr_{args.lr}_epochs_{args.epochs}_alpha_{args.alpha}.pt"
+        else:
+            global_switch_path = switch_path
+        ts = os.path.getmtime(global_switch_path)
+        print("switches from: ", global_switch_path,"\n", datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S'))
+        S = torch.load(global_switch_path)
         print(f"Switch global loaded: {S}")
         #S = S.unsqueeze(0).repeat(X_test.shape[0],1)
         inputs_test_samp = torch.Tensor(Xtst)
@@ -189,16 +191,17 @@ if args.test_switches:
 
     #return [accuracy]
 
-    from datetime import datetime
-    date = datetime.now().strftime("%d/%m/%y")
-
+    datetime_uni = datetime.now()
+    date = datetime_uni.strftime("%d/%m/%y")
+    date_time = datetime_uni.strftime('%Y-%m-%d %H:%M:%S')
+    print(date_time)
     def write_to_csv(args, accuracy, date):
         # file write
         os.makedirs("results", exist_ok=1)
         filename = f"results/grad_results_{args.dataset}.csv"
         file = open(filename, "a+")
         file.write(
-            f"{args.point_estimate}, {args.switch_nn}, {args.kl_term}, {args.alpha}, {args.batch}, {args.epochs}, {args.lr}, {args.num_Dir_samples},-,-,{accuracy}\n")
+            f"{args.point_estimate}, {args.switch_nn}, {args.kl_term}, {args.alpha}, {args.batch}, {args.epochs}, {args.lr}, {args.num_Dir_samples},-,-,{accuracy},-,{date}\n")
         file.close()
 
     write_to_csv(args, accuracy, date)
