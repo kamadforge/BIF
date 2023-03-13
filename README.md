@@ -20,58 +20,35 @@
 ## Running the experiments
  
 
-
-###I. Synthetic tabular datasets:
-
-#### 1. Get the pre-trained models 
-(optional: in case no other desired model exists)
+### I. Synthetic tabular datasets:
 
 ```
-cd code
-python train_network.py --dataset xor
+cd publish_bif_tab/code
+python bif.py --dataset xor
 ```
 
-Datasets: xor, orange_skin, nonlinear_additive, syn4, syn5, syn6
+Datasets: xor, subtact, orange_skin, nonlinear_additive, syn4, syn5, syn6, credit, adult_short, intrusion
 
-The pre-trained models are already in `code/checkpoints directory`
+The output is MCC (Mathews correlation coefficient).
 
-#### 2. Run Q-FIT and compute metrics
+### II. Real-world tabular datasets
 
-To compute TPR/FDR (Experiment 1) and see the average feature ranking:
+Please download credit dataset folder and place it in `publish_bif_tab/data/`
+https://www.dropbox.com/sh/ulzz7pca1wwgj6e/AACe5cNveQW_HH0TXGUb9Gnua?dl=0
+The other datasets are in the Git repository
+
 
 ```
-python featimp_test.py --dataset xor
+cd publish_bif_tab/code
+python bif.py --dataset adult_short
 ```
 
+Datasets: credit, adult_short, intrusion
 
-###II. Real-world tabular datasets
+The output is classification accuracy for k top features. To change the number of features selected specify, e.g. `--ktop 5`
 
-####1. Pre-train the network
+The pre-trained models both for synthetic and real datasets are already in `data` folder. one may train their ow model by specifying `--train_model 1`
 
-```
-cd code
-python train_network.py --dataset adult_short
-```
-
-Datasets: credit, adult_short
-
-The pre-trained models are already in `data` folder.
-
-#### 2. Run Q-FIT and compute feature ranking
-
-To compute the average feature ranking:
-
-```
-python featimp_test.py --dataset adult_short
-```
-
-#### 3. Test how important features perform
-
-And to test how the dataset with reduced (k) number of features performs (Experiment 2)
-
-```
-python train_network.py --dataset adult_short --mode test --prune True --k 3
-```
 
 ### III. MNIST dataset
 
@@ -80,7 +57,7 @@ python train_network.py --dataset adult_short --mode test --prune True --k 3
 
 ```code/mnist_posthoc_accuracy_eval.py```
 
-#### 2. Run Q-fit: 
+#### 2. Run BIF: 
 
 ```code/switch_mnist_featimp.py``` 
 
