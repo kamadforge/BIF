@@ -207,18 +207,19 @@ def load_credit():
     #     print("Please input the creditcard fraud dataset path")
     #     exit()
 
-    if 'kamil' in socket.gethostname():
+    data = pd.read_csv("../data/Kaggle_Credit/creditcard.csv")
 
-        data = pd.read_csv(
-            "/home/kamil/Dropbox/Current_research/privacy/DPDR/data/Kaggle_Credit/creditcard.csv")
-        # data = pd.read_csv(
-        #    "../data/Kaggle_Credit/creditcard.csv")
-
-    # if 'g0' not in socket.gethostname() and 'p0' not in socket.gethostname():
-    else:
-        # (1) load data
-        data = pd.read_csv(
-            '/home/kadamczewski/Dropbox_from/Current_research/privacy/DPDR/data/Kaggle_Credit/creditcard.csv')
+    # if 'kamil' in socket.gethostname():
+    #
+    #     # data = pd.read_csv(
+    #     #     "/home/kamil/Dropbox/Current_research/privacy/DPDR/data/Kaggle_Credit/creditcard.csv")
+    #
+    #
+    # # if 'g0' not in socket.gethostname() and 'p0' not in socket.gethostname():
+    # else:
+    #     # (1) load data
+    #     data = pd.read_csv(
+    #         '/home/kadamczewski/Dropbox_from/Current_research/privacy/DPDR/data/Kaggle_Credit/creditcard.csv')
 
 
     #
