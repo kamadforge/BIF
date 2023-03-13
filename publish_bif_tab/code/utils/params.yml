@@ -42,20 +42,70 @@ nonlinear_additive:
   point_estimate: 0
   switch_nn: 1
   kl_term: 1
-  alpha: 0.001
-  batch: 100
+  alpha: 0.1
+  batch: 1000
+  epochs: 10
+  lr: 0.05
+  num_Dir_samples: 1000
+
+syn4:
+  point_estimate: 0
+  switch_nn: 1
+  kl_term: 1
+  alpha: 0.1
+  batch: 500
   epochs: 10
   lr: 0.05
   num_Dir_samples: 500
 
-nonliear_additive_tentative:
+syn5:
   point_estimate: 0
   switch_nn: 1
   kl_term: 1
-  alpha: 1.0
-  batch: 100
+  alpha: 0.1
+  batch: 500
+  epochs: 5
+  lr: 0.05
+  num_Dir_samples: 750
+
+syn6:
+  point_estimate: 0
+  switch_nn: 1
+  kl_term: 1
+  alpha: 0.1
+  batch: 1000
   epochs: 10
   lr: 0.05
-  num_Dir_samples: 500
+  num_Dir_samples: 750
+
+credit:
+  point_estimate: 0
+  switch_nn: 1
+  kl_term: 1
+  alpha: 0.01
+  batch: 200
+  epochs: 5
+  lr: 0.01
+  num_Dir_samples: 200
+
+adult_short:
+  point_estimate: 0
+  switch_nn: 1
+  kl_term: 1
+  alpha: 0.01
+  batch: 200
+  epochs: 5
+  lr: 0.01
+  num_Dir_samples: 200
+
+intrusion:
+  point_estimate: 0
+  switch_nn: 1
+  kl_term: 1
+  alpha: 0.01
+  batch: 200
+  epochs: 5
+  lr: 0.01
+  num_Dir_samples: 200
 
 ...

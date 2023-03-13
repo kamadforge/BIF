@@ -21,7 +21,7 @@ from datetime import datetime
 def get_args():
     parser = argparse.ArgumentParser()
     # general
-    parser.add_argument("--dataset", default="syn4") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
+    parser.add_argument("--dataset", default="adult_short") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
     parser.add_argument("--load_dataset", default=1, type=int)
     parser.add_argument("--method", default="nn")
     parser.add_argument("--batch", default=200, type=int)
@@ -104,13 +104,17 @@ model, criterion, optimizer = get_net(x_tot, args)
 num_epochs = args.train_epochs
 
 checkpoints = {
-    "subtract": "checkpoints/subtract_nn_LR_model0_epochs_500_acc_0.99",
-    "xor": "checkpoints/xor_nn_LR_model0_epochs_500_acc_0.97",
-    "orange_skin": "checkpoints/orange_skin_nn_LR_model0_epochs_500_acc_1.00",
-    "nonlinear_additive": "checkpoints/nonlinear_additive_nn_LR_model0_epochs_500_acc_0.98",
-    "syn4": "checkpoints/syn4_nn_LR_model0_epochs_500_acc_0.65",
-    "syn5": "checkpoints/syn5_nn_LR_model0_epochs_500_acc_0.68",
-    "syn6": "checkpoints/syn6_nn_LR_model0_epochs_500_acc_0.74"
+    "subtract": "checkpoints/subtract_nn_LR_model0_epochs_500_acc_0.99.npy",
+    "xor": "checkpoints/xor_nn_LR_model0_epochs_500_acc_0.97.npy",
+    "orange_skin": "checkpoints/orange_skin_nn_LR_model0_epochs_500_acc_1.00.npy",
+    "nonlinear_additive": "checkpoints/nonlinear_additive_nn_LR_model0_epochs_500_acc_0.98.npy",
+    "syn4": "checkpoints/syn4_nn_LR_model0_epochs_500_acc_0.65.npy",
+    "syn5": "checkpoints/syn5_nn_LR_model0_epochs_500_acc_0.68.npy",
+    "syn6": "checkpoints/syn6_nn_LR_model0_epochs_500_acc_0.74.npy",
+    "adult_short": "checkpoints/adult_short_nn_LR_model0_epochs_2000_acc_0.84.npy",
+    "credit": "checkpoints/credit_nn_LR_model0_epochs_2000_acc_0.97.npy",
+    "intrusion": "checkpoints/intrusion_nn_LR_model0_epochs_250_acc_0.96.npy"
+
 }
 
 if not args.train_model and args.dataset not in checkpoints:
@@ -133,7 +137,7 @@ if "syn" in args.dataset and not args.switch_nn:
 # TRAIN SWITCHES (BOTH LOCAL AND GLOBAL)
 
 # load pretrained model g for the switch model
-loaded_model = np.load(saved_model_path+".npy", allow_pickle=True)
+loaded_model = np.load(saved_model_path, allow_pickle=True)
 print("Loaded: ", saved_model_path)
 # if 1:
 #     for i in os.listdir("checkpoints"):
@@ -185,9 +189,11 @@ if args.test_switches:
 
 
     if (args.dataset in synthetic):
+        # mcc how many important features have been detected (true positive features)
         accuracy = test_pruned_syn(S, args, Xtst, ytst, datatypes_tst, datatypes_test_samp_arg, synthetic)
     else:
-        accuracy = test_pruned(S, inputs_test_samp, args.ktop_real, model_g, Xtst, ytst, args)
+        # classification accuracy with a subset of features
+        accuracy = test_pruned(S, inputs_test_samp, args.ktop_real, saved_model_path, Xtst, ytst, args)
 
     print("Tested on the subset of features chosen for each instance")
 
