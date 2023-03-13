@@ -68,9 +68,10 @@ def get_data(args, synthetic):
         if not os.path.isdir(os.path.split(path)[0]):
             os.makedirs(os.path.split(path)[0])
         np.save(path, dataset)
+    real_datasets = ["adult_short", "intrusion", "credit"]
     # for synthetic we just return the total data (train and test) and divide later
     # for real ones we have fixed train and test, so we distinguish Xtst (real) and X_test (synth), etc.
-    if args.load_dataset and os.path.isfile(f"'../data/synthetic/{args.dataset}/dataset_{args.dataset}.npy"):
+    if args.load_dataset and (os.path.isfile(f"'../data/synthetic/{args.dataset}/dataset_{args.dataset}.npy") or args.dataset in real_datasets):
         if args.dataset in synthetic:
             x_tot, y_tot, datatypes = synthetic_data_loader(args.dataset)
         else: # not synthetic
