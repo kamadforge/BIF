@@ -21,7 +21,7 @@ from datetime import datetime
 def get_args():
     parser = argparse.ArgumentParser()
     # general
-    parser.add_argument("--dataset", default="adult_short") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
+    parser.add_argument("--dataset", default="xor") #xor, orange_skin, nonlinear_additive, alternating, syn4, syn5, syn6, adult_short, credit, intrusion
     parser.add_argument("--load_dataset", default=1, type=int)
     parser.add_argument("--method", default="nn")
     parser.add_argument("--batch", default=200, type=int)
@@ -32,8 +32,8 @@ def get_args():
     parser.add_argument("--alpha", default=0.01, type=float)
     parser.add_argument("--kl_term", default=1, type=int)
 
-    parser.add_argument("--point_estimate", default=0, type=int)
-    parser.add_argument("--switch_nn", default=1, type=int)
+    parser.add_argument("--point_estimate", default=1, type=int)
+    parser.add_argument("--switch_nn", default=0, type=int)
 
     parser.add_argument("--train_model", default=0, type=int)
     parser.add_argument("--train_switches", default=1, type=int)
@@ -122,7 +122,7 @@ if not args.train_model and args.dataset not in checkpoints:
     exit()
 
 if args.train_model and args.mode == 'train':
-    saved_model_path = train_network(args, model, optimizer,criterion, X, Xtst, y, ytst)
+    saved_model_path = train_network(args, model, optimizer,criterion, X, Xtst, y, ytst) + ".npy"
 else:
     saved_model_path = checkpoints[args.dataset]
 ##############

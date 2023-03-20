@@ -5,8 +5,10 @@ import sys
 from sklearn.model_selection import train_test_split
 import math
 
-if sys.version_info[0] > 2:
-    import sdgym
+# if sys.version_info[0] > 2:
+#     import sdgym
+# else:
+import sdgym_like as sdgym
 # import xgboost
 import pickle
 from pathlib import Path
