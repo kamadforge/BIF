@@ -4,7 +4,6 @@ import urllib
 
 import numpy as np
 
-from sdgym.constants import CATEGORICAL, ORDINAL
 
 BASE_URL = 'http://sdgym.s3.amazonaws.com/datasets/'
 DATA_PATH = os.path.join(os.path.dirname(__file__), 'data')
@@ -28,9 +27,9 @@ def _get_columns(metadata):
     categorical_columns = list()
     ordinal_columns = list()
     for column_idx, column in enumerate(metadata['columns']):
-        if column['type'] == CATEGORICAL:
+        if column['type'] == 'categorical':
             categorical_columns.append(column_idx)
-        elif column['type'] == ORDINAL:
+        elif column['type'] == 'ordinal':
             ordinal_columns.append(column_idx)
 
     return categorical_columns, ordinal_columns

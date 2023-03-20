@@ -14,7 +14,6 @@
     pandas~=0.25.3
     seaborn~=0.10.0
     xgboost~=0.90
-    sdgym~=0.1.0
     backpack-for-pytorch~=1.1.0
     
 ## Running the experiments
@@ -33,9 +32,10 @@ The output is MCC (Mathews correlation coefficient).
 
 ### II. Real-world tabular datasets
 
-Please download credit dataset folder and place it in `publish_bif_tab/data/`
+Please download credit and intrusion dataset folders and place it in `publish_bif_tab/data/`
 https://www.dropbox.com/sh/ulzz7pca1wwgj6e/AACe5cNveQW_HH0TXGUb9Gnua?dl=0
-The other datasets are in the Git repository
+https://www.dropbox.com/sh/kmox79wf4oc5nii/AADxJemXraWhFGm3kcl64Ckha?dl=0
+The adult dataset is in the git repository.
 
 
 ```
